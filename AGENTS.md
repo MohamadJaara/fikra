@@ -1,6 +1,6 @@
 # Fikra — Hackathon Idea Board
 
-Built with Next.js 15 (App Router) + Convex backend + Convex Auth + shadcn/ui (new-york style).
+Built with Next.js 16 (App Router) + Convex backend + Convex Auth + shadcn/ui (new-york style).
 
 ## Commands
 
