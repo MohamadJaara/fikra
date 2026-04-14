@@ -1,0 +1,91 @@
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { QueryCtx, MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+
+export {
+  STATUSES,
+  ROLES,
+  RESOURCE_TAGS,
+  REACTION_TYPES,
+  REACTION_EMOJI,
+  ROLE_LABELS,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  RESOURCE_TAG_LABELS,
+  type Status,
+  type Role,
+  type ResourceTag,
+  type ReactionType,
+} from "../lib/constants";
+
+const ALLOWED_DOMAIN = process.env.ALLOWED_DOMAIN ?? "";
+
+export function isEmailAllowed(email: string): boolean {
+  if (ALLOWED_DOMAIN && email.toLowerCase().endsWith(`@${ALLOWED_DOMAIN}`))
+    return true;
+  const extra = process.env.ALLOWED_EMAILS;
+  if (extra) {
+    const list = extra.split(",").map((e) => e.trim().toLowerCase());
+    if (list.includes(email.toLowerCase())) return true;
+  }
+  return false;
+}
+
+export async function getAuthenticatedUser(ctx: QueryCtx | MutationCtx) {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) throw new Error("Not authenticated");
+  const user = await ctx.db.get(userId);
+  if (!user) throw new Error("User not found");
+  if (!user.email || !isEmailAllowed(user.email)) {
+    throw new Error("Access denied: email address is not allowed");
+  }
+  return { userId, user };
+}
+
+export function sanitizeText(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .trim();
+}
+
+export function validateStringLength(
+  value: string,
+  min: number,
+  max: number,
+  fieldName: string,
+): string {
+  const trimmed = value.trim();
+  if (trimmed.length < min)
+    throw new Error(`${fieldName} must be at least ${min} characters`);
+  if (trimmed.length > max)
+    throw new Error(`${fieldName} must be at most ${max} characters`);
+  return trimmed;
+}
+
+export async function generateUniqueHandle(
+  ctx: QueryCtx | MutationCtx,
+  email: string,
+  excludeUserId?: Id<"users">,
+): Promise<string | undefined> {
+  const base = email
+    .split("@")[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "");
+  if (!base) return undefined;
+
+  let candidate = base;
+  let suffix = 1;
+  for (;;) {
+    const existing = await ctx.db
+      .query("users")
+      .withIndex("handle", (q) => q.eq("handle", candidate))
+      .first();
+    if (!existing || existing._id === excludeUserId) return candidate;
+    suffix++;
+    candidate = `${base}${suffix}`;
+  }
+}

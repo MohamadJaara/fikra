@@ -1,0 +1,71 @@
+name: Bug Report
+description: Report something that's broken or not working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug in Fikra. Please fill out the sections below.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce the behavior?
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Which part of the app is affected?
+      options:
+        - Ideas (browse, create, edit, delete)
+        - Teams & Memberships
+        - Interest
+        - Reactions
+        - Comments & Discussion
+        - Notifications
+        - Resource Requests
+        - Activity Dashboard
+        - Onboarding / Settings
+        - Auth / Sign-in
+        - UI / Layout / Responsive
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Which browser (and version) are you using?
+      placeholder: "e.g. Chrome 125, Safari 17.5, Firefox 126"
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Screenshots, console errors, network logs, or anything else that might help.
