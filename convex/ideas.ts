@@ -243,6 +243,7 @@ export const list = query({
 
         const isMember = members.some((m) => m.userId === userId);
         const isInterested = interestDocs.some((i) => i.userId === userId);
+        const isOwner = idea.ownerId === userId;
 
         return {
           ...idea,
