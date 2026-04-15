@@ -3,7 +3,11 @@ import { convexAuth } from "@convex-dev/auth/server";
 import { isEmailAllowed } from "./lib";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
-  providers: [Resend],
+  providers: [
+    Resend({
+      from: process.env.AUTH_RESEND_FROM ?? "onboarding@resend.dev",
+    }),
+  ],
   callbacks: {
     async createOrUpdateUser(ctx, args) {
       const email = args.profile.email;
