@@ -23,6 +23,14 @@ const TYPE_LABELS: Record<string, string> = {
   comment_reply: "replied to a comment on",
   user_mentioned: "mentioned you in",
   ownership_transferred: "transferred ownership of",
+  ownership_transfer_requested: "requested you take ownership of",
+  ownership_takeover_requested: "requested ownership of",
+  ownership_transfer_accepted: "accepted ownership of",
+  ownership_takeover_accepted: "approved your ownership request for",
+  ownership_transfer_declined: "declined ownership of",
+  ownership_takeover_declined: "declined your ownership request for",
+  ownership_transfer_canceled: "canceled the ownership transfer for",
+  ownership_takeover_canceled: "canceled their ownership request for",
 };
 
 export function NotificationBell() {

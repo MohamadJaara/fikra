@@ -86,6 +86,19 @@ export default defineSchema({
     .index("by_idea", ["ideaId"])
     .index("by_resolved", ["resolved"]),
 
+  ownershipTransferRequests: defineTable({
+    ideaId: v.id("ideas"),
+    requesterId: v.id("users"),
+    recipientId: v.id("users"),
+    leaveAfterTransfer: v.boolean(),
+    status: v.string(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_idea", ["ideaId"])
+    .index("by_idea_and_status", ["ideaId", "status"])
+    .index("by_recipient_and_status", ["recipientId", "status"])
+    .index("by_requester_and_status", ["requesterId", "status"]),
+
   notifications: defineTable({
     recipientId: v.id("users"),
     actorId: v.id("users"),

@@ -11,6 +11,11 @@ import {
 } from "./lib";
 import { internal } from "./_generated/api";
 
+const TRANSFER_STATUS_PENDING = "pending";
+const TRANSFER_STATUS_ACCEPTED = "accepted";
+const TRANSFER_STATUS_DECLINED = "declined";
+const TRANSFER_STATUS_CANCELED = "canceled";
+
 export const create = mutation({
   args: {
     title: v.string(),
@@ -184,11 +189,17 @@ export const remove = mutation({
       .collect();
     for (const n of notifications) await ctx.db.delete(n._id);
 
+    const transferRequests = await ctx.db
+      .query("ownershipTransferRequests")
+      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
+      .collect();
+    for (const request of transferRequests) await ctx.db.delete(request._id);
+
     await ctx.db.delete(ideaId);
   },
 });
 
-export const transferOwnership = mutation({
+export const requestOwnershipTransfer = mutation({
   args: {
     ideaId: v.id("ideas"),
     targetUserId: v.id("users"),
@@ -215,17 +226,140 @@ export const transferOwnership = mutation({
       throw new Error("New owner is not allowed to access this workspace");
     }
 
-    const targetMembership = await ctx.db
+    const existingPendingRequest = await ctx.db
+      .query("ownershipTransferRequests")
+      .withIndex("by_idea_and_status", (q) =>
+        q.eq("ideaId", ideaId).eq("status", TRANSFER_STATUS_PENDING),
+      )
+      .first();
+    if (existingPendingRequest) {
+      throw new Error("This idea already has a pending ownership request");
+    }
+
+    const requestId = await ctx.db.insert("ownershipTransferRequests", {
+      ideaId,
+      requesterId: userId,
+      recipientId: targetUserId,
+      leaveAfterTransfer: leaveAfterTransfer ?? false,
+      status: TRANSFER_STATUS_PENDING,
+    });
+
+    await ctx.runMutation(internal.notifications.create, {
+      recipientId: targetUserId,
+      actorId: userId,
+      ideaId,
+      type: "ownership_transfer_requested",
+    });
+
+    return requestId;
+  },
+});
+
+export const requestOwnership = mutation({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, { ideaId }) => {
+    const { userId, user } = await getAuthenticatedUser(ctx);
+    if (!user.onboardingComplete) {
+      throw new Error("You must complete onboarding before requesting ownership");
+    }
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (idea.ownerId === userId) {
+      throw new Error("You already own this idea");
+    }
+
+    const membership = await ctx.db
       .query("ideaMembers")
       .withIndex("by_idea_and_user", (q) =>
-        q.eq("ideaId", ideaId).eq("userId", targetUserId),
+        q.eq("ideaId", ideaId).eq("userId", userId),
+      )
+      .first();
+    if (!membership) {
+      throw new Error("Only team members can request ownership");
+    }
+
+    const existingPendingRequest = await ctx.db
+      .query("ownershipTransferRequests")
+      .withIndex("by_idea_and_status", (q) =>
+        q.eq("ideaId", ideaId).eq("status", TRANSFER_STATUS_PENDING),
+      )
+      .first();
+    if (existingPendingRequest) {
+      throw new Error("This idea already has a pending ownership request");
+    }
+
+    const requestId = await ctx.db.insert("ownershipTransferRequests", {
+      ideaId,
+      requesterId: userId,
+      recipientId: idea.ownerId,
+      leaveAfterTransfer: false,
+      status: TRANSFER_STATUS_PENDING,
+    });
+
+    await ctx.runMutation(internal.notifications.create, {
+      recipientId: idea.ownerId,
+      actorId: userId,
+      ideaId,
+      type: "ownership_takeover_requested",
+    });
+
+    return requestId;
+  },
+});
+
+export const acceptOwnershipTransfer = mutation({
+  args: {
+    requestId: v.id("ownershipTransferRequests"),
+    leaveAfterTransfer: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { requestId, leaveAfterTransfer }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const request = await ctx.db.get(requestId);
+    if (!request) throw new Error("Ownership transfer request not found");
+    if (request.status !== TRANSFER_STATUS_PENDING) {
+      throw new Error("This ownership transfer request is no longer pending");
+    }
+    if (request.recipientId !== userId) {
+      throw new Error("Only the requested approver can accept this transfer");
+    }
+
+    const idea = await ctx.db.get(request.ideaId);
+    if (!idea) throw new Error("Idea not found");
+
+    const ownerInitiated = request.requesterId === idea.ownerId;
+    const requesterInitiated = request.recipientId === idea.ownerId;
+    if (!ownerInitiated && !requesterInitiated) {
+      throw new Error("This ownership transfer request is no longer valid");
+    }
+
+    const newOwnerId = ownerInitiated ? request.recipientId : request.requesterId;
+    const previousOwnerId = idea.ownerId;
+    const newOwner = await ctx.db.get(newOwnerId);
+    if (!newOwner) throw new Error("New owner not found");
+    if (!newOwner.onboardingComplete) {
+      throw new Error("New owner must complete onboarding first");
+    }
+    if (!newOwner.email || !isEmailAllowed(newOwner.email)) {
+      throw new Error("New owner is not allowed to access this workspace");
+    }
+
+    const newOwnerMembership = await ctx.db
+      .query("ideaMembers")
+      .withIndex("by_idea_and_user", (q) =>
+        q.eq("ideaId", request.ideaId).eq("userId", newOwnerId),
       )
       .first();
 
-    if (!targetMembership) {
+    if (requesterInitiated && !newOwnerMembership) {
+      throw new Error("Requester must still be a team member");
+    }
+
+    if (!newOwnerMembership) {
       await ctx.db.insert("ideaMembers", {
-        ideaId,
-        userId: targetUserId,
+        ideaId: request.ideaId,
+        userId: newOwnerId,
         role: undefined,
       });
     }
@@ -233,28 +367,120 @@ export const transferOwnership = mutation({
     const targetInterest = await ctx.db
       .query("ideaInterest")
       .withIndex("by_idea_and_user", (q) =>
-        q.eq("ideaId", ideaId).eq("userId", targetUserId),
+        q.eq("ideaId", request.ideaId).eq("userId", newOwnerId),
       )
       .first();
     if (targetInterest) await ctx.db.delete(targetInterest._id);
 
-    if (leaveAfterTransfer) {
-      const currentMembership = await ctx.db
+    const shouldRemovePreviousOwner = ownerInitiated
+      ? request.leaveAfterTransfer
+      : leaveAfterTransfer === true;
+
+    if (shouldRemovePreviousOwner) {
+      const currentOwnerMembership = await ctx.db
         .query("ideaMembers")
         .withIndex("by_idea_and_user", (q) =>
-          q.eq("ideaId", ideaId).eq("userId", userId),
+          q.eq("ideaId", request.ideaId).eq("userId", previousOwnerId),
         )
         .first();
-      if (currentMembership) await ctx.db.delete(currentMembership._id);
+      if (currentOwnerMembership) await ctx.db.delete(currentOwnerMembership._id);
     }
 
-    await ctx.db.patch(ideaId, { ownerId: targetUserId });
+    await ctx.db.patch(request.ideaId, { ownerId: newOwnerId });
+    await ctx.db.patch(requestId, {
+      status: TRANSFER_STATUS_ACCEPTED,
+      respondedAt: Date.now(),
+      leaveAfterTransfer: shouldRemovePreviousOwner,
+    });
+
+    const otherPendingRequests = await ctx.db
+      .query("ownershipTransferRequests")
+      .withIndex("by_idea_and_status", (q) =>
+        q.eq("ideaId", request.ideaId).eq("status", TRANSFER_STATUS_PENDING),
+      )
+      .collect();
+    for (const otherRequest of otherPendingRequests) {
+      if (otherRequest._id !== requestId) {
+        await ctx.db.patch(otherRequest._id, {
+          status: TRANSFER_STATUS_CANCELED,
+          respondedAt: Date.now(),
+        });
+      }
+    }
 
     await ctx.runMutation(internal.notifications.create, {
-      recipientId: targetUserId,
+      recipientId: request.requesterId,
       actorId: userId,
-      ideaId,
-      type: "ownership_transferred",
+      ideaId: request.ideaId,
+      type: ownerInitiated
+        ? "ownership_transfer_accepted"
+        : "ownership_takeover_accepted",
+    });
+  },
+});
+
+export const declineOwnershipTransfer = mutation({
+  args: { requestId: v.id("ownershipTransferRequests") },
+  handler: async (ctx, { requestId }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const request = await ctx.db.get(requestId);
+    if (!request) throw new Error("Ownership transfer request not found");
+    if (request.status !== TRANSFER_STATUS_PENDING) {
+      throw new Error("This ownership transfer request is no longer pending");
+    }
+    if (request.recipientId !== userId) {
+      throw new Error("Only the requested approver can decline this transfer");
+    }
+    const idea = await ctx.db.get(request.ideaId);
+    const ownerInitiated = idea?.ownerId === request.requesterId;
+
+    await ctx.db.patch(requestId, {
+      status: TRANSFER_STATUS_DECLINED,
+      respondedAt: Date.now(),
+    });
+
+    await ctx.runMutation(internal.notifications.create, {
+      recipientId: request.requesterId,
+      actorId: userId,
+      ideaId: request.ideaId,
+      type: ownerInitiated
+        ? "ownership_transfer_declined"
+        : "ownership_takeover_declined",
+    });
+  },
+});
+
+export const cancelOwnershipTransfer = mutation({
+  args: { requestId: v.id("ownershipTransferRequests") },
+  handler: async (ctx, { requestId }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const request = await ctx.db.get(requestId);
+    if (!request) throw new Error("Ownership transfer request not found");
+    if (request.status !== TRANSFER_STATUS_PENDING) {
+      throw new Error("This ownership transfer request is no longer pending");
+    }
+
+    const idea = await ctx.db.get(request.ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (request.requesterId !== userId) {
+      throw new Error("Only the requester can cancel this transfer request");
+    }
+    const ownerInitiated = request.requesterId === idea.ownerId;
+
+    await ctx.db.patch(requestId, {
+      status: TRANSFER_STATUS_CANCELED,
+      respondedAt: Date.now(),
+    });
+
+    await ctx.runMutation(internal.notifications.create, {
+      recipientId: request.recipientId,
+      actorId: userId,
+      ideaId: request.ideaId,
+      type: ownerInitiated
+        ? "ownership_transfer_canceled"
+        : "ownership_takeover_canceled",
     });
   },
 });
@@ -409,6 +635,47 @@ export const get = query({
       .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
       .collect();
 
+    const pendingTransferRequest = await ctx.db
+      .query("ownershipTransferRequests")
+      .withIndex("by_idea_and_status", (q) =>
+        q.eq("ideaId", ideaId).eq("status", TRANSFER_STATUS_PENDING),
+      )
+      .first();
+
+    const pendingOwnershipTransfer =
+      pendingTransferRequest &&
+      (pendingTransferRequest.requesterId === idea.ownerId ||
+        pendingTransferRequest.recipientId === idea.ownerId) &&
+      (isOwner ||
+        pendingTransferRequest.requesterId === userId ||
+        pendingTransferRequest.recipientId === userId)
+        ? await (async () => {
+            const [requester, recipient] = await Promise.all([
+              ctx.db.get(pendingTransferRequest.requesterId),
+              ctx.db.get(pendingTransferRequest.recipientId),
+            ]);
+
+            return {
+              _id: pendingTransferRequest._id,
+              _creationTime: pendingTransferRequest._creationTime,
+              ideaId: pendingTransferRequest.ideaId,
+              requesterId: pendingTransferRequest.requesterId,
+              requesterName: requester?.name || requester?.email || "Unknown",
+              requesterImage: requester?.image,
+              requesterHandle: requester?.handle,
+              recipientId: pendingTransferRequest.recipientId,
+              recipientName: recipient?.name || recipient?.email || "Unknown",
+              recipientImage: recipient?.image,
+              recipientHandle: recipient?.handle,
+              leaveAfterTransfer: pendingTransferRequest.leaveAfterTransfer,
+              isOwnerInitiated:
+                pendingTransferRequest.requesterId === idea.ownerId,
+              isRequester: pendingTransferRequest.requesterId === userId,
+              isRecipient: pendingTransferRequest.recipientId === userId,
+            };
+          })()
+        : null;
+
     const filledRoles = new Set<string>();
     for (const m of members) {
       if (m.role) filledRoles.add(m.role);
@@ -439,6 +706,7 @@ export const get = query({
       resourceRequests: resourceDocs,
       hasUnresolvedResources: resourceDocs.some((r) => !r.resolved),
       missingRoles,
+      pendingOwnershipTransfer,
       isMember: members.some((m) => m.userId === userId),
       isInterested: interestDocs.some((i) => i.userId === userId),
       isOwner,

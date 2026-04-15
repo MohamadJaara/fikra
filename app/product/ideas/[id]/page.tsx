@@ -152,6 +152,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
       <div className="space-y-6 animate-fade-in">
         <IdeaHeader idea={idea} />
+        <OwnershipTransferRequestBanner idea={idea} />
         <IdeaContent idea={idea} />
         <Separator />
         <TeamSection idea={idea} ideaId={ideaId} />
@@ -202,6 +203,158 @@ function IdeaHeader({ idea }: { idea: IdeaDetail }) {
   );
 }
 
+function OwnershipTransferRequestBanner({ idea }: { idea: IdeaDetail }) {
+  const acceptMutation = useMutation(api.ideas.acceptOwnershipTransfer);
+  const declineMutation = useMutation(api.ideas.declineOwnershipTransfer);
+  const cancelMutation = useMutation(api.ideas.cancelOwnershipTransfer);
+  const [action, setAction] = useState<"accept" | "decline" | "cancel" | null>(
+    null,
+  );
+  const [ownerLeavesAfterAccept, setOwnerLeavesAfterAccept] = useState(false);
+  const pending = idea.pendingOwnershipTransfer;
+
+  if (!pending) return null;
+
+  const handleAccept = async () => {
+    setAction("accept");
+    try {
+      await acceptMutation({
+        requestId: pending._id,
+        leaveAfterTransfer: pending.isOwnerInitiated
+          ? undefined
+          : ownerLeavesAfterAccept,
+      });
+      toast.success(
+        pending.isOwnerInitiated
+          ? "Ownership accepted. This idea is yours now."
+          : `${pending.requesterName} is now the owner.`,
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to accept");
+    } finally {
+      setAction(null);
+    }
+  };
+
+  const handleDecline = async () => {
+    setAction("decline");
+    try {
+      await declineMutation({ requestId: pending._id });
+      toast.success("Ownership transfer declined");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to decline");
+    } finally {
+      setAction(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    setAction("cancel");
+    try {
+      await cancelMutation({ requestId: pending._id });
+      toast.success("Ownership transfer request canceled");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to cancel");
+    } finally {
+      setAction(null);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border bg-muted/40 px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">Ownership transfer request</p>
+          {pending.isOwnerInitiated && pending.isRecipient ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {pending.requesterName} asked you to take ownership of this idea.
+              {pending.leaveAfterTransfer
+                ? " They will leave the team if you accept."
+                : " They will stay on the team if you accept."}
+            </p>
+          ) : pending.isOwnerInitiated ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Waiting for {pending.recipientName} to accept ownership.
+              {pending.leaveAfterTransfer
+                ? " You will leave the team after they accept."
+                : " You will stay on the team after they accept."}
+            </p>
+          ) : pending.isRecipient ? (
+            <div className="mt-1 space-y-2">
+              <p className="text-sm text-muted-foreground">
+                {pending.requesterName} asked to take ownership of this idea.
+              </p>
+              <label className="flex items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={ownerLeavesAfterAccept}
+                  onChange={(event) =>
+                    setOwnerLeavesAfterAccept(event.target.checked)
+                  }
+                  className="mt-1 h-4 w-4 rounded border-border accent-primary"
+                />
+                <span className="text-muted-foreground">
+                  Remove me from the team if I accept
+                </span>
+              </label>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-muted-foreground">
+              Waiting for {pending.recipientName} to approve your ownership
+              request.
+            </p>
+          )}
+        </div>
+
+        {pending.isRecipient ? (
+          <div className="flex shrink-0 gap-2">
+            <Button
+              size="sm"
+              onClick={() => void handleAccept()}
+              disabled={action !== null}
+            >
+              {action === "accept" ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4 mr-1" />
+              )}
+              Accept
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleDecline()}
+              disabled={action !== null}
+            >
+              {action === "decline" ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <X className="h-4 w-4 mr-1" />
+              )}
+              Decline
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => void handleCancel()}
+            disabled={action !== null}
+          >
+            {action === "cancel" ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <X className="h-4 w-4 mr-1" />
+            )}
+            Cancel request
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function IdeaContent({ idea }: { idea: IdeaDetail }) {
   return (
     <div className="grid md:grid-cols-2 gap-4">
@@ -244,9 +397,11 @@ function TeamSection({
 }) {
   const joinMutation = useMutation(api.memberships.join);
   const leaveMutation = useMutation(api.memberships.leave);
+  const requestOwnershipMutation = useMutation(api.ideas.requestOwnership);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
+  const [isRequestingOwnership, setIsRequestingOwnership] = useState(false);
 
   const teamPercent =
     idea.teamSizeWanted > 0
@@ -278,6 +433,22 @@ function TeamSection({
       toast.error(error instanceof Error ? error.message : "Failed to leave");
     } finally {
       setIsLeaving(false);
+    }
+  };
+
+  const handleRequestOwnership = async () => {
+    setIsRequestingOwnership(true);
+    try {
+      await requestOwnershipMutation({ ideaId });
+      toast.success("Ownership request sent to the owner");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to request ownership",
+      );
+    } finally {
+      setIsRequestingOwnership(false);
     }
   };
 
@@ -384,19 +555,38 @@ function TeamSection({
       {!idea.isOwner && (
         <div className="flex items-center gap-2 flex-wrap">
           {idea.isMember ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLeave}
-              disabled={isLeaving}
-            >
-              {isLeaving ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <UserMinus className="h-4 w-4 mr-1" />
-              )}
-              Leave Team
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLeave}
+                disabled={isLeaving}
+              >
+                {isLeaving ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <UserMinus className="h-4 w-4 mr-1" />
+                )}
+                Leave Team
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRequestOwnership}
+                disabled={
+                  isRequestingOwnership || idea.pendingOwnershipTransfer !== null
+                }
+              >
+                {isRequestingOwnership ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <ArrowRightLeft className="h-4 w-4 mr-1" />
+                )}
+                {idea.pendingOwnershipTransfer
+                  ? "Ownership pending"
+                  : "Request ownership"}
+              </Button>
+            </>
           ) : (
             <>
               <Select value={selectedRole} onValueChange={setSelectedRole}>
@@ -1209,17 +1399,20 @@ function TransferCandidateButton({
 }
 
 function TransferOwnershipDialog({ idea }: { idea: IdeaDetail }) {
-  const transferMutation = useMutation(api.ideas.transferOwnership);
+  const requestMutation = useMutation(api.ideas.requestOwnershipTransfer);
+  const cancelMutation = useMutation(api.ideas.cancelOwnershipTransfer);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<TransferCandidate | null>(null);
   const [leaveAfterTransfer, setLeaveAfterTransfer] = useState(false);
-  const [isTransferring, setIsTransferring] = useState(false);
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [isCanceling, setIsCanceling] = useState(false);
   const searchText = query.trim();
+  const pending = idea.pendingOwnershipTransfer;
 
   const searchResults = useQuery(
     api.users.search,
-    open && searchText.length > 0 ? { query: searchText } : "skip",
+    open && !pending && searchText.length > 0 ? { query: searchText } : "skip",
   );
 
   const memberCandidates = useMemo(
@@ -1254,27 +1447,43 @@ function TransferOwnershipDialog({ idea }: { idea: IdeaDetail }) {
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
-    if (isTransferring) return;
+    if (isRequesting || isCanceling) return;
     setOpen(nextOpen);
     if (!nextOpen) reset();
   };
 
-  const handleTransfer = async () => {
+  const handleRequest = async () => {
     if (!selected) return;
-    setIsTransferring(true);
+    setIsRequesting(true);
     try {
-      await transferMutation({
+      await requestMutation({
         ideaId: idea._id,
         targetUserId: selected._id,
         leaveAfterTransfer,
       });
-      toast.success(`Ownership transferred to ${selected.name}`);
+      toast.success(`Ownership request sent to ${selected.name}`);
       setOpen(false);
       reset();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to transfer");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to request transfer",
+      );
     } finally {
-      setIsTransferring(false);
+      setIsRequesting(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!pending) return;
+    setIsCanceling(true);
+    try {
+      await cancelMutation({ requestId: pending._id });
+      toast.success("Ownership transfer request canceled");
+      setOpen(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to cancel");
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -1283,55 +1492,74 @@ function TransferOwnershipDialog({ idea }: { idea: IdeaDetail }) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <ArrowRightLeft className="h-4 w-4 mr-1" />
-          Transfer
+          {pending ? "Transfer pending" : "Transfer"}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Transfer ownership</DialogTitle>
+          <DialogTitle>
+            {pending ? "Ownership transfer pending" : "Request transfer"}
+          </DialogTitle>
           <DialogDescription>
-            Choose who should own &quot;{idea.title}&quot;. The new owner can
-            edit, delete, and manage resources for this idea.
+            {pending
+              ? `Waiting for ${pending.recipientName} to accept ownership of "${idea.title}".`
+              : `Choose who should own "${idea.title}". They will need to accept before ownership changes.`}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {memberCandidates.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Team members</p>
-              <div className="space-y-2">
-                {memberCandidates.map((candidate) => (
-                  <TransferCandidateButton
-                    key={candidate._id}
-                    candidate={candidate}
-                    selected={selected?._id === candidate._id}
-                    onSelect={setSelected}
-                  />
-                ))}
+        {pending ? (
+          <>
+            <div className="rounded-md border bg-muted/40 px-3 py-2">
+              <div className="flex items-center gap-3">
+                <CandidateAvatar
+                  candidate={{
+                    _id: pending.recipientId,
+                    name: pending.recipientName,
+                    image: pending.recipientImage,
+                    handle: pending.recipientHandle,
+                  }}
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    Waiting on {pending.recipientName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {pending.leaveAfterTransfer
+                      ? "You will leave the team if they accept."
+                      : "You will stay on the team if they accept."}
+                  </p>
+                </div>
               </div>
             </div>
-          )}
 
-          <div className="space-y-2">
-            <label htmlFor="new-owner-search" className="text-sm font-medium">
-              Search people
-            </label>
-            <Input
-              id="new-owner-search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name or handle"
-            />
-            {searchText.length > 0 && (
-              <div className="max-h-48 overflow-auto rounded-md border">
-                {searchResults === undefined ? (
-                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Searching...
-                  </div>
-                ) : searchCandidates.length > 0 ? (
-                  <div className="space-y-1 p-1">
-                    {searchCandidates.map((candidate) => (
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={isCanceling}
+              >
+                Close
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => void handleCancel()}
+                disabled={isCanceling}
+              >
+                {isCanceling && (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                )}
+                Cancel request
+              </Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {memberCandidates.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Team members</p>
+                  <div className="space-y-2">
+                    {memberCandidates.map((candidate) => (
                       <TransferCandidateButton
                         key={candidate._id}
                         candidate={candidate}
@@ -1340,67 +1568,105 @@ function TransferOwnershipDialog({ idea }: { idea: IdeaDetail }) {
                       />
                     ))}
                   </div>
-                ) : (
-                  <p className="px-3 py-2 text-sm text-muted-foreground">
-                    No matching people found.
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
 
-          {selected && (
-            <div className="flex items-center gap-3 rounded-md border bg-muted/40 px-3 py-2">
-              <CandidateAvatar candidate={selected} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">
-                  New owner: {selected.name}
-                </p>
-                {selected.handle && (
-                  <p className="truncate text-xs text-muted-foreground">
-                    @{selected.handle}
-                  </p>
+              <div className="space-y-2">
+                <label
+                  htmlFor="new-owner-search"
+                  className="text-sm font-medium"
+                >
+                  Search people
+                </label>
+                <Input
+                  id="new-owner-search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search by name or handle"
+                />
+                {searchText.length > 0 && (
+                  <div className="max-h-48 overflow-auto rounded-md border">
+                    {searchResults === undefined ? (
+                      <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Searching...
+                      </div>
+                    ) : searchCandidates.length > 0 ? (
+                      <div className="space-y-1 p-1">
+                        {searchCandidates.map((candidate) => (
+                          <TransferCandidateButton
+                            key={candidate._id}
+                            candidate={candidate}
+                            selected={selected?._id === candidate._id}
+                            onSelect={setSelected}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">
+                        No matching people found.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
+
+              {selected && (
+                <div className="flex items-center gap-3 rounded-md border bg-muted/40 px-3 py-2">
+                  <CandidateAvatar candidate={selected} />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      Requested owner: {selected.name}
+                    </p>
+                    {selected.handle && (
+                      <p className="truncate text-xs text-muted-foreground">
+                        @{selected.handle}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <label className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={leaveAfterTransfer}
+                  onChange={(event) =>
+                    setLeaveAfterTransfer(event.target.checked)
+                  }
+                  className="mt-1 h-4 w-4 rounded border-border accent-primary"
+                />
+                <span>
+                  <span className="font-medium">
+                    Remove me from this team after transfer
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    Use this when you are moving on to another idea.
+                  </span>
+                </span>
+              </label>
             </div>
-          )}
 
-          <label className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
-            <input
-              type="checkbox"
-              checked={leaveAfterTransfer}
-              onChange={(event) => setLeaveAfterTransfer(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-border accent-primary"
-            />
-            <span>
-              <span className="font-medium">
-                Remove me from this team after transfer
-              </span>
-              <span className="block text-xs text-muted-foreground">
-                Use this when you are moving on to another idea.
-              </span>
-            </span>
-          </label>
-        </div>
-
-        <DialogFooter>
-          <Button
-            variant="outline"
-            onClick={() => handleOpenChange(false)}
-            disabled={isTransferring}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => void handleTransfer()}
-            disabled={!selected || isTransferring}
-          >
-            {isTransferring && (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-            )}
-            Transfer ownership
-          </Button>
-        </DialogFooter>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => handleOpenChange(false)}
+                disabled={isRequesting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void handleRequest()}
+                disabled={!selected || isRequesting}
+              >
+                {isRequesting && (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                )}
+                Send request
+              </Button>
+            </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -1424,7 +1690,10 @@ function OwnerActions({ idea }: { idea: IdeaDetail }) {
 
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      <TransferOwnershipDialog idea={idea} />
+      {(!idea.pendingOwnershipTransfer ||
+        idea.pendingOwnershipTransfer.isOwnerInitiated) && (
+        <TransferOwnershipDialog idea={idea} />
+      )}
       <Link href={`/product/ideas/${ideaId}/edit`}>
         <Button variant="outline" size="sm">
           <Edit className="h-4 w-4 mr-1" />

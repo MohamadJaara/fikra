@@ -10,6 +10,14 @@ export const NOTIFICATION_TYPES = [
   "comment_reply",
   "user_mentioned",
   "ownership_transferred",
+  "ownership_transfer_requested",
+  "ownership_takeover_requested",
+  "ownership_transfer_accepted",
+  "ownership_takeover_accepted",
+  "ownership_transfer_declined",
+  "ownership_takeover_declined",
+  "ownership_transfer_canceled",
+  "ownership_takeover_canceled",
 ] as const;
 
 export const create = internalMutation({

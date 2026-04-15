@@ -248,6 +248,12 @@ export const deleteIdea = mutation({
       .collect();
     for (const n of notifications) await ctx.db.delete(n._id);
 
+    const transferRequests = await ctx.db
+      .query("ownershipTransferRequests")
+      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
+      .collect();
+    for (const request of transferRequests) await ctx.db.delete(request._id);
+
     await ctx.db.delete(ideaId);
   },
 });

@@ -61,6 +61,24 @@ export type InterestedUser = {
   handle?: string;
 };
 
+export type OwnershipTransferRequest = {
+  _id: Id<"ownershipTransferRequests">;
+  _creationTime: number;
+  ideaId: Id<"ideas">;
+  requesterId: Id<"users">;
+  requesterName: string;
+  requesterImage?: string;
+  requesterHandle?: string;
+  recipientId: Id<"users">;
+  recipientName: string;
+  recipientImage?: string;
+  recipientHandle?: string;
+  leaveAfterTransfer: boolean;
+  isOwnerInitiated: boolean;
+  isRequester: boolean;
+  isRecipient: boolean;
+};
+
 export type IdeaDetail = {
   _id: Id<"ideas">;
   _creationTime: number;
@@ -86,6 +104,7 @@ export type IdeaDetail = {
   resourceRequests: ResourceRequestItem[];
   hasUnresolvedResources: boolean;
   missingRoles: string[];
+  pendingOwnershipTransfer: OwnershipTransferRequest | null;
   isMember: boolean;
   isInterested: boolean;
   isOwner: boolean;
