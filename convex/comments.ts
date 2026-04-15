@@ -194,6 +194,7 @@ export const list = query({
           ...c,
           authorName: user?.name || user?.email || "Unknown",
           authorImage: user?.image,
+          authorHandle: user?.handle,
           isAuthor: c.userId === userId,
           mentionedUsers,
         };

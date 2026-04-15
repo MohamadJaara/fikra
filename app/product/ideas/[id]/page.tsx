@@ -15,16 +15,24 @@ import {
   type Status,
 } from "@/lib/constants";
 import type { IdeaDetail, CommentItem } from "@/lib/types";
-import { use, useState, useMemo, useCallback } from "react";
+import {
+  use,
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef,
+  Suspense,
+} from "react";
 import { useQuery, useMutation } from "convex/react";
 import {
   MentionTextarea,
   renderMentionContent,
 } from "@/components/MentionTextarea";
+import { UserLink, UserAvatar } from "@/components/UserLink";
 import { IdeaDetailSkeleton } from "@/components/Skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -51,6 +59,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import { useRouter } from "next/navigation";
 
@@ -59,10 +68,38 @@ export default function IdeaDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-4 md:p-6 max-w-4xl mx-auto">
+          <IdeaDetailSkeleton />
+        </div>
+      }
+    >
+      <IdeaDetailContent params={params} />
+    </Suspense>
+  );
+}
+
+function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const ideaId = id as Id<"ideas">;
   const idea = useQuery(api.ideas.get, { ideaId });
   const comments = useQuery(api.comments.list, { ideaId });
+  const searchParams = useSearchParams();
+  const commentId = searchParams.get("comment");
+
+  useEffect(() => {
+    if (!commentId || !comments) return;
+    const el = document.getElementById(`comment-${commentId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-primary/30", "rounded-lg");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-primary/30", "rounded-lg");
+      }, 3000);
+    }
+  }, [commentId, comments]);
 
   if (idea === undefined || comments === undefined) {
     return (
@@ -139,18 +176,13 @@ function IdeaHeader({ idea }: { idea: IdeaDetail }) {
       </div>
       <p className="text-muted-foreground">{idea.pitch}</p>
       <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-        <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium">
-          {idea.ownerImage ? (
-            <img
-              src={idea.ownerImage}
-              alt=""
-              className="h-6 w-6 rounded-full"
-            />
-          ) : (
-            idea.ownerName?.charAt(0)?.toUpperCase() || "?"
-          )}
-        </div>
-        <span>{idea.ownerName}</span>
+        <UserAvatar
+          handle={idea.ownerHandle}
+          image={idea.ownerImage}
+          name={idea.ownerName}
+          size="md"
+        />
+        <UserLink handle={idea.ownerHandle} name={idea.ownerName} />
         <span>·</span>
         <span>{timeAgo(idea._creationTime)}</span>
       </div>
@@ -266,18 +298,17 @@ function TeamSection({
         <div className="space-y-2 mb-3">
           {sortedMembers.map((member) => (
             <div key={member._id} className="flex items-center gap-2 text-sm">
-              <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium shrink-0">
-                {member.image ? (
-                  <img
-                    src={member.image}
-                    alt=""
-                    className="h-7 w-7 rounded-full"
-                  />
-                ) : (
-                  member.name?.charAt(0)?.toUpperCase() || "?"
-                )}
-              </div>
-              <span className="font-medium">{member.name}</span>
+              <UserAvatar
+                handle={member.handle}
+                image={member.image}
+                name={member.name}
+                size="md"
+              />
+              <UserLink
+                handle={member.handle}
+                name={member.name}
+                className="font-medium"
+              />
               {[
                 ...(member.role ? [member.role] : []),
                 ...(member.roles?.filter((r) => r !== member.role) ?? []),
@@ -578,18 +609,12 @@ function InterestSection({
               key={user._id}
               className="flex items-center gap-1.5 text-sm text-muted-foreground"
             >
-              <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-medium">
-                {user.image ? (
-                  <img
-                    src={user.image}
-                    alt=""
-                    className="h-5 w-5 rounded-full"
-                  />
-                ) : (
-                  user.name?.charAt(0)?.toUpperCase() || "?"
-                )}
-              </div>
-              <span>{user.name}</span>
+              <UserAvatar
+                handle={user.handle}
+                image={user.image}
+                name={user.name}
+              />
+              <UserLink handle={user.handle} name={user.name} />
               {[...(user.roles ?? [])]
                 .sort((a, b) => {
                   const aM = neededRoles.has(a) ? 0 : 1;
@@ -783,30 +808,30 @@ function ReplyItem({
   };
 
   return (
-    <div className="flex gap-2">
-      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[9px] font-medium shrink-0 mt-0.5">
-        {reply.authorImage ? (
-          <img
-            src={reply.authorImage}
-            alt=""
-            className="h-6 w-6 rounded-full"
-          />
-        ) : (
-          reply.authorName?.charAt(0)?.toUpperCase() || "?"
-        )}
-      </div>
+    <div id={`comment-${reply._id}`} className="flex gap-2">
+      <UserAvatar
+        handle={reply.authorHandle}
+        image={reply.authorImage}
+        name={reply.authorName}
+        size="md"
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium text-xs">{reply.authorName}</span>
+          <UserLink
+            handle={reply.authorHandle}
+            name={reply.authorName}
+            className="font-medium text-xs"
+          />
           <span className="text-[11px] text-muted-foreground">
             {timeAgo(reply._creationTime)}
           </span>
         </div>
         {isEditing ? (
           <div className="flex gap-2 mt-1">
-            <Textarea
+            <MentionTextarea
               value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
+              onChange={setEditContent}
+              placeholder="Edit reply... (type @ to mention)"
               rows={2}
               className="flex-1 text-sm"
               autoFocus
@@ -942,31 +967,31 @@ function CommentItem({
   };
 
   return (
-    <div>
+    <div id={`comment-${comment._id}`}>
       <div className="flex gap-2">
-        <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium shrink-0 mt-0.5">
-          {comment.authorImage ? (
-            <img
-              src={comment.authorImage}
-              alt=""
-              className="h-7 w-7 rounded-full"
-            />
-          ) : (
-            comment.authorName?.charAt(0)?.toUpperCase() || "?"
-          )}
-        </div>
+        <UserAvatar
+          handle={comment.authorHandle}
+          image={comment.authorImage}
+          name={comment.authorName}
+          size="md"
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium">{comment.authorName}</span>
+            <UserLink
+              handle={comment.authorHandle}
+              name={comment.authorName}
+              className="font-medium"
+            />
             <span className="text-xs text-muted-foreground">
               {timeAgo(comment._creationTime)}
             </span>
           </div>
           {isEditing ? (
             <div className="flex gap-2 mt-1">
-              <Textarea
+              <MentionTextarea
                 value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
+                onChange={setEditContent}
+                placeholder="Edit comment... (type @ to mention)"
                 rows={2}
                 className="flex-1 text-sm"
                 autoFocus

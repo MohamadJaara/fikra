@@ -17,16 +17,24 @@ import {
 import type { IdeaListItem } from "@/lib/types";
 import { Users, Package, Heart } from "lucide-react";
 import Link from "next/link";
+import { UserLink, UserAvatar } from "@/components/UserLink";
 
 export function IdeaCard({ idea }: { idea: IdeaListItem }) {
+  const ideaHref = `/product/ideas/${idea._id}`;
   const teamPercent =
     idea.teamSizeWanted > 0
       ? Math.min(100, (idea.memberCount / idea.teamSizeWanted) * 100)
       : 0;
 
   return (
-    <Link href={`/product/ideas/${idea._id}`}>
-      <Card className="h-full hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group">
+    <Card className="relative h-full hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group">
+      <Link
+        href={ideaHref}
+        aria-label={`View idea: ${idea.title}`}
+        className="absolute inset-0 z-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      />
+
+      <div className="relative z-10 pointer-events-none">
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold text-base leading-tight line-clamp-2">
@@ -46,18 +54,22 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
 
         <CardContent className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium shrink-0">
-              {idea.ownerImage ? (
-                <img
-                  src={idea.ownerImage}
-                  alt=""
-                  className="h-5 w-5 rounded-full"
-                />
-              ) : (
-                idea.ownerName?.charAt(0)?.toUpperCase() || "?"
-              )}
-            </div>
-            <span className="truncate">{idea.ownerName}</span>
+            <span
+              className={idea.ownerHandle ? "pointer-events-auto" : undefined}
+            >
+              <UserAvatar
+                handle={idea.ownerHandle}
+                image={idea.ownerImage}
+                name={idea.ownerName}
+              />
+            </span>
+            <UserLink
+              handle={idea.ownerHandle}
+              name={idea.ownerName}
+              className={
+                idea.ownerHandle ? "truncate pointer-events-auto" : "truncate"
+              }
+            />
             {idea.isOwner && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                 Owner
@@ -156,7 +168,7 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
             </div>
           </div>
         </CardContent>
-      </Card>
-    </Link>
+      </div>
+    </Card>
   );
 }

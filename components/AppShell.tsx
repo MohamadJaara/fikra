@@ -16,6 +16,7 @@ import {
   Bell,
   Settings,
   Shield,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -94,6 +95,7 @@ function SidebarContent({
     email?: string;
     image?: string;
     isAdmin?: boolean;
+    handle?: string;
   } | null;
   onClose?: () => void;
 }) {
@@ -141,6 +143,13 @@ function SidebarContent({
           My Activity
         </NavLink>
         <NavLink
+          href="/product/people"
+          icon={<Users className="h-4 w-4" />}
+          onClick={onClose}
+        >
+          People
+        </NavLink>
+        <NavLink
           href="/product/notifications"
           icon={<Bell className="h-4 w-4" />}
           onClick={onClose}
@@ -170,7 +179,15 @@ function SidebarContent({
           <span className="text-xs text-muted-foreground">Theme</span>
           <ThemeToggle />
         </div>
-        <div className="flex items-center gap-2 px-2 py-1">
+        <Link
+          href={
+            viewer?.handle
+              ? `/product/profile/${viewer.handle}`
+              : "/product/settings"
+          }
+          className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-muted/50 transition-colors"
+          onClick={onClose}
+        >
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
             {viewer?.image ? (
               <img src={viewer.image} alt="" className="h-8 w-8 rounded-full" />
@@ -188,7 +205,7 @@ function SidebarContent({
               {viewer?.email}
             </p>
           </div>
-        </div>
+        </Link>
         <div className="px-2">
           <SignOutButton />
         </div>

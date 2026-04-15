@@ -14,6 +14,7 @@ export type IdeaListItem = {
   ownerId: Id<"users">;
   ownerName: string;
   ownerImage?: string;
+  ownerHandle?: string;
   memberCount: number;
   interestCount: number;
   reactionCounts: Record<string, number>;
@@ -46,6 +47,7 @@ export type IdeaMember = {
   image?: string;
   email?: string;
   roles?: string[];
+  handle?: string;
 };
 
 export type InterestedUser = {
@@ -56,6 +58,7 @@ export type InterestedUser = {
   name: string;
   image?: string;
   roles?: string[];
+  handle?: string;
 };
 
 export type IdeaDetail = {
@@ -72,6 +75,7 @@ export type IdeaDetail = {
   ownerId: Id<"users">;
   ownerName: string;
   ownerImage?: string;
+  ownerHandle?: string;
   ownerEmail?: string;
   members: IdeaMember[];
   memberCount: number;
@@ -102,8 +106,46 @@ export type CommentItem = {
   parentId?: Id<"comments">;
   authorName: string;
   authorImage?: string;
+  authorHandle?: string;
   isAuthor: boolean;
   mentionedUsers?: MentionedUser[];
+};
+
+export type ProfileIdea = {
+  _id: Id<"ideas">;
+  _creationTime: number;
+  title: string;
+  pitch: string;
+  status: string;
+  lookingForRoles: string[];
+};
+
+export type JoinedIdea = ProfileIdea & {
+  memberRole?: string;
+};
+
+export type PublicUser = {
+  _id: Id<"users">;
+  _creationTime: number;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  image?: string;
+  roles?: string[];
+  handle?: string;
+};
+
+export type UserProfile = {
+  _id: Id<"users">;
+  _creationTime: number;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  image?: string;
+  roles?: string[];
+  handle?: string;
+  ownedIdeas: ProfileIdea[];
+  joinedIdeas: JoinedIdea[];
 };
 
 export type UnresolvedResource = {

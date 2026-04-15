@@ -6,6 +6,7 @@ import { useQuery } from "convex/react";
 import { useState, useRef, useCallback, type KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Link from "next/link";
 
 type UserOption = {
   _id: Id<"users">;
@@ -214,12 +215,14 @@ export function renderMentionContent(
         const charAfter = afterAt[handle.length];
         if (charAfter === undefined || !/[a-zA-Z0-9_]/.test(charAfter)) {
           parts.push(
-            <span
+            <Link
               key={key++}
-              className="inline-flex items-center rounded bg-primary/10 text-primary font-medium text-sm px-0.5"
+              href={`/product/profile/${handle}`}
+              className="inline-flex items-center rounded bg-primary/10 text-primary font-medium text-sm px-0.5 hover:bg-primary/20 transition-colors"
+              onClick={(e) => e.stopPropagation()}
             >
               @{handle}
-            </span>,
+            </Link>,
           );
           remaining = afterAt.slice(handle.length);
           matched = true;

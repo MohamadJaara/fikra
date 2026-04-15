@@ -19,6 +19,7 @@ export default defineSchema({
   })
     .index("email", ["email"])
     .index("handle", ["handle"])
+    .index("by_onboardingComplete", ["onboardingComplete"])
     .searchIndex("search_name", {
       searchField: "name",
       filterFields: ["onboardingComplete"],

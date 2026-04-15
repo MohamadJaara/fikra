@@ -13,6 +13,7 @@ const TYPE_LABELS: Record<string, string> = {
   reaction_added: "reacted to",
   comment_added: "commented on",
   comment_reply: "replied to a comment on",
+  user_mentioned: "mentioned you in",
 };
 
 export default function NotificationsPage() {
@@ -63,7 +64,7 @@ export default function NotificationsPage() {
             return (
               <Link
                 key={n._id}
-                href={`/product/ideas/${n.ideaId}`}
+                href={`/product/ideas/${n.ideaId}${n.commentId ? `?comment=${n.commentId}` : ""}`}
                 onClick={() => {
                   if (!n.read) void markRead({ notificationId: n._id });
                 }}

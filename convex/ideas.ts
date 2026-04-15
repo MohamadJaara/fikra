@@ -249,6 +249,7 @@ export const list = query({
           ...idea,
           ownerName: owner?.name || owner?.email || "Unknown",
           ownerImage: owner?.image,
+          ownerHandle: owner?.handle,
           memberCount: members.length,
           interestCount: interestDocs.length,
           reactionCounts,
@@ -292,6 +293,7 @@ export const get = query({
           ...m,
           name: u?.name || u?.email || "Unknown",
           image: u?.image,
+          handle: u?.handle,
           ...(isOwner ? { email: u?.email } : {}),
           roles: u?.roles,
         };
@@ -310,6 +312,7 @@ export const get = query({
           ...i,
           name: u?.name || u?.email || "Unknown",
           image: u?.image,
+          handle: u?.handle,
           roles: u?.roles,
         };
       }),
@@ -353,6 +356,7 @@ export const get = query({
       ...idea,
       ownerName: owner?.name || owner?.email || "Unknown",
       ownerImage: owner?.image,
+      ownerHandle: owner?.handle,
       ownerEmail: isOwner ? owner?.email : undefined,
       members: memberDetails,
       memberCount: members.length,

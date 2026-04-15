@@ -1,4 +1,5 @@
 import { query, mutation } from "./_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { getAuthenticatedUser, generateUniqueHandle } from "./lib";
 import { ROLES } from "./lib";
@@ -118,6 +119,81 @@ export const completeOnboarding = mutation({
       onboardingComplete: true,
       handle,
     });
+  },
+});
+
+export const getProfile = query({
+  args: { handle: v.string() },
+  handler: async (ctx, { handle }) => {
+    await getAuthenticatedUser(ctx);
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("handle", (q) => q.eq("handle", handle))
+      .first();
+    if (!user || !user.onboardingComplete) return null;
+
+    const ownedIdeas = await ctx.db
+      .query("ideas")
+      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+      .collect();
+
+    const memberships = await ctx.db
+      .query("ideaMembers")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .collect();
+
+    const joinedIdeas = await Promise.all(
+      memberships
+        .filter((m) => !ownedIdeas.some((o) => o._id === m.ideaId))
+        .map(async (m) => {
+          const idea = await ctx.db.get(m.ideaId);
+          if (!idea) return null;
+          return { ...idea, memberRole: m.role };
+        }),
+    );
+
+    return {
+      ...pickPublicFields(user),
+      ownedIdeas: ownedIdeas.map((i) => ({
+        _id: i._id,
+        _creationTime: i._creationTime,
+        title: i.title,
+        pitch: i.pitch,
+        status: i.status,
+        lookingForRoles: i.lookingForRoles,
+      })),
+      joinedIdeas: joinedIdeas
+        .filter((i) => i !== null)
+        .map((i) => ({
+          _id: i!._id,
+          _creationTime: i!._creationTime,
+          title: i!.title,
+          pitch: i!.pitch,
+          status: i!.status,
+          lookingForRoles: i!.lookingForRoles,
+          memberRole: i!.memberRole,
+        })),
+    };
+  },
+});
+
+export const listAll = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    await getAuthenticatedUser(ctx);
+
+    const result = await ctx.db
+      .query("users")
+      .withIndex("by_onboardingComplete", (q) =>
+        q.eq("onboardingComplete", true),
+      )
+      .paginate(paginationOpts);
+
+    return {
+      ...result,
+      page: result.page.map(pickPublicFields),
+    };
   },
 });
 
