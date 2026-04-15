@@ -42,6 +42,12 @@ export async function getAuthenticatedUser(ctx: QueryCtx | MutationCtx) {
   return { userId, user };
 }
 
+export async function getAdminUser(ctx: QueryCtx | MutationCtx) {
+  const { userId, user } = await getAuthenticatedUser(ctx);
+  if (!user.isAdmin) throw new Error("Admin access required");
+  return { userId, user };
+}
+
 export function sanitizeText(text: string): string {
   return text
     .replace(/&/g, "&amp;")

@@ -15,6 +15,7 @@ export default defineSchema({
     roles: v.optional(v.array(v.string())),
     onboardingComplete: v.optional(v.boolean()),
     handle: v.optional(v.string()),
+    isAdmin: v.optional(v.boolean()),
   })
     .index("email", ["email"])
     .index("handle", ["handle"])

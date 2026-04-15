@@ -15,6 +15,7 @@ import {
   User,
   Bell,
   Settings,
+  Shield,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -92,6 +93,7 @@ function SidebarContent({
     name?: string;
     email?: string;
     image?: string;
+    isAdmin?: boolean;
   } | null;
   onClose?: () => void;
 }) {
@@ -152,6 +154,15 @@ function SidebarContent({
         >
           Settings
         </NavLink>
+        {viewer?.isAdmin && (
+          <NavLink
+            href="/product/admin"
+            icon={<Shield className="h-4 w-4" />}
+            onClick={onClose}
+          >
+            Admin
+          </NavLink>
+        )}
       </nav>
 
       <div className="p-2 border-t space-y-2">

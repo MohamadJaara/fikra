@@ -22,6 +22,7 @@ function pickViewerFields(user: Doc<"users">) {
     ...pickPublicFields(user),
     email: user.email,
     onboardingComplete: user.onboardingComplete,
+    isAdmin: user.isAdmin,
   };
 }
 
