@@ -9,6 +9,7 @@ export const NOTIFICATION_TYPES = [
   "comment_added",
   "comment_reply",
   "user_mentioned",
+  "ownership_transferred",
 ] as const;
 
 export const create = internalMutation({

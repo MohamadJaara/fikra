@@ -31,8 +31,19 @@ import {
 } from "@/components/MentionTextarea";
 import { UserLink, UserAvatar } from "@/components/UserLink";
 import { IdeaDetailSkeleton } from "@/components/Skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -57,6 +68,7 @@ import {
   Reply,
   Send,
   Loader2,
+  ArrowRightLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -135,7 +147,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
           <ArrowLeft className="h-4 w-4" />
           Browse
         </Link>
-        {idea.isOwner && <OwnerActions ideaId={ideaId} />}
+        {idea.isOwner && <OwnerActions idea={idea} />}
       </div>
 
       <div className="space-y-6 animate-fade-in">
@@ -246,7 +258,8 @@ function TeamSection({
     try {
       await joinMutation({
         ideaId,
-        role: selectedRole || undefined,
+        role:
+          selectedRole && selectedRole !== "none" ? selectedRole : undefined,
       });
       toast.success("Joined team!");
     } catch (error) {
@@ -271,12 +284,14 @@ function TeamSection({
   const sortedMembers = useMemo(() => {
     const needed = new Set(idea.lookingForRoles);
     return [...idea.members].sort((a, b) => {
+      if (a.userId === idea.ownerId) return -1;
+      if (b.userId === idea.ownerId) return 1;
       const aHas = [...(a.roles ?? []), a.role].some((r) => r && needed.has(r));
       const bHas = [...(b.roles ?? []), b.role].some((r) => r && needed.has(r));
       if (aHas !== bHas) return aHas ? -1 : 1;
       return (a.name ?? "").localeCompare(b.name ?? "");
     });
-  }, [idea.members, idea.lookingForRoles]);
+  }, [idea.members, idea.ownerId, idea.lookingForRoles]);
 
   const neededRoles = useMemo(
     () => new Set(idea.lookingForRoles),
@@ -339,7 +354,7 @@ function TeamSection({
                     </Badge>
                   );
                 })}
-              {idea.isOwner && member._id === idea.members[0]?._id && (
+              {member.userId === idea.ownerId && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   Owner
                 </Badge>
@@ -1101,7 +1116,298 @@ function CommentItem({
   );
 }
 
-function OwnerActions({ ideaId }: { ideaId: Id<"ideas"> }) {
+type TransferCandidate = {
+  _id: Id<"users">;
+  name: string;
+  image?: string;
+  handle?: string;
+};
+
+function getUserDisplayName(user: {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+}) {
+  return (
+    user.name ||
+    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+    "Unnamed user"
+  );
+}
+
+function memberToTransferCandidate(
+  member: IdeaDetail["members"][number],
+): TransferCandidate {
+  return {
+    _id: member.userId,
+    name: member.name,
+    image: member.image,
+    handle: member.handle,
+  };
+}
+
+function userToTransferCandidate(user: {
+  _id: Id<"users">;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  image?: string;
+  handle?: string;
+}): TransferCandidate {
+  return {
+    _id: user._id,
+    name: getUserDisplayName(user),
+    image: user.image,
+    handle: user.handle,
+  };
+}
+
+function CandidateAvatar({ candidate }: { candidate: TransferCandidate }) {
+  return (
+    <Avatar className="h-8 w-8">
+      <AvatarImage src={candidate.image} />
+      <AvatarFallback className="text-xs font-medium">
+        {candidate.name.charAt(0).toUpperCase()}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
+function TransferCandidateButton({
+  candidate,
+  selected,
+  onSelect,
+}: {
+  candidate: TransferCandidate;
+  selected: boolean;
+  onSelect: (candidate: TransferCandidate) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(candidate)}
+      className={`w-full rounded-md border px-3 py-2 text-left transition-colors ${
+        selected
+          ? "border-primary bg-primary/5"
+          : "border-border hover:bg-muted/50"
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <CandidateAvatar candidate={candidate} />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{candidate.name}</p>
+          {candidate.handle && (
+            <p className="truncate text-xs text-muted-foreground">
+              @{candidate.handle}
+            </p>
+          )}
+        </div>
+        {selected && <Check className="h-4 w-4 shrink-0 text-primary" />}
+      </div>
+    </button>
+  );
+}
+
+function TransferOwnershipDialog({ idea }: { idea: IdeaDetail }) {
+  const transferMutation = useMutation(api.ideas.transferOwnership);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<TransferCandidate | null>(null);
+  const [leaveAfterTransfer, setLeaveAfterTransfer] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const searchText = query.trim();
+
+  const searchResults = useQuery(
+    api.users.search,
+    open && searchText.length > 0 ? { query: searchText } : "skip",
+  );
+
+  const memberCandidates = useMemo(
+    () =>
+      idea.members
+        .filter((member) => member.userId !== idea.ownerId)
+        .map(memberToTransferCandidate),
+    [idea.members, idea.ownerId],
+  );
+
+  const searchCandidates = useMemo(() => {
+    if (!searchResults) return [];
+
+    const seen = new Set<Id<"users">>([
+      idea.ownerId,
+      ...memberCandidates.map((candidate) => candidate._id),
+    ]);
+
+    return searchResults
+      .filter((user) => {
+        if (seen.has(user._id)) return false;
+        seen.add(user._id);
+        return true;
+      })
+      .map(userToTransferCandidate);
+  }, [idea.ownerId, memberCandidates, searchResults]);
+
+  const reset = () => {
+    setQuery("");
+    setSelected(null);
+    setLeaveAfterTransfer(false);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (isTransferring) return;
+    setOpen(nextOpen);
+    if (!nextOpen) reset();
+  };
+
+  const handleTransfer = async () => {
+    if (!selected) return;
+    setIsTransferring(true);
+    try {
+      await transferMutation({
+        ideaId: idea._id,
+        targetUserId: selected._id,
+        leaveAfterTransfer,
+      });
+      toast.success(`Ownership transferred to ${selected.name}`);
+      setOpen(false);
+      reset();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to transfer");
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm">
+          <ArrowRightLeft className="h-4 w-4 mr-1" />
+          Transfer
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Transfer ownership</DialogTitle>
+          <DialogDescription>
+            Choose who should own &quot;{idea.title}&quot;. The new owner can
+            edit, delete, and manage resources for this idea.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {memberCandidates.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Team members</p>
+              <div className="space-y-2">
+                {memberCandidates.map((candidate) => (
+                  <TransferCandidateButton
+                    key={candidate._id}
+                    candidate={candidate}
+                    selected={selected?._id === candidate._id}
+                    onSelect={setSelected}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label htmlFor="new-owner-search" className="text-sm font-medium">
+              Search people
+            </label>
+            <Input
+              id="new-owner-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by name or handle"
+            />
+            {searchText.length > 0 && (
+              <div className="max-h-48 overflow-auto rounded-md border">
+                {searchResults === undefined ? (
+                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Searching...
+                  </div>
+                ) : searchCandidates.length > 0 ? (
+                  <div className="space-y-1 p-1">
+                    {searchCandidates.map((candidate) => (
+                      <TransferCandidateButton
+                        key={candidate._id}
+                        candidate={candidate}
+                        selected={selected?._id === candidate._id}
+                        onSelect={setSelected}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-3 py-2 text-sm text-muted-foreground">
+                    No matching people found.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {selected && (
+            <div className="flex items-center gap-3 rounded-md border bg-muted/40 px-3 py-2">
+              <CandidateAvatar candidate={selected} />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  New owner: {selected.name}
+                </p>
+                {selected.handle && (
+                  <p className="truncate text-xs text-muted-foreground">
+                    @{selected.handle}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          <label className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm">
+            <input
+              type="checkbox"
+              checked={leaveAfterTransfer}
+              onChange={(event) => setLeaveAfterTransfer(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-border accent-primary"
+            />
+            <span>
+              <span className="font-medium">
+                Remove me from this team after transfer
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Use this when you are moving on to another idea.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => handleOpenChange(false)}
+            disabled={isTransferring}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => void handleTransfer()}
+            disabled={!selected || isTransferring}
+          >
+            {isTransferring && (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            )}
+            Transfer ownership
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function OwnerActions({ idea }: { idea: IdeaDetail }) {
+  const ideaId = idea._id;
   const deleteMutation = useMutation(api.ideas.remove);
   const router = useRouter();
 
@@ -1117,7 +1423,8 @@ function OwnerActions({ ideaId }: { ideaId: Id<"ideas"> }) {
   };
 
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap justify-end gap-2">
+      <TransferOwnershipDialog idea={idea} />
       <Link href={`/product/ideas/${ideaId}/edit`}>
         <Button variant="outline" size="sm">
           <Edit className="h-4 w-4 mr-1" />

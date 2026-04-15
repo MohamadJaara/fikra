@@ -22,6 +22,7 @@ const TYPE_LABELS: Record<string, string> = {
   comment_added: "commented on",
   comment_reply: "replied to a comment on",
   user_mentioned: "mentioned you in",
+  ownership_transferred: "transferred ownership of",
 };
 
 export function NotificationBell() {

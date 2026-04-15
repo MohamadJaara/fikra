@@ -9,6 +9,7 @@ import {
   STATUSES,
   ROLES,
 } from "./lib";
+import { internal } from "./_generated/api";
 
 export const create = mutation({
   args: {
@@ -184,6 +185,77 @@ export const remove = mutation({
     for (const n of notifications) await ctx.db.delete(n._id);
 
     await ctx.db.delete(ideaId);
+  },
+});
+
+export const transferOwnership = mutation({
+  args: {
+    ideaId: v.id("ideas"),
+    targetUserId: v.id("users"),
+    leaveAfterTransfer: v.optional(v.boolean()),
+  },
+  handler: async (ctx, { ideaId, targetUserId, leaveAfterTransfer }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (idea.ownerId !== userId) {
+      throw new Error("Only the owner can transfer ownership");
+    }
+    if (targetUserId === userId) {
+      throw new Error("Choose someone else to own this idea");
+    }
+
+    const targetUser = await ctx.db.get(targetUserId);
+    if (!targetUser) throw new Error("New owner not found");
+    if (!targetUser.onboardingComplete) {
+      throw new Error("New owner must complete onboarding first");
+    }
+    if (!targetUser.email || !isEmailAllowed(targetUser.email)) {
+      throw new Error("New owner is not allowed to access this workspace");
+    }
+
+    const targetMembership = await ctx.db
+      .query("ideaMembers")
+      .withIndex("by_idea_and_user", (q) =>
+        q.eq("ideaId", ideaId).eq("userId", targetUserId),
+      )
+      .first();
+
+    if (!targetMembership) {
+      await ctx.db.insert("ideaMembers", {
+        ideaId,
+        userId: targetUserId,
+        role: undefined,
+      });
+    }
+
+    const targetInterest = await ctx.db
+      .query("ideaInterest")
+      .withIndex("by_idea_and_user", (q) =>
+        q.eq("ideaId", ideaId).eq("userId", targetUserId),
+      )
+      .first();
+    if (targetInterest) await ctx.db.delete(targetInterest._id);
+
+    if (leaveAfterTransfer) {
+      const currentMembership = await ctx.db
+        .query("ideaMembers")
+        .withIndex("by_idea_and_user", (q) =>
+          q.eq("ideaId", ideaId).eq("userId", userId),
+        )
+        .first();
+      if (currentMembership) await ctx.db.delete(currentMembership._id);
+    }
+
+    await ctx.db.patch(ideaId, { ownerId: targetUserId });
+
+    await ctx.runMutation(internal.notifications.create, {
+      recipientId: targetUserId,
+      actorId: userId,
+      ideaId,
+      type: "ownership_transferred",
+    });
   },
 });
 
