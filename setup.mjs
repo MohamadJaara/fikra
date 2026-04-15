@@ -36,24 +36,6 @@ const variables = JSON.stringify({
     "via additional Convex environment variables.",
   providers: [
     {
-      name: "GitHub OAuth",
-      help:
-        "Create a GitHub OAuth App, follow the instruction here: " +
-        "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app\n\n" +
-        `When you're asked for a callback URL use:\n\n` +
-        `  https://${deploymentName}.convex.site/api/auth/callback/github`,
-      variables: [
-        {
-          name: "AUTH_GITHUB_ID",
-          description: "the Client ID of your GitHub OAuth App",
-        },
-        {
-          name: "AUTH_GITHUB_SECRET",
-          description: "the generated client secret",
-        },
-      ],
-    },
-    {
       name: "Resend",
       help: "Sign up for Resend at https://resend.com/signup. Then create an API Key.",
       variables: [
