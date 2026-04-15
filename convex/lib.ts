@@ -49,13 +49,7 @@ export async function getAdminUser(ctx: QueryCtx | MutationCtx) {
 }
 
 export function sanitizeText(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
-    .trim();
+  return text.trim();
 }
 
 export function validateStringLength(
