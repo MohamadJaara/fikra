@@ -142,7 +142,9 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>Roles</CardTitle>
             <CardDescription>
-              Select the roles that best describe you.
+              You can pick more than one! This doesn&apos;t have to match your
+              day-to-day role at work — feel free to explore. Want to try PM, or
+              build backend as an iOS dev? Go for it.
             </CardDescription>
           </CardHeader>
           <CardContent>

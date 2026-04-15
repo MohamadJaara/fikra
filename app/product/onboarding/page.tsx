@@ -147,7 +147,9 @@ export default function OnboardingPage() {
             <div>
               <Label>Your Role(s)</Label>
               <p className="text-xs text-muted-foreground mt-1 mb-3">
-                Pick one or more roles that best describe you.
+                You can pick more than one! This doesn't have to match your
+                day-to-day role at work — feel free to explore. Want to try PM,
+                or build backend as an iOS dev? Go for it.
               </p>
               <div className="flex flex-wrap gap-2">
                 {ROLES.map((role) => (
