@@ -32,7 +32,7 @@ import {
   STATUS_COLORS,
   ROLE_LABELS,
 } from "@/lib/constants";
-import type { Role } from "@/lib/constants";
+import type { Role, Status } from "@/lib/constants";
 
 export default function AdminIdeasPage() {
   const ideas = useQuery(api.admin.listIdeas);
@@ -62,7 +62,7 @@ export default function AdminIdeasPage() {
     }
   };
 
-  const handleStatusChange = async (ideaId: Id<"ideas">, status: string) => {
+  const handleStatusChange = async (ideaId: Id<"ideas">, status: Status) => {
     try {
       await updateIdeaStatus({ ideaId, status });
       toast.success("Status updated");
@@ -157,7 +157,7 @@ export default function AdminIdeasPage() {
                     <TableCell>
                       <Select
                         value={idea.status}
-                        onValueChange={(v) => handleStatusChange(idea._id, v)}
+                        onValueChange={(v) => handleStatusChange(idea._id, v as Status)}
                       >
                         <SelectTrigger className="w-[140px] h-8">
                           <SelectValue />
