@@ -28,6 +28,13 @@ export default defineSchema({
       searchField: "handle",
       filterFields: ["onboardingComplete"],
     }),
+  categories: defineTable({
+    name: v.string(),
+    slug: v.string(),
+  })
+    .index("by_slug", ["slug"])
+    .searchIndex("search_name", { searchField: "name" }),
+
   ideas: defineTable({
     title: v.string(),
     pitch: v.string(),
@@ -38,9 +45,11 @@ export default defineSchema({
     status: v.string(),
     lookingForRoles: v.array(v.string()),
     ownerId: v.id("users"),
+    categoryId: v.optional(v.id("categories")),
   })
     .index("by_owner", ["ownerId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_category", ["categoryId"]),
 
   ideaMembers: defineTable({
     ideaId: v.id("ideas"),

@@ -28,6 +28,7 @@ export const create = mutation({
     lookingForRoles: v.array(v.string()),
     resourceTags: v.optional(v.array(v.string())),
     resourceNotes: v.optional(v.string()),
+    categoryId: v.id("categories"),
   },
   handler: async (ctx, args) => {
     const { userId } = await getAuthenticatedUser(ctx);
@@ -65,6 +66,7 @@ export const create = mutation({
       status: args.status,
       lookingForRoles: args.lookingForRoles,
       ownerId: userId,
+      categoryId: args.categoryId,
     });
 
     await ctx.db.insert("ideaMembers", {
@@ -101,6 +103,7 @@ export const update = mutation({
     teamSizeWanted: v.number(),
     status: v.string(),
     lookingForRoles: v.array(v.string()),
+    categoryId: v.optional(v.id("categories")),
   },
   handler: async (ctx, args) => {
     const { userId } = await getAuthenticatedUser(ctx);
@@ -141,6 +144,7 @@ export const update = mutation({
       teamSizeWanted: args.teamSizeWanted,
       status: args.status,
       lookingForRoles: args.lookingForRoles,
+      categoryId: args.categoryId,
     });
   },
 });
@@ -260,7 +264,9 @@ export const requestOwnership = mutation({
   handler: async (ctx, { ideaId }) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
     if (!user.onboardingComplete) {
-      throw new Error("You must complete onboarding before requesting ownership");
+      throw new Error(
+        "You must complete onboarding before requesting ownership",
+      );
     }
 
     const idea = await ctx.db.get(ideaId);
@@ -334,7 +340,9 @@ export const acceptOwnershipTransfer = mutation({
       throw new Error("This ownership transfer request is no longer valid");
     }
 
-    const newOwnerId = ownerInitiated ? request.recipientId : request.requesterId;
+    const newOwnerId = ownerInitiated
+      ? request.recipientId
+      : request.requesterId;
     const previousOwnerId = idea.ownerId;
     const newOwner = await ctx.db.get(newOwnerId);
     if (!newOwner) throw new Error("New owner not found");
@@ -383,7 +391,8 @@ export const acceptOwnershipTransfer = mutation({
           q.eq("ideaId", request.ideaId).eq("userId", previousOwnerId),
         )
         .first();
-      if (currentOwnerMembership) await ctx.db.delete(currentOwnerMembership._id);
+      if (currentOwnerMembership)
+        await ctx.db.delete(currentOwnerMembership._id);
     }
 
     await ctx.db.patch(request.ideaId, { ownerId: newOwnerId });
@@ -502,6 +511,9 @@ export const list = query({
     const results = await Promise.all(
       ideas.map(async (idea) => {
         const owner = await ctx.db.get(idea.ownerId);
+        const category = idea.categoryId
+          ? await ctx.db.get(idea.categoryId)
+          : null;
 
         const members = await ctx.db
           .query("ideaMembers")
@@ -545,6 +557,7 @@ export const list = query({
 
         return {
           ...idea,
+          categoryName: category?.name,
           ownerName: owner?.name || owner?.email || "Unknown",
           ownerImage: owner?.image,
           ownerHandle: owner?.handle,
@@ -576,6 +589,7 @@ export const get = query({
     if (!idea) return null;
 
     const owner = await ctx.db.get(idea.ownerId);
+    const category = idea.categoryId ? await ctx.db.get(idea.categoryId) : null;
 
     const members = await ctx.db
       .query("ideaMembers")
@@ -693,6 +707,7 @@ export const get = query({
 
     return {
       ...idea,
+      categoryName: category?.name,
       ownerName: owner?.name || owner?.email || "Unknown",
       ownerImage: owner?.image,
       ownerHandle: owner?.handle,

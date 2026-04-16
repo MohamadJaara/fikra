@@ -40,12 +40,19 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
             <h3 className="font-semibold text-base leading-tight line-clamp-2">
               {idea.title}
             </h3>
-            <Badge
-              variant="secondary"
-              className={STATUS_COLORS[idea.status as Status] || "bg-muted"}
-            >
-              {STATUS_LABELS[idea.status as Status] || idea.status}
-            </Badge>
+            <div className="flex items-center gap-1.5 shrink-0">
+              {idea.categoryName && (
+                <Badge variant="outline" className="text-[11px]">
+                  {idea.categoryName}
+                </Badge>
+              )}
+              <Badge
+                variant="secondary"
+                className={STATUS_COLORS[idea.status as Status] || "bg-muted"}
+              >
+                {STATUS_LABELS[idea.status as Status] || idea.status}
+              </Badge>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground line-clamp-2">
             {idea.pitch}

@@ -180,12 +180,17 @@ function IdeaHeader({ idea }: { idea: IdeaDetail }) {
     <div>
       <div className="flex items-start justify-between gap-3 mb-2">
         <h1 className="text-2xl font-bold">{idea.title}</h1>
-        <Badge
-          variant="secondary"
-          className={STATUS_COLORS[idea.status as Status] || "bg-muted"}
-        >
-          {STATUS_LABELS[idea.status as Status] || idea.status}
-        </Badge>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {idea.categoryName && (
+            <Badge variant="outline">{idea.categoryName}</Badge>
+          )}
+          <Badge
+            variant="secondary"
+            className={STATUS_COLORS[idea.status as Status] || "bg-muted"}
+          >
+            {STATUS_LABELS[idea.status as Status] || idea.status}
+          </Badge>
+        </div>
       </div>
       <p className="text-muted-foreground">{idea.pitch}</p>
       <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
@@ -443,9 +448,7 @@ function TeamSection({
       toast.success("Ownership request sent to the owner");
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to request ownership",
+        error instanceof Error ? error.message : "Failed to request ownership",
       );
     } finally {
       setIsRequestingOwnership(false);
@@ -574,7 +577,8 @@ function TeamSection({
                 size="sm"
                 onClick={handleRequestOwnership}
                 disabled={
-                  isRequestingOwnership || idea.pendingOwnershipTransfer !== null
+                  isRequestingOwnership ||
+                  idea.pendingOwnershipTransfer !== null
                 }
               >
                 {isRequestingOwnership ? (

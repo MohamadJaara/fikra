@@ -12,6 +12,8 @@ export type IdeaListItem = {
   status: string;
   lookingForRoles: string[];
   ownerId: Id<"users">;
+  categoryId?: Id<"categories">;
+  categoryName?: string;
   ownerName: string;
   ownerImage?: string;
   ownerHandle?: string;
@@ -91,6 +93,8 @@ export type IdeaDetail = {
   status: string;
   lookingForRoles: string[];
   ownerId: Id<"users">;
+  categoryId?: Id<"categories">;
+  categoryName?: string;
   ownerName: string;
   ownerImage?: string;
   ownerHandle?: string;

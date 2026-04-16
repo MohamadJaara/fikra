@@ -28,6 +28,7 @@ export default function CreateIdeaPage() {
         lookingForRoles: data.lookingForRoles,
         resourceTags: data.resourceTags,
         resourceNotes: data.resourceNotes,
+        categoryId: data.categoryId as any,
       });
       toast.success("Idea created!");
       router.push(`/product/ideas/${ideaId}`);

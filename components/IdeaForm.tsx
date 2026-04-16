@@ -24,6 +24,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export type IdeaFormData = {
   title: string;
@@ -36,6 +38,7 @@ export type IdeaFormData = {
   lookingForRoles: string[];
   resourceTags?: string[];
   resourceNotes?: string;
+  categoryId?: string;
 };
 
 type IdeaFormProps = {
@@ -73,6 +76,8 @@ export function IdeaForm({
   const [resourceNotes, setResourceNotes] = useState(
     initialData?.resourceNotes || "",
   );
+  const [categoryId, setCategoryId] = useState(initialData?.categoryId || "");
+  const categories = useQuery(api.categories.list);
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
@@ -103,6 +108,7 @@ export function IdeaForm({
       lookingForRoles: selectedRoles,
       resourceTags: isEditing ? undefined : selectedResourceTags,
       resourceNotes: isEditing ? undefined : resourceNotes || undefined,
+      categoryId: categoryId || undefined,
     });
   };
 
@@ -204,6 +210,25 @@ export function IdeaForm({
       </div>
 
       <div className="space-y-2">
+        <Label>
+          Category {!isEditing && <span className="text-destructive">*</span>}
+        </Label>
+        <Select value={categoryId} onValueChange={setCategoryId}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select a category" />
+          </SelectTrigger>
+          <SelectContent>
+            {isEditing && <SelectItem value="none">No category</SelectItem>}
+            {categories?.map((cat) => (
+              <SelectItem key={cat._id} value={cat._id}>
+                {cat.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
         <Label>Looking for Roles</Label>
         <div className="flex flex-wrap gap-2">
           {ROLES.map((role) => (
@@ -257,7 +282,10 @@ export function IdeaForm({
         </>
       )}
 
-      <Button type="submit" disabled={isSubmitting}>
+      <Button
+        type="submit"
+        disabled={isSubmitting || (!isEditing && !categoryId)}
+      >
         {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
         {isEditing ? "Save Changes" : "Create Idea"}
       </Button>

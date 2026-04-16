@@ -44,17 +44,20 @@ type FilterState = {
   statuses: string[];
   roles: string[];
   resourceTags: string[];
+  categories: string[];
   needsTeammates: boolean;
   needsResources: boolean;
 };
 
 export default function BrowsePage() {
   const ideas = useQuery(api.ideas.list) as IdeaListItem[] | undefined;
+  const categoryList = useQuery(api.categories.list);
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     statuses: [],
     roles: [],
     resourceTags: [],
+    categories: [],
     needsTeammates: false,
     needsResources: false,
   });
@@ -93,6 +96,14 @@ export default function BrowsePage() {
       ) {
         return false;
       }
+      if (
+        filters.categories.length > 0 &&
+        !filters.categories.some((c) =>
+          c === "__none__" ? !idea.categoryId : idea.categoryId === c,
+        )
+      ) {
+        return false;
+      }
       if (filters.needsTeammates && idea.memberCount >= idea.teamSizeWanted) {
         return false;
       }
@@ -126,11 +137,12 @@ export default function BrowsePage() {
     filters.statuses.length +
     filters.roles.length +
     filters.resourceTags.length +
+    filters.categories.length +
     (filters.needsTeammates ? 1 : 0) +
     (filters.needsResources ? 1 : 0);
 
   const toggleFilter = (
-    key: "statuses" | "roles" | "resourceTags",
+    key: "statuses" | "roles" | "resourceTags" | "categories",
     value: string,
   ) => {
     setFilters((prev) => ({
@@ -147,6 +159,7 @@ export default function BrowsePage() {
       statuses: [],
       roles: [],
       resourceTags: [],
+      categories: [],
       needsTeammates: false,
       needsResources: false,
     });
@@ -273,6 +286,28 @@ export default function BrowsePage() {
                 ))}
               </div>
             </div>
+
+            {categoryList && categoryList.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Category</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <FilterBadge
+                    key="__none__"
+                    label="No Category"
+                    active={filters.categories.includes("__none__")}
+                    onClick={() => toggleFilter("categories", "__none__")}
+                  />
+                  {categoryList.map((cat) => (
+                    <FilterBadge
+                      key={cat._id}
+                      label={cat.name}
+                      active={filters.categories.includes(cat._id)}
+                      onClick={() => toggleFilter("categories", cat._id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <FilterBadge

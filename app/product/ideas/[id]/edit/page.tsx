@@ -61,6 +61,7 @@ export default function EditIdeaPage({
         teamSizeWanted: data.teamSizeWanted,
         status: data.status,
         lookingForRoles: data.lookingForRoles,
+        categoryId: data.categoryId as any,
       });
       toast.success("Idea updated!");
       router.push(`/product/ideas/${id}`);
@@ -95,6 +96,7 @@ export default function EditIdeaPage({
           teamSizeWanted: idea.teamSizeWanted,
           status: idea.status,
           lookingForRoles: idea.lookingForRoles,
+          categoryId: idea.categoryId ?? "",
         }}
         onSubmit={handleSubmit}
         isEditing
