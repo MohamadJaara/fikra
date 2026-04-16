@@ -44,7 +44,7 @@ export type IdeaMember = {
   _creationTime: number;
   ideaId: Id<"ideas">;
   userId: Id<"users">;
-  role?: string;
+  memberRoles?: string[];
   name: string;
   image?: string;
   email?: string;
@@ -144,7 +144,7 @@ export type ProfileIdea = {
 };
 
 export type JoinedIdea = ProfileIdea & {
-  memberRole?: string;
+  memberRoles?: string[];
 };
 
 export type PublicUser = {

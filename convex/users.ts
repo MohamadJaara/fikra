@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import {
   getAuthenticatedUser,
   generateUniqueHandle,
+  mergeUniqueStringArrays,
   validateRoleSlugs,
 } from "./lib";
 import type { Doc } from "./_generated/dataModel";
@@ -150,7 +151,13 @@ export const getProfile = query({
         .map(async (m) => {
           const idea = await ctx.db.get(m.ideaId);
           if (!idea) return null;
-          return { ...idea, memberRole: m.role };
+          return {
+            ...idea,
+            memberRoles: mergeUniqueStringArrays(
+              m.memberRoles,
+              m.role ? [m.role] : undefined,
+            ),
+          };
         }),
     );
 
@@ -173,7 +180,7 @@ export const getProfile = query({
           pitch: i!.pitch,
           status: i!.status,
           lookingForRoles: i!.lookingForRoles,
-          memberRole: i!.memberRole,
+          memberRoles: i!.memberRoles,
         })),
     };
   },

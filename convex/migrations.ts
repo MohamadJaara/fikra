@@ -2,9 +2,20 @@ import { internal } from "./_generated/api.js";
 import { Migrations } from "@convex-dev/migrations";
 import { components } from "./_generated/api.js";
 import { DataModel } from "./_generated/dataModel.js";
-import { generateUniqueHandle } from "./lib.js";
+import { generateUniqueHandle, mergeUniqueStringArrays } from "./lib.js";
 
 export const migrations = new Migrations<DataModel>(components.migrations);
+
+export const backfillMemberRoles = migrations.define({
+  table: "ideaMembers",
+  migrateOne: async (ctx, doc) => {
+    if (doc.role === undefined) return;
+    await ctx.db.patch(doc._id, {
+      memberRoles: mergeUniqueStringArrays(doc.memberRoles, [doc.role]),
+      role: undefined,
+    });
+  },
+});
 
 export const backfillHandles = migrations.define({
   table: "users",
@@ -20,4 +31,7 @@ export const backfillHandles = migrations.define({
 
 // Not wired to a cron or HTTP endpoint. Run manually:
 //   npx convex run migrations:runAll
-export const runAll = migrations.runner([internal.migrations.backfillHandles]);
+export const runAll = migrations.runner([
+  internal.migrations.backfillMemberRoles,
+  internal.migrations.backfillHandles,
+]);

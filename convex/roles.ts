@@ -1,6 +1,11 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, getAdminUser, sanitizeText } from "./lib";
+import {
+  getAuthenticatedUser,
+  getAdminUser,
+  mergeUniqueStringArrays,
+  sanitizeText,
+} from "./lib";
 import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 
@@ -61,9 +66,22 @@ export const batchMigrateRoleSlug = internalMutation({
           });
         }
       } else {
-        const role = (doc as Doc<"ideaMembers">).role;
-        if (role === oldSlug) {
-          await ctx.db.patch(doc._id, { role: isRename ? newSlug : undefined });
+        const membership = doc as Doc<"ideaMembers">;
+        const currentRoles =
+          mergeUniqueStringArrays(
+            membership.memberRoles,
+            membership.role ? [membership.role] : undefined,
+          ) ?? [];
+
+        if (currentRoles.includes(oldSlug)) {
+          const updated = currentRoles.filter((r: string) => r !== oldSlug);
+          if (isRename && !updated.includes(newSlug!)) {
+            updated.push(newSlug!);
+          }
+          await ctx.db.patch(doc._id, {
+            memberRoles: updated.length > 0 ? updated : undefined,
+            role: undefined,
+          });
         }
       }
     }

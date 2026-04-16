@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser } from "./lib";
+import { getAuthenticatedUser, mergeUniqueStringArrays } from "./lib";
 import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
@@ -195,6 +195,10 @@ export const acceptMerge = mutation({
       .collect();
 
     for (const member of sourceMembers) {
+      const sourceRoles = mergeUniqueStringArrays(
+        member.memberRoles,
+        member.role ? [member.role] : undefined,
+      );
       const existing = await ctx.db
         .query("ideaMembers")
         .withIndex("by_idea_and_user", (q) =>
@@ -205,7 +209,24 @@ export const acceptMerge = mutation({
         await ctx.db.insert("ideaMembers", {
           ideaId: targetId,
           userId: member.userId,
-          role: member.role,
+          memberRoles: sourceRoles,
+        });
+        continue;
+      }
+
+      const existingRoles = mergeUniqueStringArrays(
+        existing.memberRoles,
+        existing.role ? [existing.role] : undefined,
+      );
+      const mergedRoles = mergeUniqueStringArrays(existingRoles, sourceRoles);
+      const rolesChanged =
+        (existingRoles ?? []).length !== (mergedRoles ?? []).length ||
+        (existingRoles ?? []).some((role, index) => mergedRoles?.[index] !== role);
+
+      if (existing.role !== undefined || rolesChanged) {
+        await ctx.db.patch(existing._id, {
+          memberRoles: mergedRoles,
+          role: undefined,
         });
       }
     }

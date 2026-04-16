@@ -156,11 +156,16 @@ export default function ProfilePage({
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {idea.memberRole && (
-                      <Badge variant="outline" className="text-[10px]">
-                        {roleLabels[idea.memberRole] || idea.memberRole}
-                      </Badge>
-                    )}
+                    {idea.memberRoles &&
+                      idea.memberRoles.map((r) => (
+                        <Badge
+                          key={r}
+                          variant="outline"
+                          className="text-[10px]"
+                        >
+                          {roleLabels[r] || r}
+                        </Badge>
+                      ))}
                     <Badge
                       variant="secondary"
                       className={

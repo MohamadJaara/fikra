@@ -1,14 +1,19 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, validateRoleSlug } from "./lib";
+import {
+  getAuthenticatedUser,
+  mergeUniqueStringArrays,
+  normalizeOptionalStringArray,
+  validateRoleSlugs,
+} from "./lib";
 import { internal } from "./_generated/api";
 
 export const join = mutation({
   args: {
     ideaId: v.id("ideas"),
-    role: v.optional(v.string()),
+    memberRoles: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { ideaId, role }) => {
+  handler: async (ctx, { ideaId, memberRoles }) => {
     const { userId } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
@@ -22,12 +27,15 @@ export const join = mutation({
       .first();
     if (existing) throw new Error("Already a member");
 
-    if (role) await validateRoleSlug(ctx, role);
+    const roles = normalizeOptionalStringArray(memberRoles);
+    if (roles) {
+      await validateRoleSlugs(ctx, roles);
+    }
 
     await ctx.db.insert("ideaMembers", {
       ideaId,
       userId,
-      role,
+      memberRoles: roles,
     });
 
     await ctx.runMutation(internal.notifications.create, {
@@ -61,13 +69,13 @@ export const leave = mutation({
   },
 });
 
-export const updateRole = mutation({
+export const updateMemberRoles = mutation({
   args: {
     ideaId: v.id("ideas"),
     targetUserId: v.id("users"),
-    role: v.optional(v.string()),
+    memberRoles: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { ideaId, targetUserId, role }) => {
+  handler: async (ctx, { ideaId, targetUserId, memberRoles }) => {
     const { userId } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
@@ -83,9 +91,15 @@ export const updateRole = mutation({
       .first();
     if (!membership) throw new Error("Target user is not a member");
 
-    if (role) await validateRoleSlug(ctx, role);
+    const roles = normalizeOptionalStringArray(memberRoles);
+    if (roles) {
+      await validateRoleSlugs(ctx, roles);
+    }
 
-    await ctx.db.patch(membership._id, { role: role || undefined });
+    await ctx.db.patch(membership._id, {
+      memberRoles: roles,
+      role: undefined,
+    });
   },
 });
 
@@ -102,7 +116,15 @@ export const getByUser = query({
     const ideas = await Promise.all(
       memberships.map(async (m) => {
         const idea = await ctx.db.get(m.ideaId);
-        return idea ? { ...idea, memberRole: m.role } : null;
+        return idea
+          ? {
+              ...idea,
+              memberRoles: mergeUniqueStringArrays(
+                m.memberRoles,
+                m.role ? [m.role] : undefined,
+              ),
+            }
+          : null;
       }),
     );
 

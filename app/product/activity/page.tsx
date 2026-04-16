@@ -35,7 +35,7 @@ export default function ActivityPage() {
         pitch: string;
         status: string;
         _creationTime: number;
-        memberRole?: string;
+        memberRoles?: string[];
       } | null)[]
     | undefined;
   const interestedIdeas = useQuery(api.interest.getByUser) as

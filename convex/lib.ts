@@ -49,6 +49,33 @@ export function sanitizeText(text: string): string {
   return text.trim();
 }
 
+export function normalizeOptionalStringArray(
+  values: string[] | undefined,
+): string[] | undefined {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values ?? []) {
+    const trimmed = value.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    normalized.push(trimmed);
+  }
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+export function mergeUniqueStringArrays(
+  ...arrays: Array<string[] | undefined>
+): string[] | undefined {
+  const merged: string[] = [];
+  for (const array of arrays) {
+    if (!array) continue;
+    merged.push(...array);
+  }
+  return normalizeOptionalStringArray(merged);
+}
+
 export function validateStringLength(
   value: string,
   min: number,

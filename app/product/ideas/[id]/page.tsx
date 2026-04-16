@@ -408,7 +408,7 @@ function TeamSection({
   const requestOwnershipMutation = useMutation(api.ideas.requestOwnership);
   const roleLabels = useRolesMap();
   const rolesList = useRolesList();
-  const [selectedRole, setSelectedRole] = useState<string>("");
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isRequestingOwnership, setIsRequestingOwnership] = useState(false);
@@ -418,13 +418,26 @@ function TeamSection({
       ? Math.min(100, (idea.memberCount / idea.teamSizeWanted) * 100)
       : 0;
 
+  const lookingForSet = useMemo(
+    () => new Set(idea.lookingForRoles),
+    [idea.lookingForRoles],
+  );
+
+  const toggleRole = (slug: string) => {
+    setSelectedRoles((prev) => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug);
+      else next.add(slug);
+      return next;
+    });
+  };
+
   const handleJoin = async () => {
     setIsJoining(true);
     try {
       await joinMutation({
         ideaId,
-        role:
-          selectedRole && selectedRole !== "none" ? selectedRole : undefined,
+        memberRoles: selectedRoles.size > 0 ? [...selectedRoles] : undefined,
       });
       toast.success("Joined team!");
     } catch (error) {
@@ -465,8 +478,12 @@ function TeamSection({
     return [...idea.members].sort((a, b) => {
       if (a.userId === idea.ownerId) return -1;
       if (b.userId === idea.ownerId) return 1;
-      const aHas = [...(a.roles ?? []), a.role].some((r) => r && needed.has(r));
-      const bHas = [...(b.roles ?? []), b.role].some((r) => r && needed.has(r));
+      const aHas = [...(a.roles ?? []), ...(a.memberRoles ?? [])].some((r) =>
+        needed.has(r),
+      );
+      const bHas = [...(b.roles ?? []), ...(b.memberRoles ?? [])].some((r) =>
+        needed.has(r),
+      );
       if (aHas !== bHas) return aHas ? -1 : 1;
       return (a.name ?? "").localeCompare(b.name ?? "");
     });
@@ -504,8 +521,10 @@ function TeamSection({
                 className="font-medium"
               />
               {[
-                ...(member.role ? [member.role] : []),
-                ...(member.roles?.filter((r) => r !== member.role) ?? []),
+                ...(member.memberRoles ?? []),
+                ...(member.roles?.filter(
+                  (r) => !(member.memberRoles ?? []).includes(r),
+                ) ?? []),
               ]
                 .sort((a, b) => {
                   const aM = neededRoles.has(a) ? 0 : 1;
@@ -515,14 +534,15 @@ function TeamSection({
                 })
                 .map((r) => {
                   const isMatch = neededRoles.has(r);
+                  const isMemberRole = (member.memberRoles ?? []).includes(r);
                   return (
                     <Badge
                       key={r}
-                      variant={r === member.role ? "outline" : "secondary"}
+                      variant={isMemberRole ? "outline" : "secondary"}
                       className={
                         isMatch
                           ? "text-[10px] px-1.5 py-0 text-emerald-700 border-emerald-400 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-700 dark:bg-emerald-950"
-                          : r === member.role
+                          : isMemberRole
                             ? "text-[11px]"
                             : "text-[10px] px-1.5 py-0"
                       }
@@ -596,19 +616,32 @@ function TeamSection({
             </>
           ) : (
             <>
-              <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="w-[140px] h-9">
-                  <SelectValue placeholder="Pick a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No specific role</SelectItem>
-                  {rolesList.map((role) => (
-                    <SelectItem key={role.slug} value={role.slug}>
+              <div className="flex flex-wrap gap-1.5">
+                {rolesList.map((role) => {
+                  const isRequested = lookingForSet.has(role.slug);
+                  const isSelected = selectedRoles.has(role.slug);
+                  return (
+                    <button
+                      key={role.slug}
+                      type="button"
+                      onClick={() => toggleRole(role.slug)}
+                      className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium transition-colors ${
+                        isSelected
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : isRequested
+                            ? "border-primary/40 bg-primary/5 text-primary hover:bg-primary/10"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {isSelected && <Check className="h-3 w-3" />}
+                      {isRequested && !isSelected && (
+                        <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+                      )}
                       {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </button>
+                  );
+                })}
+              </div>
               <Button size="sm" onClick={handleJoin} disabled={isJoining}>
                 {isJoining ? (
                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />

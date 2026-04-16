@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAuthenticatedUser,
+  mergeUniqueStringArrays,
   sanitizeText,
   validateStringLength,
   isEmailAllowed,
@@ -68,7 +69,7 @@ export const create = mutation({
     await ctx.db.insert("ideaMembers", {
       ideaId,
       userId,
-      role: undefined,
+      memberRoles: undefined,
     });
 
     if (args.resourceTags && args.resourceTags.length > 0) {
@@ -370,7 +371,7 @@ export const acceptOwnershipTransfer = mutation({
       await ctx.db.insert("ideaMembers", {
         ideaId: request.ideaId,
         userId: newOwnerId,
-        role: undefined,
+        memberRoles: undefined,
       });
     }
 
@@ -547,7 +548,12 @@ export const list = query({
           .map((r) => r.type);
 
         const filledRoles = new Set(
-          members.filter((m) => m.role).map((m) => m.role as string),
+          members.flatMap((m) =>
+            mergeUniqueStringArrays(
+              m.memberRoles,
+              m.role ? [m.role] : undefined,
+            ) ?? [],
+          ),
         );
         const missingRoles = idea.lookingForRoles.filter(
           (role) => !filledRoles.has(role),
@@ -603,8 +609,13 @@ export const get = query({
     const memberDetails = await Promise.all(
       members.map(async (m) => {
         const u = await ctx.db.get(m.userId);
+        const { role, ...membership } = m;
         return {
-          ...m,
+          ...membership,
+          memberRoles: mergeUniqueStringArrays(
+            m.memberRoles,
+            role ? [role] : undefined,
+          ),
           name: u?.name || u?.email || "Unknown",
           image: u?.image,
           handle: u?.handle,
@@ -693,12 +704,12 @@ export const get = query({
         : null;
 
     const filledRoles = new Set<string>();
-    for (const m of members) {
-      if (m.role) filledRoles.add(m.role);
+    for (const member of memberDetails) {
+      for (const r of member.memberRoles ?? []) {
+        filledRoles.add(r);
+      }
     }
-    const memberUserRoles = new Map<string, string[]>();
     for (const md of memberDetails) {
-      if (md.roles) memberUserRoles.set(md.userId, md.roles);
       for (const r of md.roles ?? []) {
         filledRoles.add(r);
       }

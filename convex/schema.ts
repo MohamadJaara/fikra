@@ -65,6 +65,7 @@ export default defineSchema({
     ideaId: v.id("ideas"),
     userId: v.id("users"),
     role: v.optional(v.string()),
+    memberRoles: v.optional(v.array(v.string())),
   })
     .index("by_idea", ["ideaId"])
     .index("by_user", ["userId"])
