@@ -199,6 +199,16 @@ export const remove = mutation({
       .collect();
     for (const request of transferRequests) await ctx.db.delete(request._id);
 
+    const relAsA = await ctx.db
+      .query("relatedIdeas")
+      .withIndex("by_ideaA", (q) => q.eq("ideaIdA", ideaId))
+      .collect();
+    const relAsB = await ctx.db
+      .query("relatedIdeas")
+      .withIndex("by_ideaB", (q) => q.eq("ideaIdB", ideaId))
+      .collect();
+    for (const r of [...relAsA, ...relAsB]) await ctx.db.delete(r._id);
+
     await ctx.db.delete(ideaId);
   },
 });

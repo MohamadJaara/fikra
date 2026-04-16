@@ -20,6 +20,7 @@ import type * as memberships from "../memberships.js";
 import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as reactions from "../reactions.js";
+import type * as relatedIdeas from "../relatedIdeas.js";
 import type * as resourceRequests from "../resourceRequests.js";
 import type * as users from "../users.js";
 
@@ -42,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   migrations: typeof migrations;
   notifications: typeof notifications;
   reactions: typeof reactions;
+  relatedIdeas: typeof relatedIdeas;
   resourceRequests: typeof resourceRequests;
   users: typeof users;
 }>;

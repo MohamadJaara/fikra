@@ -49,7 +49,8 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId"])
     .index("by_status", ["status"])
-    .index("by_category", ["categoryId"]),
+    .index("by_category", ["categoryId"])
+    .searchIndex("search_title", { searchField: "title" }),
 
   ideaMembers: defineTable({
     ideaId: v.id("ideas"),
@@ -107,6 +108,20 @@ export default defineSchema({
     .index("by_idea_and_status", ["ideaId", "status"])
     .index("by_recipient_and_status", ["recipientId", "status"])
     .index("by_requester_and_status", ["requesterId", "status"]),
+
+  relatedIdeas: defineTable({
+    ideaIdA: v.id("ideas"),
+    ideaIdB: v.id("ideas"),
+    markedByUserId: v.id("users"),
+    relationType: v.string(),
+    mergeRequestedById: v.optional(v.id("users")),
+    mergeStatus: v.optional(v.string()),
+  })
+    .index("by_ideaA", ["ideaIdA"])
+    .index("by_ideaB", ["ideaIdB"])
+    .index("by_ideaA_and_type", ["ideaIdA", "relationType"])
+    .index("by_ideaB_and_type", ["ideaIdB", "relationType"])
+    .index("by_merge_status", ["mergeStatus"]),
 
   notifications: defineTable({
     recipientId: v.id("users"),

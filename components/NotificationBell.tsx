@@ -31,6 +31,10 @@ const TYPE_LABELS: Record<string, string> = {
   ownership_takeover_declined: "declined your ownership request for",
   ownership_transfer_canceled: "canceled the ownership transfer for",
   ownership_takeover_canceled: "canceled their ownership request for",
+  ideas_related: "marked your idea as related to",
+  merge_requested: "requested to merge into",
+  merge_accepted: "accepted the merge with",
+  merge_declined: "declined the merge with",
 };
 
 export function NotificationBell() {

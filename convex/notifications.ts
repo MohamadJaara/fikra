@@ -18,6 +18,10 @@ export const NOTIFICATION_TYPES = [
   "ownership_takeover_declined",
   "ownership_transfer_canceled",
   "ownership_takeover_canceled",
+  "ideas_related",
+  "merge_requested",
+  "merge_accepted",
+  "merge_declined",
 ] as const;
 
 export const create = internalMutation({
