@@ -1,5 +1,6 @@
 "use client";
 
+import { ContentDisclaimer } from "@/components/ContentDisclaimer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@convex-dev/auth/react";
@@ -78,6 +79,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <span className="font-semibold">Fikra</span>
           <div className="ml-auto">{viewer && <NotificationBell />}</div>
         </header>
+        <div className="border-b px-4 py-3 md:px-6">
+          <ContentDisclaimer />
+        </div>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
