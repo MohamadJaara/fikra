@@ -529,12 +529,8 @@ function TeamSection({
     return [...idea.members].sort((a, b) => {
       if (a.userId === idea.ownerId) return -1;
       if (b.userId === idea.ownerId) return 1;
-      const aHas = [...(a.roles ?? []), ...(a.memberRoles ?? [])].some((r) =>
-        needed.has(r),
-      );
-      const bHas = [...(b.roles ?? []), ...(b.memberRoles ?? [])].some((r) =>
-        needed.has(r),
-      );
+      const aHas = (a.memberRoles ?? []).some((r) => needed.has(r));
+      const bHas = (b.memberRoles ?? []).some((r) => needed.has(r));
       if (aHas !== bHas) return aHas ? -1 : 1;
       return (a.name ?? "").localeCompare(b.name ?? "");
     });
@@ -571,12 +567,7 @@ function TeamSection({
                 name={member.name}
                 className="font-medium"
               />
-              {[
-                ...(member.memberRoles ?? []),
-                ...(member.roles?.filter(
-                  (r) => !(member.memberRoles ?? []).includes(r),
-                ) ?? []),
-              ]
+              {(member.memberRoles ?? [])
                 .sort((a, b) => {
                   const aM = neededRoles.has(a) ? 0 : 1;
                   const bM = neededRoles.has(b) ? 0 : 1;
@@ -585,23 +576,29 @@ function TeamSection({
                 })
                 .map((r) => {
                   const isMatch = neededRoles.has(r);
-                  const isMemberRole = (member.memberRoles ?? []).includes(r);
                   return (
                     <Badge
                       key={r}
-                      variant={isMemberRole ? "outline" : "secondary"}
+                      variant="outline"
                       className={
                         isMatch
                           ? "text-[10px] px-1.5 py-0 text-emerald-700 border-emerald-400 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-700 dark:bg-emerald-950"
-                          : isMemberRole
-                            ? "text-[11px]"
-                            : "text-[10px] px-1.5 py-0"
+                          : "text-[11px]"
                       }
                     >
                       {roleLabels[r] || r}
                     </Badge>
                   );
                 })}
+              {(member.memberRoles?.length ?? 0) === 0 &&
+                member.userId !== idea.ownerId && (
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                  >
+                    No team role set
+                  </Badge>
+                )}
               {member.userId === idea.ownerId && (
                 <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                   Owner
