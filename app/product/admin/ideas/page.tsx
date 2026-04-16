@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Search, Lightbulb, Trash2 } from "lucide-react";
+import { ArrowLeft, Search, Lightbulb, Trash2, DoorOpen } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
@@ -118,6 +118,7 @@ export default function AdminIdeasPage() {
                 <TableHead>Reactions</TableHead>
                 <TableHead>Comments</TableHead>
                 <TableHead>Missing Roles</TableHead>
+                <TableHead>Room</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -125,7 +126,7 @@ export default function AdminIdeasPage() {
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={8}
+                    colSpan={9}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {search ? "No ideas match your search" : "No ideas found"}
@@ -196,6 +197,16 @@ export default function AdminIdeasPage() {
                           </Badge>
                         ))}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {idea.roomName ? (
+                        <span className="text-sm flex items-center gap-1">
+                          <DoorOpen className="h-3 w-3" />
+                          {idea.roomName}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

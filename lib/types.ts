@@ -28,6 +28,7 @@ export type IdeaListItem = {
   isMember: boolean;
   isInterested: boolean;
   isOwner: boolean;
+  room: IdeaRoomInfo | null;
 };
 
 export type ResourceRequestItem = {
@@ -112,6 +113,7 @@ export type IdeaDetail = {
   isMember: boolean;
   isInterested: boolean;
   isOwner: boolean;
+  room: IdeaRoomInfo | null;
 };
 
 export type MentionedUser = {
@@ -132,6 +134,22 @@ export type CommentItem = {
   authorHandle?: string;
   isAuthor: boolean;
   mentionedUsers?: MentionedUser[];
+};
+
+export type RoomItem = {
+  _id: Id<"rooms">;
+  _creationTime: number;
+  name: string;
+  type: string;
+  assignedIdeaIds: Id<"ideas">[];
+  assignedIdeaTitles: string[];
+};
+
+export type IdeaRoomInfo = {
+  roomId: Id<"rooms">;
+  roomName: string;
+  roomType: string;
+  sharedWithIdeas: { _id: Id<"ideas">; title: string }[];
 };
 
 export type ProfileIdea = {

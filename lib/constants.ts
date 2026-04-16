@@ -48,6 +48,14 @@ export const STATUS_COLORS: Record<Status, string> = {
   building: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
 };
 
+export const ROOM_TYPES = ["team", "shared"] as const;
+export type RoomType = (typeof ROOM_TYPES)[number];
+
+export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
+  team: "Team",
+  shared: "Shared",
+};
+
 export const SORT_OPTIONS = [
   "newest",
   "oldest",

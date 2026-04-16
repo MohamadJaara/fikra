@@ -15,6 +15,7 @@ import {
   UserCheck,
   Tags,
   ShieldCheck,
+  DoorOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/lib/constants";
@@ -197,6 +198,25 @@ export default function AdminDashboard() {
                   <p className="font-medium">Manage Roles</p>
                   <p className="text-xs text-muted-foreground">
                     User & team roles
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/product/admin/rooms">
+          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950">
+                  <DoorOpen className="h-5 w-5 text-indigo-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">Manage Rooms</p>
+                  <p className="text-xs text-muted-foreground">
+                    Assign rooms to ideas
                   </p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />

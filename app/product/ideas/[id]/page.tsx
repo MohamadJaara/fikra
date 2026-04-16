@@ -8,8 +8,10 @@ import {
   RESOURCE_TAG_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
+  ROOM_TYPE_LABELS,
   type ResourceTag,
   type Status,
+  type RoomType,
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 import type { IdeaDetail, CommentItem } from "@/lib/types";
@@ -71,6 +73,7 @@ import {
   Link2,
   Search,
   AlertTriangle,
+  DoorOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -156,6 +159,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
         <IdeaHeader idea={idea} />
         <OwnershipTransferRequestBanner idea={idea} />
         <IdeaContent idea={idea} />
+        <RoomSection idea={idea} />
         <Separator />
         <TeamSection idea={idea} ideaId={ideaId} />
         <Separator />
@@ -393,6 +397,49 @@ function IdeaContent({ idea }: { idea: IdeaDetail }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function RoomSection({ idea }: { idea: IdeaDetail }) {
+  if (!idea.room) return null;
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold flex items-center gap-2 mb-3">
+        <DoorOpen className="h-5 w-5" />
+        Room
+      </h2>
+      <div className="rounded-lg border px-4 py-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm">{idea.room.roomName}</span>
+          <Badge
+            variant={idea.room.roomType === "shared" ? "default" : "secondary"}
+            className="text-xs"
+          >
+            {ROOM_TYPE_LABELS[idea.room.roomType as RoomType] ||
+              idea.room.roomType}
+          </Badge>
+        </div>
+        {idea.room.roomType === "shared" &&
+          idea.room.sharedWithIdeas.length > 0 && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Shared with:</p>
+              <div className="flex flex-wrap gap-1.5">
+                {idea.room.sharedWithIdeas.map((shared) => (
+                  <Link
+                    key={shared._id}
+                    href={`/product/ideas/${shared._id}`}
+                    className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                  >
+                    <Link2 className="h-3 w-3" />
+                    {shared.title}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+      </div>
     </div>
   );
 }

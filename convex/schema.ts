@@ -44,6 +44,13 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .searchIndex("search_name", { searchField: "name" }),
 
+  rooms: defineTable({
+    name: v.string(),
+    type: v.string(),
+  })
+    .index("by_type", ["type"])
+    .searchIndex("search_name", { searchField: "name" }),
+
   ideas: defineTable({
     title: v.string(),
     pitch: v.string(),
@@ -55,10 +62,12 @@ export default defineSchema({
     lookingForRoles: v.array(v.string()),
     ownerId: v.id("users"),
     categoryId: v.optional(v.id("categories")),
+    roomId: v.optional(v.id("rooms")),
   })
     .index("by_owner", ["ownerId"])
     .index("by_status", ["status"])
     .index("by_category", ["categoryId"])
+    .index("by_room", ["roomId"])
     .searchIndex("search_title", { searchField: "title" }),
 
   ideaMembers: defineTable({

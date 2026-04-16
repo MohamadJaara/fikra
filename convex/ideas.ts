@@ -11,6 +11,8 @@ import {
   validateRoleSlugs,
 } from "./lib";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import type { IdeaListItem } from "../lib/types";
 
 const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
@@ -564,6 +566,31 @@ export const list = query({
         const isInterested = interestDocs.some((i) => i.userId === userId);
         const isOwner = idea.ownerId === userId;
 
+        let room: IdeaListItem["room"] = null;
+        if (idea.roomId) {
+          const roomDoc = await ctx.db.get(idea.roomId);
+          if (roomDoc) {
+            const sharedWithIdeas: { _id: Id<"ideas">; title: string }[] = [];
+            if (roomDoc.type === "shared") {
+              const otherIdeasInRoom = await ctx.db
+                .query("ideas")
+                .withIndex("by_room", (q) => q.eq("roomId", roomDoc._id))
+                .collect();
+              for (const other of otherIdeasInRoom) {
+                if (other._id !== idea._id) {
+                  sharedWithIdeas.push({ _id: other._id, title: other.title });
+                }
+              }
+            }
+            room = {
+              roomId: roomDoc._id,
+              roomName: roomDoc.name,
+              roomType: roomDoc.type,
+              sharedWithIdeas,
+            };
+          }
+        }
+
         return {
           ...idea,
           categoryName: category?.name,
@@ -581,6 +608,7 @@ export const list = query({
           isMember,
           isInterested,
           isOwner,
+          room,
         };
       }),
     );
@@ -714,6 +742,31 @@ export const get = query({
       (role) => !filledRoles.has(role),
     );
 
+    let room: IdeaListItem["room"] = null;
+    if (idea.roomId) {
+      const roomDoc = await ctx.db.get(idea.roomId);
+      if (roomDoc) {
+        const sharedWithIdeas: { _id: Id<"ideas">; title: string }[] = [];
+        if (roomDoc.type === "shared") {
+          const otherIdeasInRoom = await ctx.db
+            .query("ideas")
+            .withIndex("by_room", (q) => q.eq("roomId", roomDoc._id))
+            .collect();
+          for (const other of otherIdeasInRoom) {
+            if (other._id !== ideaId) {
+              sharedWithIdeas.push({ _id: other._id, title: other.title });
+            }
+          }
+        }
+        room = {
+          roomId: roomDoc._id,
+          roomName: roomDoc.name,
+          roomType: roomDoc.type,
+          sharedWithIdeas,
+        };
+      }
+    }
+
     return {
       ...idea,
       categoryName: category?.name,
@@ -734,6 +787,7 @@ export const get = query({
       isMember: members.some((m) => m.userId === userId),
       isInterested: interestDocs.some((i) => i.userId === userId),
       isOwner,
+      room,
     };
   },
 });

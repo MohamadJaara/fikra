@@ -151,6 +151,10 @@ export const listIdeas = query({
           reactionCount: reactions.length,
           interestCount: interest.length,
           unresolvedResources: resources.filter((r) => !r.resolved).length,
+          roomId: idea.roomId,
+          roomName: idea.roomId
+            ? ((await ctx.db.get(idea.roomId))?.name ?? null)
+            : null,
         };
       }),
     );
