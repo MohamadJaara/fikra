@@ -2,8 +2,9 @@
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { ROLE_LABELS, STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
-import type { Role, Status } from "@/lib/constants";
+import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
+import type { Status } from "@/lib/constants";
+import { useRolesMap } from "@/lib/hooks";
 import type { UserProfile } from "@/lib/types";
 import { use, useState } from "react";
 import { useQuery } from "convex/react";
@@ -21,6 +22,7 @@ export default function ProfilePage({
   const { handle } = use(params);
   const profile = useQuery(api.users.getProfile, { handle });
   const viewer = useQuery(api.users.viewer);
+  const roleLabels = useRolesMap();
 
   const isOwnProfile = profile && viewer && profile._id === viewer._id;
 
@@ -89,7 +91,7 @@ export default function ProfilePage({
           <div className="flex flex-wrap gap-1.5">
             {profile.roles.map((r) => (
               <Badge key={r} variant="secondary">
-                {ROLE_LABELS[r as Role] || r}
+                {roleLabels[r] || r}
               </Badge>
             ))}
           </div>
@@ -156,8 +158,7 @@ export default function ProfilePage({
                   <div className="flex items-center gap-1.5 shrink-0">
                     {idea.memberRole && (
                       <Badge variant="outline" className="text-[10px]">
-                        {ROLE_LABELS[idea.memberRole as Role] ||
-                          idea.memberRole}
+                        {roleLabels[idea.memberRole] || idea.memberRole}
                       </Badge>
                     )}
                     <Badge

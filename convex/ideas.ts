@@ -7,7 +7,7 @@ import {
   validateStringLength,
   isEmailAllowed,
   STATUSES,
-  ROLES,
+  validateRoleSlugs,
 } from "./lib";
 import { internal } from "./_generated/api";
 
@@ -46,15 +46,11 @@ export const create = mutation({
       throw new Error("Invalid status");
     }
 
-    for (const role of args.lookingForRoles) {
-      if (!ROLES.includes(role as (typeof ROLES)[number])) {
-        throw new Error(`Invalid role: ${role}`);
-      }
-    }
-
     if (args.teamSizeWanted < 1 || args.teamSizeWanted > 20) {
       throw new Error("Team size must be between 1 and 20");
     }
+
+    await validateRoleSlugs(ctx, args.lookingForRoles);
 
     const ideaId = await ctx.db.insert("ideas", {
       title,
@@ -125,15 +121,11 @@ export const update = mutation({
       throw new Error("Invalid status");
     }
 
-    for (const role of args.lookingForRoles) {
-      if (!ROLES.includes(role as (typeof ROLES)[number])) {
-        throw new Error(`Invalid role: ${role}`);
-      }
-    }
-
     if (args.teamSizeWanted < 1 || args.teamSizeWanted > 20) {
       throw new Error("Team size must be between 1 and 20");
     }
+
+    await validateRoleSlugs(ctx, args.lookingForRoles);
 
     await ctx.db.patch(args.ideaId, {
       title,

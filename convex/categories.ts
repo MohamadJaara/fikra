@@ -31,6 +31,39 @@ export const create = mutation({
   },
 });
 
+export const createMany = mutation({
+  args: {
+    names: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await getAdminUser(ctx);
+    const items = args.names
+      .split(",")
+      .map((s) => sanitizeText(s))
+      .filter(Boolean);
+    if (items.length === 0) throw new Error("No valid names provided");
+    const created: string[] = [];
+    const skipped: string[] = [];
+    for (const name of items) {
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+      const existing = await ctx.db
+        .query("categories")
+        .withIndex("by_slug", (q) => q.eq("slug", slug))
+        .first();
+      if (existing) {
+        skipped.push(name);
+      } else {
+        await ctx.db.insert("categories", { name, slug });
+        created.push(name);
+      }
+    }
+    return { created, skipped };
+  },
+});
+
 export const update = mutation({
   args: {
     categoryId: v.id("categories"),

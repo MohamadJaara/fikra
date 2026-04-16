@@ -7,19 +7,19 @@ import {
   REACTION_EMOJI,
   REACTION_TYPES,
   RESOURCE_TAG_LABELS,
-  ROLE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
   type ResourceTag,
-  type Role,
   type Status,
 } from "@/lib/constants";
+import { useRolesMap } from "@/lib/hooks";
 import type { IdeaListItem } from "@/lib/types";
 import { Users, Package, Heart } from "lucide-react";
 import Link from "next/link";
 import { UserLink, UserAvatar } from "@/components/UserLink";
 
 export function IdeaCard({ idea }: { idea: IdeaListItem }) {
+  const roleLabels = useRolesMap();
   const ideaHref = `/product/ideas/${idea._id}`;
   const teamPercent =
     idea.teamSizeWanted > 0
@@ -107,7 +107,7 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
                   variant="outline"
                   className="text-[11px] text-orange-600 border-orange-300 bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:bg-orange-950"
                 >
-                  {ROLE_LABELS[role as Role] || role}
+                  {roleLabels[role] || role}
                 </Badge>
               ))}
               {idea.missingRoles.length > 4 && (

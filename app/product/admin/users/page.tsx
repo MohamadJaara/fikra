@@ -20,12 +20,12 @@ import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import { ROLE_LABELS } from "@/lib/constants";
-import type { Role } from "@/lib/constants";
+import { useRolesMap } from "@/lib/hooks";
 
 export default function AdminUsersPage() {
   const users = useQuery(api.admin.listUsers);
   const setUserAdmin = useMutation(api.admin.setUserAdmin);
+  const roleLabels = useRolesMap();
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -157,7 +157,7 @@ export default function AdminUsersPage() {
                             variant="secondary"
                             className="text-xs"
                           >
-                            {ROLE_LABELS[role as Role] || role}
+                            {roleLabels[role] || role}
                           </Badge>
                         ))}
                       </div>

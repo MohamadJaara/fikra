@@ -5,19 +5,19 @@ import { api } from "@/convex/_generated/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, PlusCircle, Trash2, Loader2, Tags } from "lucide-react";
+import { ArrowLeft, PlusCircle, Trash2, Loader2, Shield } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
-export default function AdminCategoriesPage() {
-  const categories = useQuery(api.categories.list);
-  const createManyMutation = useMutation(api.categories.createMany);
-  const deleteMutation = useMutation(api.categories.remove);
+export default function AdminRolesPage() {
+  const roles = useQuery(api.roles.list);
+  const createManyMutation = useMutation(api.roles.createMany);
+  const deleteMutation = useMutation(api.roles.remove);
   const [input, setInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [deletingId, setDeletingId] = useState<Id<"categories"> | null>(null);
+  const [deletingId, setDeletingId] = useState<Id<"roles"> | null>(null);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,13 +39,17 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  const handleDelete = async (id: Id<"categories">, name: string) => {
-    if (!confirm(`Delete "${name}"? Ideas using it will become uncategorized.`))
+  const handleDelete = async (id: Id<"roles">, name: string) => {
+    if (
+      !confirm(
+        `Delete "${name}"? Users and ideas with this role will have it removed.`,
+      )
+    )
       return;
     setDeletingId(id);
     try {
-      await deleteMutation({ categoryId: id });
-      toast.success("Category deleted");
+      await deleteMutation({ roleId: id });
+      toast.success("Role deleted");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to delete");
     } finally {
@@ -53,10 +57,10 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  if (categories === undefined) {
+  if (roles === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="text-muted-foreground">Loading categories...</div>
+        <div className="text-muted-foreground">Loading roles...</div>
       </div>
     );
   }
@@ -72,18 +76,16 @@ export default function AdminCategoriesPage() {
         </Link>
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Tags className="h-6 w-6" />
-            Categories
+            <Shield className="h-6 w-6" />
+            Roles
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {categories.length} categories
-          </p>
+          <p className="text-sm text-muted-foreground">{roles.length} roles</p>
         </div>
       </div>
 
       <form onSubmit={handleCreate} className="flex gap-2">
         <Input
-          placeholder="e.g. AI/ML, Mobile, DevTools (comma-separated)"
+          placeholder="e.g. Frontend, Backend, Design, PM (comma-separated)"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           className="flex-1"
@@ -98,28 +100,28 @@ export default function AdminCategoriesPage() {
         </Button>
       </form>
 
-      {categories.length === 0 ? (
+      {roles.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          No categories yet. Add some above.
+          No roles yet. Add some above.
         </div>
       ) : (
         <Card>
           <CardContent className="p-0">
             <div className="divide-y">
-              {categories.map((cat) => (
+              {roles.map((role) => (
                 <div
-                  key={cat._id}
+                  key={role._id}
                   className="flex items-center justify-between px-4 py-3"
                 >
-                  <span className="font-medium text-sm">{cat.name}</span>
+                  <span className="font-medium text-sm">{role.name}</span>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="text-xs text-destructive hover:text-destructive"
-                    disabled={deletingId === cat._id}
-                    onClick={() => handleDelete(cat._id, cat.name)}
+                    disabled={deletingId === role._id}
+                    onClick={() => handleDelete(role._id, role.name)}
                   >
-                    {deletingId === cat._id ? (
+                    {deletingId === role._id ? (
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                     ) : (
                       <Trash2 className="h-3 w-3 mr-1" />

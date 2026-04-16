@@ -6,14 +6,12 @@ import {
   REACTION_EMOJI,
   REACTION_TYPES,
   RESOURCE_TAG_LABELS,
-  ROLE_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
-  ROLES,
   type ResourceTag,
-  type Role,
   type Status,
 } from "@/lib/constants";
+import { useRolesList, useRolesMap } from "@/lib/hooks";
 import type { IdeaDetail, CommentItem } from "@/lib/types";
 import {
   use,
@@ -408,6 +406,8 @@ function TeamSection({
   const joinMutation = useMutation(api.memberships.join);
   const leaveMutation = useMutation(api.memberships.leave);
   const requestOwnershipMutation = useMutation(api.ideas.requestOwnership);
+  const roleLabels = useRolesMap();
+  const rolesList = useRolesList();
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -511,9 +511,7 @@ function TeamSection({
                   const aM = neededRoles.has(a) ? 0 : 1;
                   const bM = neededRoles.has(b) ? 0 : 1;
                   if (aM !== bM) return aM - bM;
-                  return (ROLE_LABELS[a as Role] || a).localeCompare(
-                    ROLE_LABELS[b as Role] || b,
-                  );
+                  return (roleLabels[a] || a).localeCompare(roleLabels[b] || b);
                 })
                 .map((r) => {
                   const isMatch = neededRoles.has(r);
@@ -529,7 +527,7 @@ function TeamSection({
                             : "text-[10px] px-1.5 py-0"
                       }
                     >
-                      {ROLE_LABELS[r as Role] || r}
+                      {roleLabels[r] || r}
                     </Badge>
                   );
                 })}
@@ -553,7 +551,7 @@ function TeamSection({
                 variant="outline"
                 className="text-orange-600 border-orange-300 bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:bg-orange-950"
               >
-                {ROLE_LABELS[role as Role] || role}
+                {roleLabels[role] || role}
               </Badge>
             ))}
           </div>
@@ -604,9 +602,9 @@ function TeamSection({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No specific role</SelectItem>
-                  {ROLES.map((role) => (
-                    <SelectItem key={role} value={role}>
-                      {ROLE_LABELS[role]}
+                  {rolesList.map((role) => (
+                    <SelectItem key={role.slug} value={role.slug}>
+                      {role.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -764,6 +762,7 @@ function InterestSection({
 }) {
   const expressMutation = useMutation(api.interest.express);
   const removeMutation = useMutation(api.interest.remove);
+  const roleLabels = useRolesMap();
   const [isToggling, setIsToggling] = useState(false);
 
   const handleToggle = async () => {
@@ -834,9 +833,7 @@ function InterestSection({
                   const aM = neededRoles.has(a) ? 0 : 1;
                   const bM = neededRoles.has(b) ? 0 : 1;
                   if (aM !== bM) return aM - bM;
-                  return (ROLE_LABELS[a as Role] || a).localeCompare(
-                    ROLE_LABELS[b as Role] || b,
-                  );
+                  return (roleLabels[a] || a).localeCompare(roleLabels[b] || b);
                 })
                 .map((r) => {
                   const isMatch = neededRoles.has(r);
@@ -850,7 +847,7 @@ function InterestSection({
                           : "text-[10px] px-1.5 py-0"
                       }
                     >
-                      {ROLE_LABELS[r as Role] || r}
+                      {roleLabels[r] || r}
                     </Badge>
                   );
                 })}

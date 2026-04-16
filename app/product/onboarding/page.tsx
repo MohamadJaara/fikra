@@ -4,8 +4,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
-import { ROLES, ROLE_LABELS } from "@/lib/constants";
-import type { Role } from "@/lib/constants";
+import { useRolesList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,6 +40,7 @@ function parseNameFromEmail(email: string): {
 export default function OnboardingPage() {
   const viewer = useQuery(api.users.viewer);
   const completeOnboarding = useMutation(api.users.completeOnboarding);
+  const roles = useRolesList();
   const router = useRouter();
 
   const parsed = useMemo(() => {
@@ -50,7 +50,7 @@ export default function OnboardingPage() {
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,11 +58,7 @@ export default function OnboardingPage() {
     if (!firstName && parsed.firstName) setFirstName(parsed.firstName);
     if (!lastName && parsed.lastName) setLastName(parsed.lastName);
     if (viewer.roles && viewer.roles.length > 0) {
-      setSelectedRoles(
-        viewer.roles.filter((r): r is Role =>
-          (ROLES as readonly string[]).includes(r),
-        ),
-      );
+      setSelectedRoles(viewer.roles);
     }
     setInitialized(true);
   }
@@ -80,7 +76,7 @@ export default function OnboardingPage() {
 
   if (viewer === null) return null;
 
-  const toggleRole = (role: Role) => {
+  const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
       prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
     );
@@ -152,16 +148,16 @@ export default function OnboardingPage() {
                 or build backend as an iOS dev? Go for it.
               </p>
               <div className="flex flex-wrap gap-2">
-                {ROLES.map((role) => (
+                {roles.map((role) => (
                   <Badge
-                    key={role}
+                    key={role.slug}
                     variant={
-                      selectedRoles.includes(role) ? "default" : "outline"
+                      selectedRoles.includes(role.slug) ? "default" : "outline"
                     }
                     className="cursor-pointer select-none text-sm px-3 py-1.5"
-                    onClick={() => toggleRole(role)}
+                    onClick={() => toggleRole(role.slug)}
                   >
-                    {ROLE_LABELS[role]}
+                    {role.name}
                   </Badge>
                 ))}
               </div>

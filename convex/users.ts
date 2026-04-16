@@ -1,8 +1,11 @@
 import { query, mutation } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, generateUniqueHandle } from "./lib";
-import { ROLES } from "./lib";
+import {
+  getAuthenticatedUser,
+  generateUniqueHandle,
+  validateRoleSlugs,
+} from "./lib";
 import type { Doc } from "./_generated/dataModel";
 
 function pickPublicFields(user: Doc<"users">) {
@@ -105,16 +108,14 @@ export const completeOnboarding = mutation({
     if (trimmedLast.length > 100) {
       throw new Error("Last name must be at most 100 characters");
     }
-    const validRoles = roles.filter((r) =>
-      (ROLES as readonly string[]).includes(r),
-    );
     const handle = user.email
       ? await generateUniqueHandle(ctx, user.email, userId)
       : undefined;
+    await validateRoleSlugs(ctx, roles);
     await ctx.db.patch(userId, {
       firstName: trimmedFirst,
       lastName: trimmedLast,
-      roles: validRoles,
+      roles: roles,
       name: `${trimmedFirst} ${trimmedLast}`.trim(),
       onboardingComplete: true,
       handle,
@@ -216,13 +217,11 @@ export const updateProfile = mutation({
     if (trimmedLast.length > 100) {
       throw new Error("Last name must be at most 100 characters");
     }
-    const validRoles = roles.filter((r) =>
-      (ROLES as readonly string[]).includes(r),
-    );
+    await validateRoleSlugs(ctx, roles);
     await ctx.db.patch(userId, {
       firstName: trimmedFirst,
       lastName: trimmedLast,
-      roles: validRoles,
+      roles: roles,
       name: `${trimmedFirst} ${trimmedLast}`.trim(),
     });
   },

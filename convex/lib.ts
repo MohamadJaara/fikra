@@ -4,16 +4,13 @@ import type { Id } from "./_generated/dataModel";
 
 export {
   STATUSES,
-  ROLES,
   RESOURCE_TAGS,
   REACTION_TYPES,
   REACTION_EMOJI,
-  ROLE_LABELS,
   STATUS_LABELS,
   STATUS_COLORS,
   RESOURCE_TAG_LABELS,
   type Status,
-  type Role,
   type ResourceTag,
   type ReactionType,
 } from "../lib/constants";
@@ -64,6 +61,43 @@ export function validateStringLength(
   if (trimmed.length > max)
     throw new Error(`${fieldName} must be at most ${max} characters`);
   return trimmed;
+}
+
+export async function validateRoleSlugs(
+  ctx: QueryCtx | MutationCtx,
+  roles: string[],
+): Promise<void> {
+  if (roles.length === 0) return;
+  const allRoles = await ctx.db.query("roles").collect();
+  const validSlugs = new Set<string>();
+  for (const role of allRoles) {
+    validSlugs.add(role.slug);
+    if (role.aliasSlugs) {
+      for (const alias of role.aliasSlugs) {
+        validSlugs.add(alias);
+      }
+    }
+  }
+  const invalid = roles.filter((s) => !validSlugs.has(s));
+  if (invalid.length > 0) {
+    throw new Error(`Invalid role(s): ${invalid.join(", ")}`);
+  }
+}
+
+export async function validateRoleSlug(
+  ctx: QueryCtx | MutationCtx,
+  slug: string,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("roles")
+    .withIndex("by_slug", (q) => q.eq("slug", slug))
+    .first();
+  if (existing) return;
+  const allRoles = await ctx.db.query("roles").collect();
+  const found = allRoles.some((r) => r.aliasSlugs?.includes(slug));
+  if (!found) {
+    throw new Error(`Invalid role: ${slug}`);
+  }
 }
 
 export async function generateUniqueHandle(

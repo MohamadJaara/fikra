@@ -1,8 +1,7 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
-import { ROLES, ROLE_LABELS } from "@/lib/constants";
-import type { Role } from "@/lib/constants";
+import { useRolesList, useRolesMap } from "@/lib/hooks";
 import type { PublicUser } from "@/lib/types";
 import { usePaginatedQuery } from "convex/react";
 import { useState, useMemo } from "react";
@@ -16,11 +15,13 @@ import { ArrowLeft, Search, Users, Loader2 } from "lucide-react";
 const PAGE_SIZE = 50;
 
 export default function PeoplePage() {
-  const { results: users, status, loadMore } = usePaginatedQuery(
-    api.users.listAll,
-    {},
-    { initialNumItems: PAGE_SIZE },
-  );
+  const {
+    results: users,
+    status,
+    loadMore,
+  } = usePaginatedQuery(api.users.listAll, {}, { initialNumItems: PAGE_SIZE });
+  const roles = useRolesList();
+  const roleLabels = useRolesMap();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const hasActiveFilters = search.trim().length > 0 || roleFilter.length > 0;
@@ -79,14 +80,14 @@ export default function PeoplePage() {
           />
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {ROLES.map((role) => (
+          {roles.map((role) => (
             <Badge
-              key={role}
-              variant={roleFilter.includes(role) ? "default" : "outline"}
+              key={role.slug}
+              variant={roleFilter.includes(role.slug) ? "default" : "outline"}
               className="cursor-pointer select-none text-xs px-2 py-1"
-              onClick={() => toggleRole(role)}
+              onClick={() => toggleRole(role.slug)}
             >
-              {ROLE_LABELS[role]}
+              {role.name}
             </Badge>
           ))}
           {roleFilter.length > 0 && (
@@ -147,7 +148,7 @@ export default function PeoplePage() {
                           variant="secondary"
                           className="text-[10px] px-1.5 py-0"
                         >
-                          {ROLE_LABELS[r as Role] || r}
+                          {roleLabels[r] || r}
                         </Badge>
                       ))}
                       {user.roles.length > 3 && (

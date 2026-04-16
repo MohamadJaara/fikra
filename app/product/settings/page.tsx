@@ -3,8 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect } from "react";
-import { ROLES, ROLE_LABELS } from "@/lib/constants";
-import type { Role } from "@/lib/constants";
+import { useRolesList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,10 +22,11 @@ import Link from "next/link";
 export default function SettingsPage() {
   const viewer = useQuery(api.users.viewer);
   const updateProfile = useMutation(api.users.updateProfile);
+  const roles = useRolesList();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -35,11 +35,7 @@ export default function SettingsPage() {
       setFirstName(viewer.firstName ?? "");
       setLastName(viewer.lastName ?? "");
       if (viewer.roles) {
-        setSelectedRoles(
-          viewer.roles.filter((r): r is Role =>
-            (ROLES as readonly string[]).includes(r),
-          ),
-        );
+        setSelectedRoles(viewer.roles);
       }
       setLoaded(true);
     }
@@ -55,7 +51,7 @@ export default function SettingsPage() {
 
   if (viewer === null) return null;
 
-  const toggleRole = (role: Role) => {
+  const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
       prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
     );
@@ -149,14 +145,16 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {ROLES.map((role) => (
+              {roles.map((role) => (
                 <Badge
-                  key={role}
-                  variant={selectedRoles.includes(role) ? "default" : "outline"}
+                  key={role.slug}
+                  variant={
+                    selectedRoles.includes(role.slug) ? "default" : "outline"
+                  }
                   className="cursor-pointer select-none text-sm px-3 py-1.5"
-                  onClick={() => toggleRole(role)}
+                  onClick={() => toggleRole(role.slug)}
                 >
-                  {ROLE_LABELS[role]}
+                  {role.name}
                 </Badge>
               ))}
             </div>

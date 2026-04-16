@@ -6,20 +6,6 @@ export const STATUSES = [
 ] as const;
 export type Status = (typeof STATUSES)[number];
 
-export const ROLES = [
-  "frontend",
-  "backend",
-  "design",
-  "pm",
-  "security",
-  "demo_pitch",
-  "android",
-  "ios",
-  "kalium",
-  "apps_sdk",
-] as const;
-export type Role = (typeof ROLES)[number];
-
 export const RESOURCE_TAGS = [
   "linux_vps",
   "mac_mini",
@@ -45,19 +31,6 @@ export const REACTION_EMOJI: Record<ReactionType, string> = {
   exciting: "🚀",
   clever: "🧠",
   might_join: "🙋",
-};
-
-export const ROLE_LABELS: Record<Role, string> = {
-  frontend: "Frontend",
-  backend: "Backend",
-  design: "Design",
-  pm: "PM",
-  security: "Security",
-  demo_pitch: "Demo/Pitch",
-  android: "Android",
-  ios: "iOS",
-  kalium: "Kalium",
-  apps_sdk: "Apps SDK",
 };
 
 export const STATUS_LABELS: Record<Status, string> = {

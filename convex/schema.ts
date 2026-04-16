@@ -35,6 +35,15 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .searchIndex("search_name", { searchField: "name" }),
 
+  roles: defineTable({
+    name: v.string(),
+    slug: v.string(),
+    aliasSlugs: v.optional(v.array(v.string())),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("by_slug", ["slug"])
+    .searchIndex("search_name", { searchField: "name" }),
+
   ideas: defineTable({
     title: v.string(),
     pitch: v.string(),

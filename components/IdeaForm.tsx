@@ -12,15 +12,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ROLES,
   RESOURCE_TAGS,
   RESOURCE_TAG_LABELS,
-  ROLE_LABELS,
   STATUSES,
   STATUS_LABELS,
-  type Role,
   type ResourceTag,
 } from "@/lib/constants";
+import { useRolesList } from "@/lib/hooks";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -78,6 +76,7 @@ export function IdeaForm({
   );
   const [categoryId, setCategoryId] = useState(initialData?.categoryId || "");
   const categories = useQuery(api.categories.list);
+  const roles = useRolesList();
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
@@ -231,14 +230,16 @@ export function IdeaForm({
       <div className="space-y-2">
         <Label>Looking for Roles</Label>
         <div className="flex flex-wrap gap-2">
-          {ROLES.map((role) => (
+          {roles.map((role) => (
             <Badge
-              key={role}
-              variant={selectedRoles.includes(role) ? "default" : "outline"}
+              key={role.slug}
+              variant={
+                selectedRoles.includes(role.slug) ? "default" : "outline"
+              }
               className="cursor-pointer select-none"
-              onClick={() => toggleRole(role)}
+              onClick={() => toggleRole(role.slug)}
             >
-              {ROLE_LABELS[role as Role]}
+              {role.name}
             </Badge>
           ))}
         </div>

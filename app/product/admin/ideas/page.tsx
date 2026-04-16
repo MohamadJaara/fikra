@@ -26,18 +26,15 @@ import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import {
-  STATUSES,
-  STATUS_LABELS,
-  STATUS_COLORS,
-  ROLE_LABELS,
-} from "@/lib/constants";
-import type { Role, Status } from "@/lib/constants";
+import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/lib/constants";
+import type { Status } from "@/lib/constants";
+import { useRolesMap } from "@/lib/hooks";
 
 export default function AdminIdeasPage() {
   const ideas = useQuery(api.admin.listIdeas);
   const deleteIdea = useMutation(api.admin.deleteIdea);
   const updateIdeaStatus = useMutation(api.admin.updateIdeaStatus);
+  const roleLabels = useRolesMap();
   const [search, setSearch] = useState("");
 
   const filtered = useMemo(() => {
@@ -157,7 +154,9 @@ export default function AdminIdeasPage() {
                     <TableCell>
                       <Select
                         value={idea.status}
-                        onValueChange={(v) => handleStatusChange(idea._id, v as Status)}
+                        onValueChange={(v) =>
+                          handleStatusChange(idea._id, v as Status)
+                        }
                       >
                         <SelectTrigger className="w-[140px] h-8">
                           <SelectValue />
@@ -193,7 +192,7 @@ export default function AdminIdeasPage() {
                             variant="secondary"
                             className="text-xs"
                           >
-                            {ROLE_LABELS[role as Role] || role}
+                            {roleLabels[role] || role}
                           </Badge>
                         ))}
                       </div>

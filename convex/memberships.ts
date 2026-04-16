@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, ROLES } from "./lib";
+import { getAuthenticatedUser, validateRoleSlug } from "./lib";
 import { internal } from "./_generated/api";
 
 export const join = mutation({
@@ -22,9 +22,7 @@ export const join = mutation({
       .first();
     if (existing) throw new Error("Already a member");
 
-    if (role && !ROLES.includes(role as (typeof ROLES)[number])) {
-      throw new Error("Invalid role");
-    }
+    if (role) await validateRoleSlug(ctx, role);
 
     await ctx.db.insert("ideaMembers", {
       ideaId,
@@ -77,10 +75,6 @@ export const updateRole = mutation({
     if (idea.ownerId !== userId)
       throw new Error("Only the idea owner can update member roles");
 
-    if (role && !ROLES.includes(role as (typeof ROLES)[number])) {
-      throw new Error("Invalid role");
-    }
-
     const membership = await ctx.db
       .query("ideaMembers")
       .withIndex("by_idea_and_user", (q) =>
@@ -88,6 +82,8 @@ export const updateRole = mutation({
       )
       .first();
     if (!membership) throw new Error("Target user is not a member");
+
+    if (role) await validateRoleSlug(ctx, role);
 
     await ctx.db.patch(membership._id, { role: role || undefined });
   },

@@ -6,16 +6,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IdeaCardSkeleton } from "@/components/Skeleton";
 import {
-  ROLES,
   RESOURCE_TAGS,
   RESOURCE_TAG_LABELS,
-  ROLE_LABELS,
   STATUSES,
   STATUS_LABELS,
   SORT_OPTIONS,
   SORT_LABELS,
 } from "@/lib/constants";
 import type { SortOption } from "@/lib/constants";
+import { useRolesList } from "@/lib/hooks";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useState, useMemo } from "react";
@@ -52,6 +51,7 @@ type FilterState = {
 export default function BrowsePage() {
   const ideas = useQuery(api.ideas.list) as IdeaListItem[] | undefined;
   const categoryList = useQuery(api.categories.list);
+  const rolesList = useRolesList();
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     statuses: [],
@@ -260,12 +260,12 @@ export default function BrowsePage() {
                 Missing Roles
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {ROLES.map((r) => (
+                {rolesList.map((r) => (
                   <FilterBadge
-                    key={r}
-                    label={ROLE_LABELS[r]}
-                    active={filters.roles.includes(r)}
-                    onClick={() => toggleFilter("roles", r)}
+                    key={r.slug}
+                    label={r.name}
+                    active={filters.roles.includes(r.slug)}
+                    onClick={() => toggleFilter("roles", r.slug)}
                   />
                 ))}
               </div>

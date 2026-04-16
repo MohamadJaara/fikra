@@ -22,6 +22,7 @@ import type * as notifications from "../notifications.js";
 import type * as reactions from "../reactions.js";
 import type * as relatedIdeas from "../relatedIdeas.js";
 import type * as resourceRequests from "../resourceRequests.js";
+import type * as roles from "../roles.js";
 import type * as users from "../users.js";
 
 import type {
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   reactions: typeof reactions;
   relatedIdeas: typeof relatedIdeas;
   resourceRequests: typeof resourceRequests;
+  roles: typeof roles;
   users: typeof users;
 }>;
 
