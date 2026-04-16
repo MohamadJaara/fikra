@@ -1,6 +1,6 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { QueryCtx, MutationCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 
 export {
   STATUSES,
@@ -47,6 +47,31 @@ export async function getAdminUser(ctx: QueryCtx | MutationCtx) {
 
 export function sanitizeText(text: string): string {
   return text.trim();
+}
+
+type UserDisplayFields = Pick<
+  Doc<"users">,
+  "name" | "firstName" | "lastName" | "email"
+>;
+
+export function getUserDisplayName(
+  user: UserDisplayFields | null | undefined,
+  fallback = "Unknown",
+): string {
+  if (!user) return fallback;
+
+  const trimmedName = user.name?.trim();
+  if (trimmedName) return trimmedName;
+
+  const fullName = [user.firstName?.trim(), user.lastName?.trim()]
+    .filter((value): value is string => Boolean(value))
+    .join(" ");
+  if (fullName) return fullName;
+
+  const trimmedEmail = user.email?.trim();
+  if (trimmedEmail) return trimmedEmail;
+
+  return fallback;
 }
 
 export function normalizeOptionalStringArray(

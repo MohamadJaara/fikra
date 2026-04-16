@@ -1,6 +1,6 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser } from "./lib";
+import { getAuthenticatedUser, getUserDisplayName } from "./lib";
 
 export const NOTIFICATION_TYPES = [
   "member_joined",
@@ -71,7 +71,7 @@ export const list = query({
         const idea = await ctx.db.get(n.ideaId);
         return {
           ...n,
-          actorName: actor?.name || actor?.email || "Someone",
+          actorName: getUserDisplayName(actor, "Someone"),
           actorImage: actor?.image,
           ideaTitle: idea?.title || "Untitled Idea",
         };

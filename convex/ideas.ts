@@ -3,6 +3,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAuthenticatedUser,
+  getUserDisplayName,
   mergeUniqueStringArrays,
   sanitizeText,
   validateStringLength,
@@ -594,7 +595,7 @@ export const list = query({
         return {
           ...idea,
           categoryName: category?.name,
-          ownerName: owner?.name || owner?.email || "Unknown",
+          ownerName: getUserDisplayName(owner),
           ownerImage: owner?.image,
           ownerHandle: owner?.handle,
           memberCount: members.length,
@@ -645,7 +646,7 @@ export const get = query({
             m.memberRoles,
             role ? [role] : undefined,
           ),
-          name: u?.name || u?.email || "Unknown",
+          name: getUserDisplayName(u),
           image: u?.image,
           handle: u?.handle,
           ...(isOwner ? { email: u?.email } : {}),
@@ -664,7 +665,7 @@ export const get = query({
         const u = await ctx.db.get(i.userId);
         return {
           ...i,
-          name: u?.name || u?.email || "Unknown",
+          name: getUserDisplayName(u),
           image: u?.image,
           handle: u?.handle,
           roles: u?.roles,
@@ -716,11 +717,11 @@ export const get = query({
               _creationTime: pendingTransferRequest._creationTime,
               ideaId: pendingTransferRequest.ideaId,
               requesterId: pendingTransferRequest.requesterId,
-              requesterName: requester?.name || requester?.email || "Unknown",
+              requesterName: getUserDisplayName(requester),
               requesterImage: requester?.image,
               requesterHandle: requester?.handle,
               recipientId: pendingTransferRequest.recipientId,
-              recipientName: recipient?.name || recipient?.email || "Unknown",
+              recipientName: getUserDisplayName(recipient),
               recipientImage: recipient?.image,
               recipientHandle: recipient?.handle,
               leaveAfterTransfer: pendingTransferRequest.leaveAfterTransfer,
@@ -770,7 +771,7 @@ export const get = query({
     return {
       ...idea,
       categoryName: category?.name,
-      ownerName: owner?.name || owner?.email || "Unknown",
+      ownerName: getUserDisplayName(owner),
       ownerImage: owner?.image,
       ownerHandle: owner?.handle,
       ownerEmail: isOwner ? owner?.email : undefined,

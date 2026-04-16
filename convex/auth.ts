@@ -1,6 +1,6 @@
 import Resend from "@auth/core/providers/resend";
 import { convexAuth } from "@convex-dev/auth/server";
-import { isEmailAllowed } from "./lib";
+import { getUserDisplayName, isEmailAllowed } from "./lib";
 
 export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
@@ -15,13 +15,21 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         throw new Error("Access denied: email address is not allowed");
       }
 
+      const existingUser = args.existingUserId
+        ? await ctx.db.get(args.existingUserId)
+        : null;
+
+      const normalizedName =
+        args.profile.name?.trim() ||
+        getUserDisplayName(existingUser, "").trim();
+
       const safeProfile = {
-        email: args.profile.email,
-        name: args.profile.name,
-        image: args.profile.image,
+        email,
+        ...(normalizedName ? { name: normalizedName } : {}),
+        ...(args.profile.image ? { image: args.profile.image } : {}),
         ...(args.profile.emailVerified
           ? { emailVerificationTime: Date.now() }
-          : null),
+          : {}),
       };
 
       if (args.existingUserId) {

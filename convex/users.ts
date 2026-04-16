@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import {
   getAuthenticatedUser,
   generateUniqueHandle,
+  getUserDisplayName,
   mergeUniqueStringArrays,
   validateRoleSlugs,
 } from "./lib";
@@ -13,7 +14,7 @@ function pickPublicFields(user: Doc<"users">) {
   return {
     _id: user._id,
     _creationTime: user._creationTime,
-    name: user.name,
+    name: getUserDisplayName(user, ""),
     firstName: user.firstName,
     lastName: user.lastName,
     image: user.image,

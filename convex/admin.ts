@@ -1,7 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { getAdminUser } from "./lib";
+import { getAdminUser, getUserDisplayName } from "./lib";
 import { STATUSES } from "../lib/constants";
 
 const statusValidator = v.union(...STATUSES.map((s) => v.literal(s)));
@@ -82,7 +82,7 @@ export const listUsers = query({
         return {
           _id: user._id,
           _creationTime: user._creationTime,
-          name: user.name,
+          name: getUserDisplayName(user, ""),
           firstName: user.firstName,
           lastName: user.lastName,
           email: user.email,
@@ -144,7 +144,7 @@ export const listIdeas = query({
           teamSizeWanted: idea.teamSizeWanted,
           lookingForRoles: idea.lookingForRoles,
           ownerId: idea.ownerId,
-          ownerName: owner?.name || owner?.email || "Unknown",
+          ownerName: getUserDisplayName(owner),
           ownerEmail: owner?.email,
           memberCount: members.length,
           commentCount: comments.length,
@@ -182,7 +182,7 @@ export const listComments = query({
           _creationTime: comment._creationTime,
           content: comment.content,
           parentId: comment.parentId,
-          authorName: author?.name || author?.email || "Unknown",
+          authorName: getUserDisplayName(author),
           authorEmail: author?.email,
           ideaId: comment.ideaId,
           ideaTitle: idea?.title || "Deleted idea",

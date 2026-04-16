@@ -1,6 +1,11 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, sanitizeText, RESOURCE_TAGS } from "./lib";
+import {
+  getAuthenticatedUser,
+  getUserDisplayName,
+  sanitizeText,
+  RESOURCE_TAGS,
+} from "./lib";
 
 export const add = mutation({
   args: {
@@ -107,7 +112,7 @@ export const getAllUnresolved = query({
           ...r,
           ideaTitle: idea?.title || "Unknown",
           ideaId: r.ideaId,
-          ownerName: owner?.name || owner?.email || "Unknown",
+          ownerName: getUserDisplayName(owner),
         };
       }),
     );

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
   getAuthenticatedUser,
+  getUserDisplayName,
   sanitizeText,
   validateStringLength,
 } from "./lib";
@@ -184,7 +185,7 @@ export const list = query({
             if (u) {
               mentionedUsers.push({
                 _id: u._id,
-                name: u.name || u.email || "Unknown",
+                name: getUserDisplayName(u),
                 handle: u.handle,
               });
             }
@@ -192,7 +193,7 @@ export const list = query({
         }
         return {
           ...c,
-          authorName: user?.name || user?.email || "Unknown",
+          authorName: getUserDisplayName(user),
           authorImage: user?.image,
           authorHandle: user?.handle,
           isAuthor: c.userId === userId,

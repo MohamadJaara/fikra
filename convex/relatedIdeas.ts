@@ -1,6 +1,10 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, mergeUniqueStringArrays } from "./lib";
+import {
+  getAuthenticatedUser,
+  getUserDisplayName,
+  mergeUniqueStringArrays,
+} from "./lib";
 import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
@@ -437,14 +441,15 @@ export const listForIdea = query({
           relationType: rel.relationType,
           mergeStatus: rel.mergeStatus ?? null,
           mergeRequestedById: rel.mergeRequestedById ?? null,
-          mergeRequesterName:
-            mergeRequester?.name || mergeRequester?.email || null,
-          markedByName: markedBy?.name || markedBy?.email || "Unknown",
+          mergeRequesterName: mergeRequester
+            ? getUserDisplayName(mergeRequester)
+            : null,
+          markedByName: getUserDisplayName(markedBy),
           otherIdeaId: otherId,
           otherIdeaTitle: otherIdea?.title || "Deleted",
           otherIdeaStatus: otherIdea?.status || null,
           otherIdeaOwnerId: otherIdea?.ownerId || null,
-          otherOwnerName: otherOwner?.name || otherOwner?.email || "Unknown",
+          otherOwnerName: getUserDisplayName(otherOwner),
           otherOwnerImage: otherOwner?.image,
           otherOwnerHandle: otherOwner?.handle,
           otherMemberCount,
@@ -526,7 +531,7 @@ export const searchPotentialDuplicates = query({
           title: i.title,
           pitch: i.pitch,
           status: i.status,
-          ownerName: owner?.name || owner?.email || "Unknown",
+          ownerName: getUserDisplayName(owner),
           memberCount,
           score,
         };
