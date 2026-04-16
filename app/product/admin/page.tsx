@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Shield,
   UserCheck,
+  Tags,
 } from "lucide-react";
 import Link from "next/link";
 import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/lib/constants";
@@ -125,7 +126,7 @@ export default function AdminDashboard() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Link href="/product/admin/users">
           <Card className="hover:border-primary/50 transition-colors cursor-pointer">
             <CardContent className="pt-6">
@@ -156,6 +157,25 @@ export default function AdminDashboard() {
                   <p className="font-medium">Manage Ideas</p>
                   <p className="text-xs text-muted-foreground">
                     {stats.totalIdeas} ideas submitted
+                  </p>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/product/admin/categories">
+          <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950">
+                  <Tags className="h-5 w-5 text-purple-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">Manage Categories</p>
+                  <p className="text-xs text-muted-foreground">
+                    Idea categories
                   </p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
