@@ -15,20 +15,21 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         throw new Error("Access denied: email address is not allowed");
       }
 
+      const safeProfile = {
+        email: args.profile.email,
+        name: args.profile.name,
+        image: args.profile.image,
+        ...(args.profile.emailVerified
+          ? { emailVerificationTime: Date.now() }
+          : null),
+      };
+
       if (args.existingUserId) {
-        const { emailVerified, ...profile } = args.profile;
-        await ctx.db.patch(args.existingUserId, {
-          ...(emailVerified ? { emailVerificationTime: Date.now() } : null),
-          ...profile,
-        });
+        await ctx.db.patch(args.existingUserId, safeProfile);
         return args.existingUserId;
       }
 
-      const { emailVerified, ...profile } = args.profile;
-      return ctx.db.insert("users", {
-        ...(emailVerified ? { emailVerificationTime: Date.now() } : null),
-        ...profile,
-      });
+      return ctx.db.insert("users", safeProfile);
     },
   },
 });
