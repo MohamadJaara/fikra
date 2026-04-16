@@ -6,18 +6,6 @@ export const STATUSES = [
 ] as const;
 export type Status = (typeof STATUSES)[number];
 
-export const RESOURCE_TAGS = [
-  "linux_vps",
-  "mac_mini",
-  "llm_api_key",
-  "design_help",
-  "security_review",
-  "legal_compliance",
-  "hardware",
-  "mentoring",
-] as const;
-export type ResourceTag = (typeof RESOURCE_TAGS)[number];
-
 export const REACTION_TYPES = [
   "interested",
   "exciting",
@@ -71,7 +59,7 @@ export const SORT_LABELS: Record<SortOption, string> = {
   most_interest: "Most Interest",
 };
 
-export const RESOURCE_TAG_LABELS: Record<ResourceTag, string> = {
+export const LEGACY_RESOURCE_LABELS: Record<string, string> = {
   linux_vps: "Linux VPS",
   mac_mini: "Mac Mini",
   llm_api_key: "LLM API Key",

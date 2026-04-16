@@ -1,17 +1,15 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { LEGACY_RESOURCE_LABELS } from "../lib/constants";
 
 export {
   STATUSES,
-  RESOURCE_TAGS,
   REACTION_TYPES,
   REACTION_EMOJI,
   STATUS_LABELS,
   STATUS_COLORS,
-  RESOURCE_TAG_LABELS,
   type Status,
-  type ResourceTag,
   type ReactionType,
 } from "../lib/constants";
 
@@ -47,6 +45,13 @@ export async function getAdminUser(ctx: QueryCtx | MutationCtx) {
 
 export function sanitizeText(text: string): string {
   return text.trim();
+}
+
+export function slugifyName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 type UserDisplayFields = Pick<
@@ -150,6 +155,36 @@ export async function validateRoleSlug(
   if (!found) {
     throw new Error(`Invalid role: ${slug}`);
   }
+}
+
+export async function validateResourceSlugs(
+  ctx: QueryCtx | MutationCtx,
+  slugs: string[],
+): Promise<void> {
+  if (slugs.length === 0) return;
+
+  const resources = await ctx.db.query("resources").collect();
+  const validSlugs = new Set(resources.map((resource) => resource.slug));
+  const invalid = slugs.filter((slug) => !validSlugs.has(slug));
+
+  if (invalid.length > 0) {
+    throw new Error(`Invalid resource(s): ${invalid.join(", ")}`);
+  }
+}
+
+export async function getResourceNameMap(
+  ctx: QueryCtx | MutationCtx,
+): Promise<Record<string, string>> {
+  const resources = await ctx.db.query("resources").collect();
+  const map: Record<string, string> = {
+    ...LEGACY_RESOURCE_LABELS,
+  };
+
+  for (const resource of resources) {
+    map[resource.slug] = resource.name;
+  }
+
+  return map;
 }
 
 export async function generateUniqueHandle(

@@ -9,8 +9,6 @@ import { IdeaListSkeleton } from "@/components/Skeleton";
 import {
   STATUS_COLORS,
   STATUS_LABELS,
-  RESOURCE_TAG_LABELS,
-  type ResourceTag,
   type Status,
 } from "@/lib/constants";
 import type { UnresolvedResource } from "@/lib/types";
@@ -142,10 +140,7 @@ export default function ActivityPage() {
                   >
                     <CardContent className="flex items-center justify-between py-3">
                       <div className="flex items-center gap-3">
-                        <Badge variant="outline">
-                          {RESOURCE_TAG_LABELS[req.tag as ResourceTag] ||
-                            req.tag}
-                        </Badge>
+                        <Badge variant="outline">{req.resourceName}</Badge>
                         <div>
                           <p className="text-sm font-medium">{req.ideaTitle}</p>
                           <p className="text-xs text-muted-foreground">

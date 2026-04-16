@@ -6,10 +6,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   REACTION_EMOJI,
   REACTION_TYPES,
-  RESOURCE_TAG_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
-  type ResourceTag,
   type Status,
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
@@ -130,7 +128,7 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
                     className="text-[11px] text-blue-600 border-blue-300 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950"
                   >
                     <Package className="h-3 w-3 mr-0.5" />
-                    {RESOURCE_TAG_LABELS[r.tag as ResourceTag] || r.tag}
+                    {r.resourceName}
                   </Badge>
                 ))}
               {idea.resourceRequests.filter((r) => !r.resolved).length > 3 && (

@@ -35,6 +35,13 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .searchIndex("search_name", { searchField: "name" }),
 
+  resources: defineTable({
+    name: v.string(),
+    slug: v.string(),
+  })
+    .index("by_slug", ["slug"])
+    .searchIndex("search_name", { searchField: "name" }),
+
   roles: defineTable({
     name: v.string(),
     slug: v.string(),
@@ -113,6 +120,7 @@ export default defineSchema({
     resolved: v.boolean(),
   })
     .index("by_idea", ["ideaId"])
+    .index("by_tag", ["tag"])
     .index("by_resolved", ["resolved"]),
 
   ownershipTransferRequests: defineTable({

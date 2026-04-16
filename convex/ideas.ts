@@ -3,12 +3,14 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAuthenticatedUser,
+  getResourceNameMap,
   getUserDisplayName,
   mergeUniqueStringArrays,
   sanitizeText,
   validateStringLength,
   isEmailAllowed,
   STATUSES,
+  validateResourceSlugs,
   validateRoleSlugs,
 } from "./lib";
 import { internal } from "./_generated/api";
@@ -76,13 +78,31 @@ export const create = mutation({
     });
 
     if (args.resourceTags && args.resourceTags.length > 0) {
+      const seenTags = new Set<string>();
+      const validatedTags: string[] = [];
       for (const tag of args.resourceTags) {
+        if (seenTags.has(tag)) continue;
+        seenTags.add(tag);
+        validatedTags.push(tag);
+      }
+      await validateResourceSlugs(ctx, validatedTags);
+
+      const notes = args.resourceNotes
+        ? sanitizeText(
+            validateStringLength(
+              args.resourceNotes,
+              0,
+              1000,
+              "Resource notes",
+            ),
+          )
+        : undefined;
+
+      for (const tag of validatedTags) {
         await ctx.db.insert("resourceRequests", {
           ideaId,
           tag,
-          notes: args.resourceNotes
-            ? sanitizeText(args.resourceNotes)
-            : undefined,
+          notes,
           resolved: false,
         });
       }
@@ -513,6 +533,7 @@ export const list = query({
     const userId = authId;
 
     const ideas = await ctx.db.query("ideas").collect();
+    const resourceNameMap = await getResourceNameMap(ctx);
 
     const results = await Promise.all(
       ideas.map(async (idea) => {
@@ -605,7 +626,10 @@ export const list = query({
           missingRoles,
           hasUnresolvedResources: resourceDocs.some((r) => !r.resolved),
           resourceRequestCount: resourceDocs.length,
-          resourceRequests: resourceDocs,
+          resourceRequests: resourceDocs.map((resource) => ({
+            ...resource,
+            resourceName: resourceNameMap[resource.tag] || resource.tag,
+          })),
           isMember,
           isInterested,
           isOwner,
@@ -682,6 +706,7 @@ export const get = query({
     for (const r of reactionDocs) {
       reactionCounts[r.type] = (reactionCounts[r.type] || 0) + 1;
     }
+    const resourceNameMap = await getResourceNameMap(ctx);
 
     const userReactions = reactionDocs
       .filter((r) => r.userId === userId)
@@ -781,7 +806,10 @@ export const get = query({
       interestCount: interestDocs.length,
       reactionCounts,
       userReactions,
-      resourceRequests: resourceDocs,
+      resourceRequests: resourceDocs.map((resource) => ({
+        ...resource,
+        resourceName: resourceNameMap[resource.tag] || resource.tag,
+      })),
       hasUnresolvedResources: resourceDocs.some((r) => !r.resolved),
       missingRoles,
       pendingOwnershipTransfer,

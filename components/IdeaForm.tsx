@@ -12,13 +12,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  RESOURCE_TAGS,
-  RESOURCE_TAG_LABELS,
   STATUSES,
   STATUS_LABELS,
-  type ResourceTag,
 } from "@/lib/constants";
-import { useRolesList } from "@/lib/hooks";
+import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -77,6 +74,7 @@ export function IdeaForm({
   const [categoryId, setCategoryId] = useState(initialData?.categoryId || "");
   const categories = useQuery(api.categories.list);
   const roles = useRolesList();
+  const resources = useResourcesList();
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
@@ -252,20 +250,29 @@ export function IdeaForm({
             <p className="text-xs text-muted-foreground">
               Select any resources your team will need
             </p>
-            <div className="flex flex-wrap gap-2">
-              {RESOURCE_TAGS.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant={
-                    selectedResourceTags.includes(tag) ? "default" : "outline"
-                  }
-                  className="cursor-pointer select-none"
-                  onClick={() => toggleResourceTag(tag)}
-                >
-                  {RESOURCE_TAG_LABELS[tag as ResourceTag]}
-                </Badge>
-              ))}
-            </div>
+            {resources.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No resource options are configured yet. An admin can add them
+                from the admin dashboard.
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {resources.map((resource) => (
+                  <Badge
+                    key={resource.slug}
+                    variant={
+                      selectedResourceTags.includes(resource.slug)
+                        ? "default"
+                        : "outline"
+                    }
+                    className="cursor-pointer select-none"
+                    onClick={() => toggleResourceTag(resource.slug)}
+                  >
+                    {resource.name}
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           {selectedResourceTags.length > 0 && (

@@ -36,6 +36,7 @@ export type ResourceRequestItem = {
   _creationTime: number;
   ideaId: Id<"ideas">;
   tag: string;
+  resourceName: string;
   notes?: string;
   resolved: boolean;
 };
@@ -194,6 +195,7 @@ export type UnresolvedResource = {
   _creationTime: number;
   ideaId: Id<"ideas">;
   tag: string;
+  resourceName: string;
   notes?: string;
   resolved: boolean;
   ideaTitle: string;

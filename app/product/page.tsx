@@ -6,15 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IdeaCardSkeleton } from "@/components/Skeleton";
 import {
-  RESOURCE_TAGS,
-  RESOURCE_TAG_LABELS,
   STATUSES,
   STATUS_LABELS,
   SORT_OPTIONS,
   SORT_LABELS,
 } from "@/lib/constants";
 import type { SortOption } from "@/lib/constants";
-import { useRolesList } from "@/lib/hooks";
+import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useState, useMemo } from "react";
@@ -52,6 +50,7 @@ export default function BrowsePage() {
   const ideas = useQuery(api.ideas.list) as IdeaListItem[] | undefined;
   const categoryList = useQuery(api.categories.list);
   const rolesList = useRolesList();
+  const resourcesList = useResourcesList();
   const [filters, setFilters] = useState<FilterState>({
     search: "",
     statuses: [],
@@ -271,21 +270,25 @@ export default function BrowsePage() {
               </div>
             </div>
 
-            <div>
-              <p className="text-xs text-muted-foreground mb-2">
-                Resource Needs
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {RESOURCE_TAGS.map((t) => (
-                  <FilterBadge
-                    key={t}
-                    label={RESOURCE_TAG_LABELS[t]}
-                    active={filters.resourceTags.includes(t)}
-                    onClick={() => toggleFilter("resourceTags", t)}
-                  />
-                ))}
+            {resourcesList.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  Resource Needs
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {resourcesList.map((resource) => (
+                    <FilterBadge
+                      key={resource.slug}
+                      label={resource.name}
+                      active={filters.resourceTags.includes(resource.slug)}
+                      onClick={() =>
+                        toggleFilter("resourceTags", resource.slug)
+                      }
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {categoryList && categoryList.length > 0 && (
               <div>

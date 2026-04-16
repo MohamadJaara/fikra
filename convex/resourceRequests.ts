@@ -2,9 +2,10 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAuthenticatedUser,
+  getResourceNameMap,
   getUserDisplayName,
   sanitizeText,
-  RESOURCE_TAGS,
+  validateResourceSlugs,
 } from "./lib";
 
 export const add = mutation({
@@ -14,16 +15,15 @@ export const add = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, { ideaId, tag, notes }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
-    if (idea.ownerId !== userId)
-      throw new Error("Only the owner can add resource requests");
-
-    if (!RESOURCE_TAGS.includes(tag as (typeof RESOURCE_TAGS)[number])) {
-      throw new Error("Invalid resource tag");
+    if (idea.ownerId !== userId && !user.isAdmin) {
+      throw new Error("Only the owner or an admin can add resource requests");
     }
+
+    await validateResourceSlugs(ctx, [tag]);
 
     const existing = await ctx.db
       .query("resourceRequests")
@@ -46,15 +46,18 @@ export const add = mutation({
 export const resolve = mutation({
   args: { requestId: v.id("resourceRequests") },
   handler: async (ctx, { requestId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const request = await ctx.db.get(requestId);
     if (!request) throw new Error("Resource request not found");
 
     const idea = await ctx.db.get(request.ideaId);
     if (!idea) throw new Error("Idea not found");
-    if (idea.ownerId !== userId)
-      throw new Error("Only the owner can resolve resource requests");
+    if (idea.ownerId !== userId && !user.isAdmin) {
+      throw new Error(
+        "Only the owner or an admin can resolve resource requests",
+      );
+    }
 
     await ctx.db.patch(requestId, { resolved: true });
   },
@@ -63,15 +66,18 @@ export const resolve = mutation({
 export const unresolve = mutation({
   args: { requestId: v.id("resourceRequests") },
   handler: async (ctx, { requestId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const request = await ctx.db.get(requestId);
     if (!request) throw new Error("Resource request not found");
 
     const idea = await ctx.db.get(request.ideaId);
     if (!idea) throw new Error("Idea not found");
-    if (idea.ownerId !== userId)
-      throw new Error("Only the owner can unresolve resource requests");
+    if (idea.ownerId !== userId && !user.isAdmin) {
+      throw new Error(
+        "Only the owner or an admin can unresolve resource requests",
+      );
+    }
 
     await ctx.db.patch(requestId, { resolved: false });
   },
@@ -80,15 +86,18 @@ export const unresolve = mutation({
 export const remove = mutation({
   args: { requestId: v.id("resourceRequests") },
   handler: async (ctx, { requestId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const request = await ctx.db.get(requestId);
     if (!request) throw new Error("Resource request not found");
 
     const idea = await ctx.db.get(request.ideaId);
     if (!idea) throw new Error("Idea not found");
-    if (idea.ownerId !== userId)
-      throw new Error("Only the owner can remove resource requests");
+    if (idea.ownerId !== userId && !user.isAdmin) {
+      throw new Error(
+        "Only the owner or an admin can remove resource requests",
+      );
+    }
 
     await ctx.db.delete(requestId);
   },
@@ -98,6 +107,7 @@ export const getAllUnresolved = query({
   args: {},
   handler: async (ctx) => {
     await getAuthenticatedUser(ctx);
+    const resourceNameMap = await getResourceNameMap(ctx);
 
     const unresolved = await ctx.db
       .query("resourceRequests")
@@ -110,6 +120,7 @@ export const getAllUnresolved = query({
         const owner = idea ? await ctx.db.get(idea.ownerId) : null;
         return {
           ...r,
+          resourceName: resourceNameMap[r.tag] || r.tag,
           ideaTitle: idea?.title || "Unknown",
           ideaId: r.ideaId,
           ownerName: getUserDisplayName(owner),

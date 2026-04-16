@@ -20,7 +20,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
         : null;
 
       const normalizedName =
-        args.profile.name?.trim() ||
+        (typeof args.profile.name === "string" ? args.profile.name.trim() : "") ||
         getUserDisplayName(existingUser, "").trim();
 
       const safeProfile = {

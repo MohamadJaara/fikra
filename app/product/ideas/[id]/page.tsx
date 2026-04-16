@@ -5,11 +5,9 @@ import type { Id } from "@/convex/_generated/dataModel";
 import {
   REACTION_EMOJI,
   REACTION_TYPES,
-  RESOURCE_TAG_LABELS,
   STATUS_COLORS,
   STATUS_LABELS,
   ROOM_TYPE_LABELS,
-  type ResourceTag,
   type Status,
   type RoomType,
 } from "@/lib/constants";
@@ -929,11 +927,40 @@ function TeamSection({
 }
 
 function ResourceSection({ idea }: { idea: IdeaDetail }) {
+  const viewer = useQuery(api.users.viewer);
+  const resources = useQuery(api.resources.list);
+  const addMutation = useMutation(api.resourceRequests.add);
   const resolveMutation = useMutation(api.resourceRequests.resolve);
   const unresolveMutation = useMutation(api.resourceRequests.unresolve);
   const removeMutation = useMutation(api.resourceRequests.remove);
+  const [resourceTag, setResourceTag] = useState("");
+  const [resourceNotes, setResourceNotes] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const canManageResources = idea.isOwner || Boolean(viewer?.isAdmin);
 
-  if (idea.resourceRequests.length === 0) return null;
+  const handleAddResource = async () => {
+    if (!resourceTag) return;
+
+    setIsAdding(true);
+    try {
+      await addMutation({
+        ideaId: idea._id,
+        tag: resourceTag,
+        notes: resourceNotes.trim() || undefined,
+      });
+      setResourceTag("");
+      setResourceNotes("");
+      toast.success("Resource added");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to add resource",
+      );
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  if (idea.resourceRequests.length === 0 && !canManageResources) return null;
 
   return (
     <div>
@@ -944,6 +971,41 @@ function ResourceSection({ idea }: { idea: IdeaDetail }) {
         }{" "}
         unresolved)
       </h2>
+      {canManageResources && resources && resources.length > 0 && (
+        <div className="mb-4 border rounded-lg p-3 space-y-3">
+          <p className="text-sm font-medium">Add Resource Request</p>
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto]">
+            <Select value={resourceTag} onValueChange={setResourceTag}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a resource" />
+              </SelectTrigger>
+              <SelectContent>
+                {resources.map((resource) => (
+                  <SelectItem key={resource._id} value={resource.slug}>
+                    {resource.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              placeholder="Optional notes"
+              value={resourceNotes}
+              onChange={(e) => setResourceNotes(e.target.value)}
+              maxLength={1000}
+            />
+            <Button
+              onClick={() => void handleAddResource()}
+              disabled={isAdding || !resourceTag}
+            >
+              {isAdding ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Add"
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="space-y-2">
         {idea.resourceRequests.map((req) => (
           <div
@@ -961,15 +1023,15 @@ function ResourceSection({ idea }: { idea: IdeaDetail }) {
                   req.resolved ? "line-through text-muted-foreground" : ""
                 }
               >
-                {RESOURCE_TAG_LABELS[req.tag as ResourceTag] || req.tag}
+                {req.resourceName}
               </span>
               {req.notes && (
                 <span className="text-xs text-muted-foreground">
-                  — {req.notes}
+                  - {req.notes}
                 </span>
               )}
             </div>
-            {idea.isOwner && (
+            {canManageResources && (
               <div className="flex gap-1">
                 {req.resolved ? (
                   <Button
