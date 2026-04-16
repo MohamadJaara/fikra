@@ -548,11 +548,12 @@ export const list = query({
           .map((r) => r.type);
 
         const filledRoles = new Set(
-          members.flatMap((m) =>
-            mergeUniqueStringArrays(
-              m.memberRoles,
-              m.role ? [m.role] : undefined,
-            ) ?? [],
+          members.flatMap(
+            (m) =>
+              mergeUniqueStringArrays(
+                m.memberRoles,
+                m.role ? [m.role] : undefined,
+              ) ?? [],
           ),
         );
         const missingRoles = idea.lookingForRoles.filter(
@@ -706,11 +707,6 @@ export const get = query({
     const filledRoles = new Set<string>();
     for (const member of memberDetails) {
       for (const r of member.memberRoles ?? []) {
-        filledRoles.add(r);
-      }
-    }
-    for (const md of memberDetails) {
-      for (const r of md.roles ?? []) {
         filledRoles.add(r);
       }
     }
