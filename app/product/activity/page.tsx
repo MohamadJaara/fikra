@@ -132,27 +132,31 @@ export default function ActivityPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {unresolvedResources.map((req, i) => (
                 <Link key={req._id} href={`/product/ideas/${req.ideaId}`}>
                   <Card
                     className={`hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                   >
-                    <CardContent className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{req.resourceName}</Badge>
-                        <div>
-                          <p className="text-sm font-medium">{req.ideaTitle}</p>
-                          <p className="text-xs text-muted-foreground">
-                            by {req.ownerName}
-                          </p>
+                    <CardContent className="px-5 py-4">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <Badge variant="outline" className="shrink-0">
+                          {req.resourceName}
+                        </Badge>
+                        <div className="min-w-0 space-y-1">
+                          <div>
+                            <p className="text-sm font-medium">{req.ideaTitle}</p>
+                            <p className="text-xs text-muted-foreground">
+                              by {req.ownerName}
+                            </p>
+                          </div>
+                          {req.notes && (
+                            <p className="text-sm text-muted-foreground break-words">
+                              {req.notes}
+                            </p>
+                          )}
                         </div>
                       </div>
-                      {req.notes && (
-                        <p className="text-xs text-muted-foreground max-w-[200px] truncate">
-                          {req.notes}
-                        </p>
-                      )}
                     </CardContent>
                   </Card>
                 </Link>
