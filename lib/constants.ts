@@ -36,6 +36,21 @@ export const STATUS_COLORS: Record<Status, string> = {
   building: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
 };
 
+export const PARTICIPATION_MODES = ["onsite", "remote"] as const;
+export type ParticipationMode = (typeof PARTICIPATION_MODES)[number];
+
+export const PARTICIPATION_MODE_LABELS: Record<ParticipationMode, string> = {
+  onsite: "On-site",
+  remote: "Remote",
+};
+
+export const PARTICIPATION_MODE_COLORS: Record<ParticipationMode, string> = {
+  onsite:
+    "text-blue-700 border-blue-400 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950",
+  remote:
+    "text-purple-700 border-purple-400 bg-purple-50 dark:text-purple-300 dark:border-purple-700 dark:bg-purple-950",
+};
+
 export const ROOM_TYPES = ["team", "shared"] as const;
 export type RoomType = (typeof ROOM_TYPES)[number];
 

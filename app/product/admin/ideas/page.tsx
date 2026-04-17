@@ -21,7 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Search, Lightbulb, Trash2, DoorOpen } from "lucide-react";
+import {
+  ArrowLeft,
+  Search,
+  Lightbulb,
+  Trash2,
+  DoorOpen,
+  MapPin,
+} from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
@@ -34,6 +41,7 @@ export default function AdminIdeasPage() {
   const ideas = useQuery(api.admin.listIdeas);
   const deleteIdea = useMutation(api.admin.deleteIdea);
   const updateIdeaStatus = useMutation(api.admin.updateIdeaStatus);
+  const updateIdeaOnsiteOnly = useMutation(api.admin.updateIdeaOnsiteOnly);
   const roleLabels = useRolesMap();
   const [search, setSearch] = useState("");
 
@@ -63,6 +71,20 @@ export default function AdminIdeasPage() {
     try {
       await updateIdeaStatus({ ideaId, status });
       toast.success("Status updated");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update");
+    }
+  };
+
+  const handleOnsiteOnlyChange = async (
+    ideaId: Id<"ideas">,
+    onsiteOnly: boolean,
+  ) => {
+    try {
+      await updateIdeaOnsiteOnly({ ideaId, onsiteOnly });
+      toast.success(
+        onsiteOnly ? "Set to on-site only" : "Removed on-site restriction",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update");
     }
@@ -119,6 +141,7 @@ export default function AdminIdeasPage() {
                 <TableHead>Comments</TableHead>
                 <TableHead>Missing Roles</TableHead>
                 <TableHead>Room</TableHead>
+                <TableHead>On-site</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -126,7 +149,7 @@ export default function AdminIdeasPage() {
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={9}
+                    colSpan={10}
                     className="text-center py-8 text-muted-foreground"
                   >
                     {search ? "No ideas match your search" : "No ideas found"}
@@ -207,6 +230,28 @@ export default function AdminIdeasPage() {
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <label className="flex items-center gap-1.5 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={idea.onsiteOnly ?? false}
+                          onChange={(e) =>
+                            handleOnsiteOnlyChange(idea._id, e.target.checked)
+                          }
+                          className="h-4 w-4 rounded border-border accent-primary"
+                        />
+                        <span className="text-xs">
+                          {idea.onsiteOnly ? (
+                            <span className="flex items-center gap-1 text-blue-700 dark:text-blue-300">
+                              <MapPin className="h-3 w-3" />
+                              On-site
+                            </span>
+                          ) : (
+                            "Open to all"
+                          )}
+                        </span>
+                      </label>
                     </TableCell>
                     <TableCell className="text-right">
                       <Button

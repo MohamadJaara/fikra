@@ -7,6 +7,7 @@ import {
   getUserDisplayName,
   mergeUniqueStringArrays,
   validateRoleSlugs,
+  PARTICIPATION_MODES,
 } from "./lib";
 import type { Doc } from "./_generated/dataModel";
 
@@ -20,6 +21,7 @@ function pickPublicFields(user: Doc<"users">) {
     image: user.image,
     roles: user.roles,
     handle: user.handle,
+    participationMode: user.participationMode,
   };
 }
 
@@ -96,8 +98,9 @@ export const completeOnboarding = mutation({
     firstName: v.string(),
     lastName: v.string(),
     roles: v.array(v.string()),
+    participationMode: v.optional(v.string()),
   },
-  handler: async (ctx, { firstName, lastName, roles }) => {
+  handler: async (ctx, { firstName, lastName, roles, participationMode }) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
@@ -114,6 +117,14 @@ export const completeOnboarding = mutation({
       ? await generateUniqueHandle(ctx, user.email, userId)
       : undefined;
     await validateRoleSlugs(ctx, roles);
+    if (
+      participationMode !== undefined &&
+      !PARTICIPATION_MODES.includes(
+        participationMode as (typeof PARTICIPATION_MODES)[number],
+      )
+    ) {
+      throw new Error("Invalid participation mode");
+    }
     await ctx.db.patch(userId, {
       firstName: trimmedFirst,
       lastName: trimmedLast,
@@ -121,6 +132,7 @@ export const completeOnboarding = mutation({
       name: `${trimmedFirst} ${trimmedLast}`.trim(),
       onboardingComplete: true,
       handle,
+      participationMode,
     });
   },
 });
@@ -211,8 +223,9 @@ export const updateProfile = mutation({
     firstName: v.string(),
     lastName: v.string(),
     roles: v.array(v.string()),
+    participationMode: v.optional(v.string()),
   },
-  handler: async (ctx, { firstName, lastName, roles }) => {
+  handler: async (ctx, { firstName, lastName, roles, participationMode }) => {
     const { userId } = await getAuthenticatedUser(ctx);
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
@@ -226,11 +239,38 @@ export const updateProfile = mutation({
       throw new Error("Last name must be at most 100 characters");
     }
     await validateRoleSlugs(ctx, roles);
+    if (
+      participationMode !== undefined &&
+      !PARTICIPATION_MODES.includes(
+        participationMode as (typeof PARTICIPATION_MODES)[number],
+      )
+    ) {
+      throw new Error("Invalid participation mode");
+    }
     await ctx.db.patch(userId, {
       firstName: trimmedFirst,
       lastName: trimmedLast,
       roles: roles,
       name: `${trimmedFirst} ${trimmedLast}`.trim(),
+      participationMode,
+    });
+  },
+});
+
+export const setParticipationMode = mutation({
+  args: { mode: v.optional(v.string()) },
+  handler: async (ctx, { mode }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+    if (
+      mode !== undefined &&
+      !PARTICIPATION_MODES.includes(
+        mode as (typeof PARTICIPATION_MODES)[number],
+      )
+    ) {
+      throw new Error("Invalid participation mode");
+    }
+    await ctx.db.patch(userId, {
+      participationMode: mode,
     });
   },
 });

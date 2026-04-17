@@ -62,6 +62,7 @@ export default function EditIdeaPage({
         status: data.status,
         lookingForRoles: data.lookingForRoles,
         categoryId: data.categoryId as any,
+        onsiteOnly: data.onsiteOnly,
       });
       toast.success("Idea updated!");
       router.push(`/product/ideas/${id}`);
@@ -97,6 +98,7 @@ export default function EditIdeaPage({
           status: idea.status,
           lookingForRoles: idea.lookingForRoles,
           categoryId: idea.categoryId ?? "",
+          onsiteOnly: idea.onsiteOnly,
         }}
         onSubmit={handleSubmit}
         isEditing

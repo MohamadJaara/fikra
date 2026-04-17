@@ -11,13 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  STATUSES,
-  STATUS_LABELS,
-} from "@/lib/constants";
+import { STATUSES, STATUS_LABELS } from "@/lib/constants";
 import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -34,6 +31,7 @@ export type IdeaFormData = {
   resourceTags?: string[];
   resourceNotes?: string;
   categoryId?: string;
+  onsiteOnly?: boolean;
 };
 
 type IdeaFormProps = {
@@ -72,6 +70,9 @@ export function IdeaForm({
     initialData?.resourceNotes || "",
   );
   const [categoryId, setCategoryId] = useState(initialData?.categoryId || "");
+  const [onsiteOnly, setOnsiteOnly] = useState(
+    initialData?.onsiteOnly || false,
+  );
   const categories = useQuery(api.categories.list);
   const roles = useRolesList();
   const resources = useResourcesList();
@@ -106,6 +107,7 @@ export function IdeaForm({
       resourceTags: isEditing ? undefined : selectedResourceTags,
       resourceNotes: isEditing ? undefined : resourceNotes || undefined,
       categoryId: categoryId || undefined,
+      onsiteOnly,
     });
   };
 
@@ -223,6 +225,23 @@ export function IdeaForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={onsiteOnly}
+            onChange={(e) => setOnsiteOnly(e.target.checked)}
+            className="h-4 w-4 rounded border-border accent-primary"
+          />
+          <MapPin className="h-4 w-4" />
+          On-site participants only
+        </Label>
+        <p className="text-xs text-muted-foreground">
+          When enabled, only on-site participants can join this team. Remote
+          participants will not be able to join.
+        </p>
       </div>
 
       <div className="space-y-2">

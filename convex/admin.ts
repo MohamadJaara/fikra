@@ -155,6 +155,7 @@ export const listIdeas = query({
           roomName: idea.roomId
             ? ((await ctx.db.get(idea.roomId))?.name ?? null)
             : null,
+          onsiteOnly: idea.onsiteOnly ?? false,
         };
       }),
     );
@@ -283,5 +284,20 @@ export const deleteComment = mutation({
 
     await deleteReplies(commentId);
     await ctx.db.delete(commentId);
+  },
+});
+
+export const updateIdeaOnsiteOnly = mutation({
+  args: {
+    ideaId: v.id("ideas"),
+    onsiteOnly: v.boolean(),
+  },
+  handler: async (ctx, { ideaId, onsiteOnly }) => {
+    await getAdminUser(ctx);
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+
+    await ctx.db.patch(ideaId, { onsiteOnly });
   },
 });

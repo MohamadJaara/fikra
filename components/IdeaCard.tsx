@@ -12,7 +12,7 @@ import {
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 import type { IdeaListItem } from "@/lib/types";
-import { Users, Package, Heart } from "lucide-react";
+import { Users, Package, Heart, MapPin } from "lucide-react";
 import Link from "next/link";
 import { UserLink, UserAvatar } from "@/components/UserLink";
 
@@ -50,6 +50,15 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
               >
                 {STATUS_LABELS[idea.status as Status] || idea.status}
               </Badge>
+              {idea.onsiteOnly && (
+                <Badge
+                  variant="outline"
+                  className="text-[11px] text-blue-700 border-blue-400 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950"
+                >
+                  <MapPin className="h-3 w-3 mr-0.5" />
+                  On-site
+                </Badge>
+              )}
             </div>
           </div>
           <p className="text-sm text-muted-foreground line-clamp-2">

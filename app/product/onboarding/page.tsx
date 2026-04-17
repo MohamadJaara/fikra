@@ -15,9 +15,16 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
+import {
+  PARTICIPATION_MODES,
+  PARTICIPATION_MODE_LABELS,
+  PARTICIPATION_MODE_COLORS,
+  type ParticipationMode,
+} from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 import { toast, Toaster } from "sonner";
-import { Lightbulb, ArrowRight } from "lucide-react";
+import { Lightbulb, ArrowRight, MapPin, Wifi } from "lucide-react";
 
 function parseNameFromEmail(email: string): {
   firstName: string;
@@ -51,6 +58,9 @@ export default function OnboardingPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [participationMode, setParticipationMode] = useState<
+    ParticipationMode | undefined
+  >(undefined);
   const [initialized, setInitialized] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -90,6 +100,7 @@ export default function OnboardingPage() {
         firstName,
         lastName,
         roles: selectedRoles,
+        participationMode,
       });
       toast.success("Profile set up!");
       router.push("/product");
@@ -158,6 +169,38 @@ export default function OnboardingPage() {
                     onClick={() => toggleRole(role.slug)}
                   >
                     {role.name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label>Participation Mode</Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-3">
+                Are you joining the hackathon on-site or remotely?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PARTICIPATION_MODES.map((mode) => (
+                  <Badge
+                    key={mode}
+                    variant={participationMode === mode ? "default" : "outline"}
+                    className={cn(
+                      "cursor-pointer select-none text-sm px-3 py-1.5",
+                      participationMode === mode &&
+                        PARTICIPATION_MODE_COLORS[mode],
+                    )}
+                    onClick={() =>
+                      setParticipationMode((prev) =>
+                        prev === mode ? undefined : mode,
+                      )
+                    }
+                  >
+                    {mode === "onsite" ? (
+                      <MapPin className="h-3 w-3 mr-1.5" />
+                    ) : (
+                      <Wifi className="h-3 w-3 mr-1.5" />
+                    )}
+                    {PARTICIPATION_MODE_LABELS[mode]}
                   </Badge>
                 ))}
               </div>

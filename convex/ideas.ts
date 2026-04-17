@@ -35,6 +35,7 @@ export const create = mutation({
     resourceTags: v.optional(v.array(v.string())),
     resourceNotes: v.optional(v.string()),
     categoryId: v.id("categories"),
+    onsiteOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { userId } = await getAuthenticatedUser(ctx);
@@ -69,6 +70,7 @@ export const create = mutation({
       lookingForRoles: args.lookingForRoles,
       ownerId: userId,
       categoryId: args.categoryId,
+      onsiteOnly: args.onsiteOnly ?? false,
     });
 
     await ctx.db.insert("ideaMembers", {
@@ -89,12 +91,7 @@ export const create = mutation({
 
       const notes = args.resourceNotes
         ? sanitizeText(
-            validateStringLength(
-              args.resourceNotes,
-              0,
-              1000,
-              "Resource notes",
-            ),
+            validateStringLength(args.resourceNotes, 0, 1000, "Resource notes"),
           )
         : undefined;
 
@@ -124,6 +121,7 @@ export const update = mutation({
     status: v.string(),
     lookingForRoles: v.array(v.string()),
     categoryId: v.optional(v.id("categories")),
+    onsiteOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const { userId } = await getAuthenticatedUser(ctx);
@@ -161,6 +159,7 @@ export const update = mutation({
       status: args.status,
       lookingForRoles: args.lookingForRoles,
       categoryId: args.categoryId,
+      onsiteOnly: args.onsiteOnly ?? false,
     });
   },
 });
@@ -675,6 +674,7 @@ export const get = query({
           handle: u?.handle,
           ...(isOwner ? { email: u?.email } : {}),
           roles: u?.roles,
+          participationMode: u?.participationMode,
         };
       }),
     );
@@ -693,6 +693,7 @@ export const get = query({
           image: u?.image,
           handle: u?.handle,
           roles: u?.roles,
+          participationMode: u?.participationMode,
         };
       }),
     );

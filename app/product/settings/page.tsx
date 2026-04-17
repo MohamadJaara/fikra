@@ -15,8 +15,15 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import {
+  PARTICIPATION_MODES,
+  PARTICIPATION_MODE_LABELS,
+  PARTICIPATION_MODE_COLORS,
+  type ParticipationMode,
+} from "@/lib/constants";
 import { toast, Toaster } from "sonner";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, MapPin, Wifi } from "lucide-react";
 import Link from "next/link";
 
 export default function SettingsPage() {
@@ -27,6 +34,9 @@ export default function SettingsPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [participationMode, setParticipationMode] = useState<
+    ParticipationMode | undefined
+  >(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -37,6 +47,9 @@ export default function SettingsPage() {
       if (viewer.roles) {
         setSelectedRoles(viewer.roles);
       }
+      setParticipationMode(
+        viewer.participationMode as ParticipationMode | undefined,
+      );
       setLoaded(true);
     }
   }, [viewer, loaded]);
@@ -65,6 +78,7 @@ export default function SettingsPage() {
         firstName,
         lastName,
         roles: selectedRoles,
+        participationMode,
       });
       toast.success("Profile updated!");
     } catch (error) {
@@ -157,6 +171,51 @@ export default function SettingsPage() {
                   {role.name}
                 </Badge>
               ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Participation Mode</CardTitle>
+            <CardDescription>
+              Are you joining the hackathon on-site or remotely? This is shown
+              on your profile and helps team owners match participants.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {PARTICIPATION_MODES.map((mode) => (
+                <Badge
+                  key={mode}
+                  variant={participationMode === mode ? "default" : "outline"}
+                  className={cn(
+                    "cursor-pointer select-none text-sm px-3 py-1.5",
+                    participationMode === mode &&
+                      PARTICIPATION_MODE_COLORS[mode],
+                  )}
+                  onClick={() =>
+                    setParticipationMode((prev) =>
+                      prev === mode ? undefined : mode,
+                    )
+                  }
+                >
+                  {mode === "onsite" ? (
+                    <MapPin className="h-3 w-3 mr-1.5" />
+                  ) : (
+                    <Wifi className="h-3 w-3 mr-1.5" />
+                  )}
+                  {PARTICIPATION_MODE_LABELS[mode]}
+                </Badge>
+              ))}
+              {!participationMode && (
+                <Badge
+                  variant="secondary"
+                  className="text-sm px-3 py-1.5 text-muted-foreground"
+                >
+                  Not decided yet
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>

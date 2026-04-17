@@ -16,6 +16,7 @@ export default defineSchema({
     onboardingComplete: v.optional(v.boolean()),
     handle: v.optional(v.string()),
     isAdmin: v.optional(v.boolean()),
+    participationMode: v.optional(v.string()),
   })
     .index("email", ["email"])
     .index("handle", ["handle"])
@@ -70,6 +71,7 @@ export default defineSchema({
     ownerId: v.id("users"),
     categoryId: v.optional(v.id("categories")),
     roomId: v.optional(v.id("rooms")),
+    onsiteOnly: v.optional(v.boolean()),
   })
     .index("by_owner", ["ownerId"])
     .index("by_status", ["status"])

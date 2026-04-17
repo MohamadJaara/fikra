@@ -14,7 +14,7 @@ export const join = mutation({
     memberRoles: v.optional(v.array(v.string())),
   },
   handler: async (ctx, { ideaId, memberRoles }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
@@ -26,6 +26,12 @@ export const join = mutation({
       )
       .first();
     if (existing) throw new Error("Already a member");
+
+    if (idea.onsiteOnly && user.participationMode !== "onsite") {
+      throw new Error(
+        "This team is limited to on-site participants only. Update your participation mode to on-site in settings to join.",
+      );
+    }
 
     const roles = normalizeOptionalStringArray(memberRoles);
     if (roles) {

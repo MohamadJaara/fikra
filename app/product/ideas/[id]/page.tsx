@@ -8,8 +8,11 @@ import {
   STATUS_COLORS,
   STATUS_LABELS,
   ROOM_TYPE_LABELS,
+  PARTICIPATION_MODE_LABELS,
+  PARTICIPATION_MODE_COLORS,
   type Status,
   type RoomType,
+  type ParticipationMode,
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 import type { IdeaDetail, CommentItem } from "@/lib/types";
@@ -72,6 +75,8 @@ import {
   Search,
   AlertTriangle,
   DoorOpen,
+  MapPin,
+  Wifi,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -196,6 +201,15 @@ function IdeaHeader({ idea }: { idea: IdeaDetail }) {
           >
             {STATUS_LABELS[idea.status as Status] || idea.status}
           </Badge>
+          {idea.onsiteOnly && (
+            <Badge
+              variant="outline"
+              className="text-blue-700 border-blue-400 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950"
+            >
+              <MapPin className="h-3 w-3 mr-1" />
+              On-site only
+            </Badge>
+          )}
         </div>
       </div>
       <p className="text-muted-foreground">{idea.pitch}</p>
@@ -453,6 +467,7 @@ function TeamSection({
   const leaveMutation = useMutation(api.memberships.leave);
   const requestOwnershipMutation = useMutation(api.ideas.requestOwnership);
   const roles = useQuery(api.roles.list);
+  const viewer = useQuery(api.users.viewer);
   const roleLabels = useMemo(() => {
     if (!roles) return {} as Record<string, string>;
     const map: Record<string, string> = {};
@@ -649,6 +664,40 @@ function TeamSection({
                   Owner
                 </Badge>
               )}
+              {member.participationMode &&
+              PARTICIPATION_MODE_LABELS[
+                member.participationMode as ParticipationMode
+              ] ? (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 ${PARTICIPATION_MODE_COLORS[member.participationMode as ParticipationMode]}`}
+                >
+                  {member.participationMode === "onsite" ? (
+                    <MapPin className="h-2.5 w-2.5 mr-0.5" />
+                  ) : (
+                    <Wifi className="h-2.5 w-2.5 mr-0.5" />
+                  )}
+                  {
+                    PARTICIPATION_MODE_LABELS[
+                      member.participationMode as ParticipationMode
+                    ]
+                  }
+                </Badge>
+              ) : (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                >
+                  Mode not set
+                </Badge>
+              )}
+              {idea.onsiteOnly &&
+                member.participationMode !== "onsite" &&
+                member.userId !== idea.ownerId && (
+                  <span className="text-[10px] text-amber-600 dark:text-amber-400">
+                    This team requires on-site participation
+                  </span>
+                )}
             </div>
           ))}
         </div>
@@ -709,215 +758,237 @@ function TeamSection({
             </>
           ) : (
             <>
-              <div className="flex-1 min-w-[260px] rounded-xl border bg-muted/20 px-4 py-3">
-                <p className="text-sm font-medium">
-                  {requestedJoinRoles.length > 0
-                    ? "The owner is actively looking for these roles"
-                    : "Choose how you want to contribute"}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {requestedJoinRoles.length > 0
-                    ? "Open the join flow, pick one or more roles, then confirm your spot on the team."
-                    : "Open the join flow to choose the role or skills you want to bring."}
-                </p>
-                {requestedRoleOptions.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {requestedRoleOptions.map((role) => (
-                      <Badge
-                        key={role.slug}
-                        variant="outline"
-                        className="border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300"
-                      >
-                        {role.name}
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <Dialog
-                open={isJoinDialogOpen}
-                onOpenChange={(open) => {
-                  setIsJoinDialogOpen(open);
-                  if (!open && !isJoining) {
-                    setSelectedRoles(new Set());
-                  }
-                }}
-              >
-                <DialogTrigger asChild>
-                  <Button size="sm" disabled={areRolesLoading}>
-                    {areRolesLoading ? (
-                      <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                    ) : (
-                      <UserPlus className="h-4 w-4 mr-1" />
+              {idea.onsiteOnly && viewer?.participationMode !== "onsite" && (
+                <div className="w-full rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 px-4 py-3">
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    This team is limited to on-site participants only
+                  </p>
+                  <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+                    {viewer?.participationMode === "remote"
+                      ? 'Your participation mode is set to "Remote." Update it to "On-site" in Settings to join.'
+                      : 'Set your participation mode to "On-site" in Settings to join this team.'}
+                  </p>
+                </div>
+              )}
+              {!(idea.onsiteOnly && viewer?.participationMode !== "onsite") ? (
+                <>
+                  <div className="flex-1 min-w-[260px] rounded-xl border bg-muted/20 px-4 py-3">
+                    <p className="text-sm font-medium">
+                      {requestedJoinRoles.length > 0
+                        ? "The owner is actively looking for these roles"
+                        : "Choose how you want to contribute"}
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {requestedJoinRoles.length > 0
+                        ? "Open the join flow, pick one or more roles, then confirm your spot on the team."
+                        : "Open the join flow to choose the role or skills you want to bring."}
+                    </p>
+                    {requestedRoleOptions.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {requestedRoleOptions.map((role) => (
+                          <Badge
+                            key={role.slug}
+                            variant="outline"
+                            className="border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300"
+                          >
+                            {role.name}
+                          </Badge>
+                        ))}
+                      </div>
                     )}
-                    {areRolesLoading ? "Loading roles..." : "Join Team"}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-2xl">
-                  <DialogHeader>
-                    <DialogTitle>Join {idea.title}</DialogTitle>
-                    <DialogDescription>
-                      This flow makes the choice explicit: first pick what you
-                      will help with, then confirm your join request.
-                    </DialogDescription>
-                  </DialogHeader>
-
-                  <div className="space-y-5">
-                    <div className="rounded-xl border bg-muted/20 p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                          1
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-medium">Choose your role</p>
-                          <p className="text-sm text-muted-foreground">
-                            {areRolesLoading
-                              ? "We’re loading the available roles before you join."
-                              : requiresRoleSelection
-                                ? "Pick at least one role so the owner knows how you want to contribute."
-                                : "No roles have been configured yet, so you can join directly."}
-                          </p>
-                        </div>
-                      </div>
-
-                      {requestedRoleOptions.length > 0 && (
-                        <div className="mt-4">
-                          <div className="mb-2 flex items-center justify-between gap-2">
-                            <p className="text-sm font-medium text-foreground">
-                              Requested by owner
-                            </p>
-                            <span className="text-xs text-orange-700 dark:text-orange-300">
-                              Best place to start
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            {requestedRoleOptions.map((role) => {
-                              const isSelected = selectedRoles.has(role.slug);
-                              return (
-                                <button
-                                  key={role.slug}
-                                  type="button"
-                                  onClick={() => toggleRole(role.slug)}
-                                  className={cn(
-                                    "inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                                    isSelected
-                                      ? "border-primary bg-primary text-primary-foreground"
-                                      : "border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200",
-                                  )}
-                                >
-                                  <span
-                                    className={cn(
-                                      "inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px]",
-                                      isSelected
-                                        ? "border-primary-foreground/40"
-                                        : "border-orange-400/70 text-orange-600 dark:border-orange-700 dark:text-orange-300",
-                                    )}
-                                  >
-                                    {isSelected ? (
-                                      <Check className="h-3 w-3" />
-                                    ) : (
-                                      "1"
-                                    )}
-                                  </span>
-                                  {role.name}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {optionalRoleOptions.length > 0 && (
-                        <div className="mt-4">
-                          <p className="mb-2 text-sm font-medium text-muted-foreground">
-                            Other roles you can bring
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {optionalRoleOptions.map((role) => {
-                              const isSelected = selectedRoles.has(role.slug);
-                              return (
-                                <button
-                                  key={role.slug}
-                                  type="button"
-                                  onClick={() => toggleRole(role.slug)}
-                                  className={cn(
-                                    "inline-flex min-h-10 items-center rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                                    isSelected
-                                      ? "border-primary bg-primary text-primary-foreground"
-                                      : "border-border bg-muted/35 text-muted-foreground hover:border-muted-foreground/30 hover:bg-muted/60",
-                                  )}
-                                >
-                                  {role.name}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="rounded-xl border p-4">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                          2
-                        </div>
-                        <div className="space-y-1">
-                          <p className="font-medium">Review before joining</p>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedRoleNames.length > 0
-                              ? `You’re joining as ${selectedRoleNames.join(", ")}.`
-                              : requiresRoleSelection
-                                ? "No role selected yet. Choose at least one role to continue."
-                                : "You can confirm and join the team now."}
-                          </p>
-                        </div>
-                      </div>
-
-                      {selectedRoleNames.length > 0 && (
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {selectedRoleNames.map((role) => (
-                            <Badge key={role} variant="secondary">
-                              {role}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
                   </div>
 
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsJoinDialogOpen(false)}
-                      disabled={isJoining}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleJoin}
-                      disabled={
-                        isJoining ||
-                        areRolesLoading ||
-                        (requiresRoleSelection && selectedRoles.size === 0)
+                  <Dialog
+                    open={isJoinDialogOpen}
+                    onOpenChange={(open) => {
+                      setIsJoinDialogOpen(open);
+                      if (!open && !isJoining) {
+                        setSelectedRoles(new Set());
                       }
-                    >
-                      {isJoining ? (
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                      ) : (
-                        <UserPlus className="h-4 w-4 mr-1" />
-                      )}
-                      {selectedRoles.size > 0
-                        ? `Join with ${selectedRoles.size} role${selectedRoles.size === 1 ? "" : "s"}`
-                        : areRolesLoading
-                          ? "Loading roles..."
-                          : requiresRoleSelection
-                            ? "Select a role first"
-                            : "Join team"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button size="sm" disabled={areRolesLoading}>
+                        {areRolesLoading ? (
+                          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <UserPlus className="h-4 w-4 mr-1" />
+                        )}
+                        {areRolesLoading ? "Loading roles..." : "Join Team"}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle>Join {idea.title}</DialogTitle>
+                        <DialogDescription>
+                          This flow makes the choice explicit: first pick what
+                          you will help with, then confirm your join request.
+                        </DialogDescription>
+                      </DialogHeader>
+
+                      <div className="space-y-5">
+                        <div className="rounded-xl border bg-muted/20 p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                              1
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-medium">Choose your role</p>
+                              <p className="text-sm text-muted-foreground">
+                                {areRolesLoading
+                                  ? "We’re loading the available roles before you join."
+                                  : requiresRoleSelection
+                                    ? "Pick at least one role so the owner knows how you want to contribute."
+                                    : "No roles have been configured yet, so you can join directly."}
+                              </p>
+                            </div>
+                          </div>
+
+                          {requestedRoleOptions.length > 0 && (
+                            <div className="mt-4">
+                              <div className="mb-2 flex items-center justify-between gap-2">
+                                <p className="text-sm font-medium text-foreground">
+                                  Requested by owner
+                                </p>
+                                <span className="text-xs text-orange-700 dark:text-orange-300">
+                                  Best place to start
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {requestedRoleOptions.map((role) => {
+                                  const isSelected = selectedRoles.has(
+                                    role.slug,
+                                  );
+                                  return (
+                                    <button
+                                      key={role.slug}
+                                      type="button"
+                                      onClick={() => toggleRole(role.slug)}
+                                      className={cn(
+                                        "inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                                        isSelected
+                                          ? "border-primary bg-primary text-primary-foreground"
+                                          : "border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200",
+                                      )}
+                                    >
+                                      <span
+                                        className={cn(
+                                          "inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px]",
+                                          isSelected
+                                            ? "border-primary-foreground/40"
+                                            : "border-orange-400/70 text-orange-600 dark:border-orange-700 dark:text-orange-300",
+                                        )}
+                                      >
+                                        {isSelected ? (
+                                          <Check className="h-3 w-3" />
+                                        ) : (
+                                          "1"
+                                        )}
+                                      </span>
+                                      {role.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {optionalRoleOptions.length > 0 && (
+                            <div className="mt-4">
+                              <p className="mb-2 text-sm font-medium text-muted-foreground">
+                                Other roles you can bring
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {optionalRoleOptions.map((role) => {
+                                  const isSelected = selectedRoles.has(
+                                    role.slug,
+                                  );
+                                  return (
+                                    <button
+                                      key={role.slug}
+                                      type="button"
+                                      onClick={() => toggleRole(role.slug)}
+                                      className={cn(
+                                        "inline-flex min-h-10 items-center rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                                        isSelected
+                                          ? "border-primary bg-primary text-primary-foreground"
+                                          : "border-border bg-muted/35 text-muted-foreground hover:border-muted-foreground/30 hover:bg-muted/60",
+                                      )}
+                                    >
+                                      {role.name}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-xl border p-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                              2
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-medium">
+                                Review before joining
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {selectedRoleNames.length > 0
+                                  ? `You’re joining as ${selectedRoleNames.join(", ")}.`
+                                  : requiresRoleSelection
+                                    ? "No role selected yet. Choose at least one role to continue."
+                                    : "You can confirm and join the team now."}
+                              </p>
+                            </div>
+                          </div>
+
+                          {selectedRoleNames.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                              {selectedRoleNames.map((role) => (
+                                <Badge key={role} variant="secondary">
+                                  {role}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <DialogFooter>
+                        <Button
+                          variant="outline"
+                          onClick={() => setIsJoinDialogOpen(false)}
+                          disabled={isJoining}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleJoin}
+                          disabled={
+                            isJoining ||
+                            areRolesLoading ||
+                            (requiresRoleSelection && selectedRoles.size === 0)
+                          }
+                        >
+                          {isJoining ? (
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                          ) : (
+                            <UserPlus className="h-4 w-4 mr-1" />
+                          )}
+                          {selectedRoles.size > 0
+                            ? `Join with ${selectedRoles.size} role${selectedRoles.size === 1 ? "" : "s"}`
+                            : areRolesLoading
+                              ? "Loading roles..."
+                              : requiresRoleSelection
+                                ? "Select a role first"
+                                : "Join team"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              ) : null}
             </>
           )}
         </div>
@@ -997,11 +1068,7 @@ function ResourceSection({ idea }: { idea: IdeaDetail }) {
               onClick={() => void handleAddResource()}
               disabled={isAdding || !resourceTag}
             >
-              {isAdding ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Add"
-              )}
+              {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
             </Button>
           </div>
         </div>
@@ -1216,6 +1283,33 @@ function InterestSection({
                     </Badge>
                   );
                 })}
+              {user.participationMode &&
+              PARTICIPATION_MODE_LABELS[
+                user.participationMode as ParticipationMode
+              ] ? (
+                <Badge
+                  variant="outline"
+                  className={`text-[10px] px-1.5 py-0 ${PARTICIPATION_MODE_COLORS[user.participationMode as ParticipationMode]}`}
+                >
+                  {user.participationMode === "onsite" ? (
+                    <MapPin className="h-2.5 w-2.5 mr-0.5" />
+                  ) : (
+                    <Wifi className="h-2.5 w-2.5 mr-0.5" />
+                  )}
+                  {
+                    PARTICIPATION_MODE_LABELS[
+                      user.participationMode as ParticipationMode
+                    ]
+                  }
+                </Badge>
+              ) : (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                >
+                  Mode not set
+                </Badge>
+              )}
             </div>
           ))}
         </div>

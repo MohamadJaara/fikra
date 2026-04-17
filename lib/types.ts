@@ -29,6 +29,7 @@ export type IdeaListItem = {
   isInterested: boolean;
   isOwner: boolean;
   room: IdeaRoomInfo | null;
+  onsiteOnly?: boolean;
 };
 
 export type ResourceRequestItem = {
@@ -52,6 +53,7 @@ export type IdeaMember = {
   email?: string;
   roles?: string[];
   handle?: string;
+  participationMode?: string;
 };
 
 export type InterestedUser = {
@@ -63,6 +65,7 @@ export type InterestedUser = {
   image?: string;
   roles?: string[];
   handle?: string;
+  participationMode?: string;
 };
 
 export type OwnershipTransferRequest = {
@@ -115,6 +118,7 @@ export type IdeaDetail = {
   isInterested: boolean;
   isOwner: boolean;
   room: IdeaRoomInfo | null;
+  onsiteOnly?: boolean;
 };
 
 export type MentionedUser = {
@@ -175,6 +179,7 @@ export type PublicUser = {
   image?: string;
   roles?: string[];
   handle?: string;
+  participationMode?: string;
 };
 
 export type UserProfile = {
@@ -186,6 +191,7 @@ export type UserProfile = {
   image?: string;
   roles?: string[];
   handle?: string;
+  participationMode?: string;
   ownedIdeas: ProfileIdea[];
   joinedIdeas: JoinedIdea[];
 };

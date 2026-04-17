@@ -29,6 +29,7 @@ export default function CreateIdeaPage() {
         resourceTags: data.resourceTags,
         resourceNotes: data.resourceNotes,
         categoryId: data.categoryId as any,
+        onsiteOnly: data.onsiteOnly,
       });
       toast.success("Idea created!");
       router.push(`/product/ideas/${ideaId}`);

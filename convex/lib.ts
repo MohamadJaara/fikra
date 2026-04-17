@@ -9,8 +9,12 @@ export {
   REACTION_EMOJI,
   STATUS_LABELS,
   STATUS_COLORS,
+  PARTICIPATION_MODES,
+  PARTICIPATION_MODE_LABELS,
+  PARTICIPATION_MODE_COLORS,
   type Status,
   type ReactionType,
+  type ParticipationMode,
 } from "../lib/constants";
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_DOMAIN ?? "";
