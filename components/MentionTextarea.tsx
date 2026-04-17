@@ -2,6 +2,7 @@
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { cn } from "@/lib/utils";
 import { useQuery } from "convex/react";
 import { useState, useRef, useCallback, type KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,7 +130,7 @@ export function MentionTextarea({
     mentionQuery !== null && users !== undefined && users.length > 0;
 
   return (
-    <div className="relative">
+    <div className={cn("relative w-full min-w-0", className)}>
       <Textarea
         ref={textareaRef}
         value={value}
@@ -138,7 +139,7 @@ export function MentionTextarea({
         placeholder={placeholder}
         rows={rows}
         autoFocus={autoFocus}
-        className={className}
+        className="w-full"
       />
       {showDropdown && (
         <div className="absolute z-50 bottom-full mb-1 left-0 w-64 rounded-md border bg-popover p-1 shadow-md">

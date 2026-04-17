@@ -1912,20 +1912,20 @@ function CommentSection({
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full items-end gap-2">
           <MentionTextarea
             value={content}
             onChange={setContent}
             onSubmit={() => void handleSubmit()}
             placeholder="Add a comment... (type @ to mention)"
             rows={2}
-            className="flex-1"
+            className="min-w-0 flex-1"
           />
           <Button
             type="submit"
             size="sm"
             disabled={isSubmitting || !content.trim()}
-            className="self-end"
+            className="shrink-0"
           >
             {isSubmitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -2018,16 +2018,16 @@ function ReplyItem({
           </span>
         </div>
         {isEditing ? (
-          <div className="flex gap-2 mt-1">
-            <MentionTextarea
-              value={editContent}
-              onChange={setEditContent}
-              placeholder="Edit reply... (type @ to mention)"
-              rows={2}
-              className="flex-1 text-sm"
-              autoFocus
-            />
-            <div className="flex flex-col gap-1 self-end">
+            <div className="mt-1 flex w-full items-end gap-2">
+              <MentionTextarea
+                value={editContent}
+                onChange={setEditContent}
+                placeholder="Edit reply... (type @ to mention)"
+                rows={2}
+                className="min-w-0 flex-1 text-sm"
+                autoFocus
+              />
+              <div className="flex flex-col gap-1 self-end">
               <Button
                 size="sm"
                 disabled={isSaving || !editContent.trim()}
@@ -2178,13 +2178,13 @@ function CommentItem({
             </span>
           </div>
           {isEditing ? (
-            <div className="flex gap-2 mt-1">
+            <div className="mt-1 flex w-full items-end gap-2">
               <MentionTextarea
                 value={editContent}
                 onChange={setEditContent}
                 placeholder="Edit comment... (type @ to mention)"
                 rows={2}
-                className="flex-1 text-sm"
+                className="min-w-0 flex-1 text-sm"
                 autoFocus
               />
               <div className="flex flex-col gap-1 self-end">
@@ -2252,7 +2252,10 @@ function CommentItem({
           )}
 
           {showReply && (
-            <form onSubmit={handleReply} className="flex gap-2 mt-2">
+            <form
+              onSubmit={handleReply}
+              className="mt-2 flex w-full items-end gap-2"
+            >
               <MentionTextarea
                 value={replyContent}
                 onChange={setReplyContent}
@@ -2261,14 +2264,14 @@ function CommentItem({
                 }
                 placeholder="Write a reply... (type @ to mention)"
                 rows={2}
-                className="flex-1 text-sm"
+                className="min-w-0 flex-1 text-sm"
                 autoFocus
               />
               <Button
                 type="submit"
                 size="sm"
                 disabled={isSubmitting || !replyContent.trim()}
-                className="self-end"
+                className="shrink-0"
               >
                 {isSubmitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
