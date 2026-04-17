@@ -22,6 +22,17 @@ const TRANSFER_STATUS_ACCEPTED = "accepted";
 const TRANSFER_STATUS_DECLINED = "declined";
 const TRANSFER_STATUS_CANCELED = "canceled";
 
+function assertOnsiteEligibleForIdea(
+  idea: { onsiteOnly?: boolean },
+  user: { participationMode?: string },
+) {
+  if (idea.onsiteOnly && user.participationMode !== "onsite") {
+    throw new Error(
+      "This team is limited to on-site participants only. Update your participation mode to on-site in settings to continue.",
+    );
+  }
+}
+
 export const create = mutation({
   args: {
     title: v.string(),
@@ -254,6 +265,7 @@ export const requestOwnershipTransfer = mutation({
     if (!targetUser.email || !isEmailAllowed(targetUser.email)) {
       throw new Error("New owner is not allowed to access this workspace");
     }
+    assertOnsiteEligibleForIdea(idea, targetUser);
 
     const existingPendingRequest = await ctx.db
       .query("ownershipTransferRequests")
@@ -309,6 +321,7 @@ export const requestOwnership = mutation({
     if (!membership) {
       throw new Error("Only team members can request ownership");
     }
+    assertOnsiteEligibleForIdea(idea, user);
 
     const existingPendingRequest = await ctx.db
       .query("ownershipTransferRequests")
@@ -377,6 +390,7 @@ export const acceptOwnershipTransfer = mutation({
     if (!newOwner.email || !isEmailAllowed(newOwner.email)) {
       throw new Error("New owner is not allowed to access this workspace");
     }
+    assertOnsiteEligibleForIdea(idea, newOwner);
 
     const newOwnerMembership = await ctx.db
       .query("ideaMembers")
