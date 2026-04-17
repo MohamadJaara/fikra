@@ -6,6 +6,7 @@ export const { auth, signIn, signOut, store, isAuthenticated } = convexAuth({
   providers: [
     Resend({
       from: process.env.AUTH_RESEND_FROM ?? "onboarding@resend.dev",
+      maxAge: 60 * 10,
     }),
   ],
   callbacks: {
