@@ -2,12 +2,12 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import {
   REACTION_EMOJI,
   REACTION_TYPES,
   STATUS_COLORS,
   STATUS_LABELS,
+  TEAM_SIZE_LABELS,
   type Status,
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
@@ -19,10 +19,6 @@ import { UserLink, UserAvatar } from "@/components/UserLink";
 export function IdeaCard({ idea }: { idea: IdeaListItem }) {
   const roleLabels = useRolesMap();
   const ideaHref = `/product/ideas/${idea._id}`;
-  const teamPercent =
-    idea.teamSizeWanted > 0
-      ? Math.min(100, (idea.memberCount / idea.teamSizeWanted) * 100)
-      : 0;
 
   return (
     <Card className="relative h-full hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group">
@@ -95,7 +91,8 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
             <div className="flex items-center justify-between text-sm">
               <span className="flex items-center gap-1">
                 <Users className="h-3.5 w-3.5" />
-                {idea.memberCount}/{idea.teamSizeWanted} members
+                {idea.memberCount}{" "}
+                {idea.memberCount === 1 ? "member" : "members"}
               </span>
               {idea.isMember && (
                 <Badge variant="default" className="text-[10px] px-1.5 py-0">
@@ -103,7 +100,9 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
                 </Badge>
               )}
             </div>
-            <Progress value={teamPercent} className="h-1.5" />
+            <p className="text-xs text-muted-foreground">
+              Team size: {TEAM_SIZE_LABELS[idea.teamSize]}
+            </p>
           </div>
 
           {idea.missingRoles.length > 0 && (

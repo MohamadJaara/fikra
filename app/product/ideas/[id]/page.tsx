@@ -10,6 +10,7 @@ import {
   ROOM_TYPE_LABELS,
   PARTICIPATION_MODE_LABELS,
   PARTICIPATION_MODE_COLORS,
+  TEAM_SIZE_LABELS,
   type Status,
   type RoomType,
   type ParticipationMode,
@@ -44,7 +45,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -487,11 +487,6 @@ function TeamSection({
   const [isRequestingOwnership, setIsRequestingOwnership] = useState(false);
   const areRolesLoading = roles === undefined;
 
-  const teamPercent =
-    idea.teamSizeWanted > 0
-      ? Math.min(100, (idea.memberCount / idea.teamSizeWanted) * 100)
-      : 0;
-
   const requestedJoinRoles = useMemo(
     () =>
       idea.missingRoles.length > 0 ? idea.missingRoles : idea.lookingForRoles,
@@ -604,13 +599,17 @@ function TeamSection({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Team ({idea.memberCount}/{idea.teamSizeWanted})
-        </h2>
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Team
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {idea.memberCount} {idea.memberCount === 1 ? "member" : "members"}{" "}
+            · Team size: {TEAM_SIZE_LABELS[idea.teamSize]}
+          </p>
+        </div>
       </div>
-
-      <Progress value={teamPercent} className="h-2 mb-3" />
 
       {sortedMembers.length > 0 && (
         <div className="space-y-2 mb-3">

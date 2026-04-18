@@ -10,6 +10,8 @@ import {
   validateStringLength,
   isEmailAllowed,
   STATUSES,
+  TEAM_SIZES,
+  resolveTeamSize,
   validateResourceSlugs,
   validateRoleSlugs,
 } from "./lib";
@@ -40,7 +42,12 @@ export const create = mutation({
     problem: v.string(),
     targetAudience: v.string(),
     skillsNeeded: v.array(v.string()),
-    teamSizeWanted: v.number(),
+    teamSize: v.union(
+      v.literal("solo"),
+      v.literal("small"),
+      v.literal("medium"),
+      v.literal("large"),
+    ),
     status: v.string(),
     lookingForRoles: v.array(v.string()),
     resourceTags: v.optional(v.array(v.string())),
@@ -64,8 +71,8 @@ export const create = mutation({
       throw new Error("Invalid status");
     }
 
-    if (args.teamSizeWanted < 1 || args.teamSizeWanted > 20) {
-      throw new Error("Team size must be between 1 and 20");
+    if (!TEAM_SIZES.includes(args.teamSize)) {
+      throw new Error("Invalid team size");
     }
 
     await validateRoleSlugs(ctx, args.lookingForRoles);
@@ -76,7 +83,7 @@ export const create = mutation({
       problem,
       targetAudience,
       skillsNeeded: args.skillsNeeded.map(sanitizeText),
-      teamSizeWanted: args.teamSizeWanted,
+      teamSize: args.teamSize,
       status: args.status,
       lookingForRoles: args.lookingForRoles,
       ownerId: userId,
@@ -128,7 +135,12 @@ export const update = mutation({
     problem: v.string(),
     targetAudience: v.string(),
     skillsNeeded: v.array(v.string()),
-    teamSizeWanted: v.number(),
+    teamSize: v.union(
+      v.literal("solo"),
+      v.literal("small"),
+      v.literal("medium"),
+      v.literal("large"),
+    ),
     status: v.string(),
     lookingForRoles: v.array(v.string()),
     categoryId: v.optional(v.id("categories")),
@@ -154,8 +166,8 @@ export const update = mutation({
       throw new Error("Invalid status");
     }
 
-    if (args.teamSizeWanted < 1 || args.teamSizeWanted > 20) {
-      throw new Error("Team size must be between 1 and 20");
+    if (!TEAM_SIZES.includes(args.teamSize)) {
+      throw new Error("Invalid team size");
     }
 
     await validateRoleSlugs(ctx, args.lookingForRoles);
@@ -166,7 +178,8 @@ export const update = mutation({
       problem,
       targetAudience,
       skillsNeeded: args.skillsNeeded.map(sanitizeText),
-      teamSizeWanted: args.teamSizeWanted,
+      teamSize: args.teamSize,
+      teamSizeWanted: undefined,
       status: args.status,
       lookingForRoles: args.lookingForRoles,
       categoryId: args.categoryId,
@@ -626,8 +639,10 @@ export const list = query({
           }
         }
 
+        const { teamSizeWanted: _legacyTeamSize, ...ideaRest } = idea;
         return {
-          ...idea,
+          ...ideaRest,
+          teamSize: resolveTeamSize(idea),
           categoryName: category?.name,
           ownerName: getUserDisplayName(owner),
           ownerImage: owner?.image,
@@ -808,8 +823,10 @@ export const get = query({
       }
     }
 
+    const { teamSizeWanted: _legacyTeamSize, ...ideaRest } = idea;
     return {
-      ...idea,
+      ...ideaRest,
+      teamSize: resolveTeamSize(idea),
       categoryName: category?.name,
       ownerName: getUserDisplayName(owner),
       ownerImage: owner?.image,

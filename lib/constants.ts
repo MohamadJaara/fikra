@@ -74,6 +74,34 @@ export const SORT_LABELS: Record<SortOption, string> = {
   most_interest: "Most Interest",
 };
 
+export const TEAM_SIZES = ["solo", "small", "medium", "large"] as const;
+export type TeamSize = (typeof TEAM_SIZES)[number];
+
+export const TEAM_SIZE_LABELS: Record<TeamSize, string> = {
+  solo: "Solo",
+  small: "2–3",
+  medium: "4–6",
+  large: "7+",
+};
+
+const TEAM_SIZE_ORDER: Record<TeamSize, number> = {
+  solo: 0,
+  small: 1,
+  medium: 2,
+  large: 3,
+};
+
+export function teamSizeFromLegacyNumber(value: number): TeamSize {
+  if (value <= 1) return "solo";
+  if (value <= 3) return "small";
+  if (value <= 6) return "medium";
+  return "large";
+}
+
+export function maxTeamSize(a: TeamSize, b: TeamSize): TeamSize {
+  return TEAM_SIZE_ORDER[a] >= TEAM_SIZE_ORDER[b] ? a : b;
+}
+
 export const LEGACY_RESOURCE_LABELS: Record<string, string> = {
   linux_vps: "Linux VPS",
   mac_mini: "Mac Mini",

@@ -1,7 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { getAdminUser, getUserDisplayName } from "./lib";
+import { getAdminUser, getUserDisplayName, resolveTeamSize } from "./lib";
 import { STATUSES } from "../lib/constants";
 
 const statusValidator = v.union(...STATUSES.map((s) => v.literal(s)));
@@ -141,7 +141,7 @@ export const listIdeas = query({
           _creationTime: idea._creationTime,
           title: idea.title,
           status: idea.status,
-          teamSizeWanted: idea.teamSizeWanted,
+          teamSize: resolveTeamSize(idea),
           lookingForRoles: idea.lookingForRoles,
           ownerId: idea.ownerId,
           ownerName: getUserDisplayName(owner),

@@ -1,4 +1,5 @@
 import type { Id } from "../convex/_generated/dataModel";
+import type { TeamSize } from "./constants";
 
 export type IdeaListItem = {
   _id: Id<"ideas">;
@@ -8,7 +9,7 @@ export type IdeaListItem = {
   problem: string;
   targetAudience: string;
   skillsNeeded: string[];
-  teamSizeWanted: number;
+  teamSize: TeamSize;
   status: string;
   lookingForRoles: string[];
   ownerId: Id<"users">;
@@ -94,7 +95,7 @@ export type IdeaDetail = {
   problem: string;
   targetAudience: string;
   skillsNeeded: string[];
-  teamSizeWanted: number;
+  teamSize: TeamSize;
   status: string;
   lookingForRoles: string[];
   ownerId: Id<"users">;

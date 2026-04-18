@@ -23,7 +23,7 @@ export default function CreateIdeaPage() {
         problem: data.problem,
         targetAudience: data.targetAudience,
         skillsNeeded: data.skillsNeeded,
-        teamSizeWanted: data.teamSizeWanted,
+        teamSize: data.teamSize,
         status: data.status,
         lookingForRoles: data.lookingForRoles,
         resourceTags: data.resourceTags,

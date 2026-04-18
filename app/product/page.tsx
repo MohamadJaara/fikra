@@ -103,7 +103,10 @@ export default function BrowsePage() {
       ) {
         return false;
       }
-      if (filters.needsTeammates && idea.memberCount >= idea.teamSizeWanted) {
+      if (
+        filters.needsTeammates &&
+        (idea.status === "full" || idea.missingRoles.length === 0)
+      ) {
         return false;
       }
       if (filters.needsResources && !idea.hasUnresolvedResources) {

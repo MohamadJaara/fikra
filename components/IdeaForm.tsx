@@ -11,7 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { STATUSES, STATUS_LABELS } from "@/lib/constants";
+import {
+  STATUSES,
+  STATUS_LABELS,
+  TEAM_SIZES,
+  TEAM_SIZE_LABELS,
+  type TeamSize,
+} from "@/lib/constants";
 import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, MapPin } from "lucide-react";
@@ -25,7 +31,7 @@ export type IdeaFormData = {
   problem: string;
   targetAudience: string;
   skillsNeeded: string[];
-  teamSizeWanted: number;
+  teamSize: TeamSize;
   status: string;
   lookingForRoles: string[];
   resourceTags?: string[];
@@ -56,8 +62,8 @@ export function IdeaForm({
   const [skillsText, setSkillsText] = useState(
     initialData?.skillsNeeded?.join(", ") || "",
   );
-  const [teamSizeWanted, setTeamSizeWanted] = useState(
-    initialData?.teamSizeWanted || 4,
+  const [teamSize, setTeamSize] = useState<TeamSize>(
+    initialData?.teamSize ?? "small",
   );
   const [status, setStatus] = useState(initialData?.status || "exploring");
   const [selectedRoles, setSelectedRoles] = useState<string[]>(
@@ -101,7 +107,7 @@ export function IdeaForm({
       problem,
       targetAudience,
       skillsNeeded,
-      teamSizeWanted,
+      teamSize,
       status,
       lookingForRoles: selectedRoles,
       resourceTags: isEditing ? undefined : selectedResourceTags,
@@ -181,14 +187,24 @@ export function IdeaForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="teamSize">Team Size Wanted</Label>
-          <Input
-            id="teamSize"
-            type="number"
-            min={1}
-            max={20}
-            value={teamSizeWanted}
-            onChange={(e) => setTeamSizeWanted(parseInt(e.target.value) || 1)}
-          />
+          <Select
+            value={teamSize}
+            onValueChange={(value) => setTeamSize(value as TeamSize)}
+          >
+            <SelectTrigger id="teamSize">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TEAM_SIZES.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {TEAM_SIZE_LABELS[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Pick the rough size you&apos;re aiming for — you can adjust later.
+          </p>
         </div>
 
         <div className="space-y-2">

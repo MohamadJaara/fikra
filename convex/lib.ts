@@ -12,10 +12,27 @@ export {
   PARTICIPATION_MODES,
   PARTICIPATION_MODE_LABELS,
   PARTICIPATION_MODE_COLORS,
+  TEAM_SIZES,
+  teamSizeFromLegacyNumber,
+  maxTeamSize,
   type Status,
   type ReactionType,
   type ParticipationMode,
+  type TeamSize,
 } from "../lib/constants";
+
+import {
+  teamSizeFromLegacyNumber as _teamSizeFromLegacyNumber,
+  type TeamSize as _TeamSize,
+} from "../lib/constants";
+
+export function resolveTeamSize(idea: {
+  teamSize?: _TeamSize;
+  teamSizeWanted?: number;
+}): _TeamSize {
+  if (idea.teamSize) return idea.teamSize;
+  return _teamSizeFromLegacyNumber(idea.teamSizeWanted ?? 3);
+}
 
 const ALLOWED_DOMAIN = process.env.ALLOWED_DOMAIN ?? "";
 

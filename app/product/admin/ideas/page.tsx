@@ -33,8 +33,13 @@ import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/lib/constants";
-import type { Status } from "@/lib/constants";
+import {
+  STATUSES,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  TEAM_SIZE_LABELS,
+} from "@/lib/constants";
+import type { Status, TeamSize } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 
 export default function AdminIdeasPage() {
@@ -200,7 +205,9 @@ export default function AdminIdeasPage() {
                       </Select>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {idea.memberCount}/{idea.teamSizeWanted}
+                      {idea.memberCount}{" "}
+                      {idea.memberCount === 1 ? "member" : "members"} ·{" "}
+                      {TEAM_SIZE_LABELS[idea.teamSize as TeamSize]}
                     </TableCell>
                     <TableCell className="text-sm">
                       {idea.reactionCount}

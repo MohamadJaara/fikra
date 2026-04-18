@@ -65,7 +65,15 @@ export default defineSchema({
     problem: v.string(),
     targetAudience: v.string(),
     skillsNeeded: v.array(v.string()),
-    teamSizeWanted: v.number(),
+    teamSizeWanted: v.optional(v.number()),
+    teamSize: v.optional(
+      v.union(
+        v.literal("solo"),
+        v.literal("small"),
+        v.literal("medium"),
+        v.literal("large"),
+      ),
+    ),
     status: v.string(),
     lookingForRoles: v.array(v.string()),
     ownerId: v.id("users"),

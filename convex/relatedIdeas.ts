@@ -4,6 +4,8 @@ import {
   getAuthenticatedUser,
   getUserDisplayName,
   mergeUniqueStringArrays,
+  maxTeamSize,
+  resolveTeamSize,
 } from "./lib";
 import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
@@ -263,15 +265,16 @@ export const acceptMerge = mutation({
       ...targetDoc.lookingForRoles,
       ...sourceDoc.lookingForRoles,
     ]);
-    const newTeamSize = Math.max(
-      targetDoc.teamSizeWanted,
-      sourceDoc.teamSizeWanted,
+    const newTeamSize = maxTeamSize(
+      resolveTeamSize(targetDoc),
+      resolveTeamSize(sourceDoc),
     );
 
     await ctx.db.patch(targetId, {
       skillsNeeded: [...skillsSet],
       lookingForRoles: [...rolesSet],
-      teamSizeWanted: newTeamSize,
+      teamSize: newTeamSize,
+      teamSizeWanted: undefined,
     });
 
     const sourceComments = await ctx.db
