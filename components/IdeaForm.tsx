@@ -202,8 +202,9 @@ export function IdeaForm({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Pick the rough size you&apos;re aiming for — you can adjust later.
+          <p className="text-xs italic text-muted-foreground">
+            &ldquo;3 to 5 teammates is usually the sweet spot for building
+            something awesome fast.&rdquo; - ChatGPT
           </p>
         </div>
 
