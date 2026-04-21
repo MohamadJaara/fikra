@@ -3,7 +3,7 @@
 import { IdeaForm, type IdeaFormData } from "@/components/IdeaForm";
 import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import { ArrowLeft } from "lucide-react";
@@ -12,7 +12,10 @@ import Link from "next/link";
 export default function CreateIdeaPage() {
   const createMutation = useMutation(api.ideas.create);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const preselectedCategoryId = searchParams.get("categoryId") || undefined;
 
   const handleSubmit = async (data: IdeaFormData) => {
     setIsSubmitting(true);
@@ -49,12 +52,16 @@ export default function CreateIdeaPage() {
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to Browse
+        Back to Themes
       </Link>
 
       <h1 className="text-2xl font-bold mb-6">Create a New Idea</h1>
 
-      <IdeaForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+      <IdeaForm
+        onSubmit={handleSubmit}
+        isSubmitting={isSubmitting}
+        initialCategoryId={preselectedCategoryId}
+      />
 
       <Toaster />
     </div>

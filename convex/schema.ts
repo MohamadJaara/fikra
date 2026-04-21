@@ -32,6 +32,8 @@ export default defineSchema({
   categories: defineTable({
     name: v.string(),
     slug: v.string(),
+    description: v.optional(v.string()),
+    imageId: v.optional(v.id("_storage")),
   })
     .index("by_slug", ["slug"])
     .searchIndex("search_name", { searchField: "name" }),

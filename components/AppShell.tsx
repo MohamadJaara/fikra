@@ -18,6 +18,7 @@ import {
   Settings,
   Shield,
   Users,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -127,10 +128,17 @@ function SidebarContent({
       <nav className="flex-1 p-2 space-y-1">
         <NavLink
           href="/product"
+          icon={<Sparkles className="h-4 w-4" />}
+          onClick={onClose}
+        >
+          Themes
+        </NavLink>
+        <NavLink
+          href="/product/ideas"
           icon={<List className="h-4 w-4" />}
           onClick={onClose}
         >
-          Browse Ideas
+          All Ideas
         </NavLink>
         <NavLink
           href="/product/ideas/new"
@@ -231,7 +239,11 @@ function NavLink({
 }) {
   const pathname = usePathname();
   const isActive =
-    href === "/product" ? pathname === "/product" : pathname.startsWith(href);
+    href === "/product"
+      ? pathname === "/product"
+      : href === "/product/ideas"
+        ? pathname === "/product/ideas"
+        : pathname.startsWith(href);
 
   return (
     <Link

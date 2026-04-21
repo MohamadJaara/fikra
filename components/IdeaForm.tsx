@@ -45,6 +45,7 @@ type IdeaFormProps = {
   onSubmit: (data: IdeaFormData) => Promise<void>;
   isEditing?: boolean;
   isSubmitting?: boolean;
+  initialCategoryId?: string;
 };
 
 export function IdeaForm({
@@ -52,6 +53,7 @@ export function IdeaForm({
   onSubmit,
   isEditing,
   isSubmitting,
+  initialCategoryId,
 }: IdeaFormProps) {
   const [title, setTitle] = useState(initialData?.title || "");
   const [pitch, setPitch] = useState(initialData?.pitch || "");
@@ -75,7 +77,9 @@ export function IdeaForm({
   const [resourceNotes, setResourceNotes] = useState(
     initialData?.resourceNotes || "",
   );
-  const [categoryId, setCategoryId] = useState(initialData?.categoryId || "");
+  const [categoryId, setCategoryId] = useState(
+    initialData?.categoryId || initialCategoryId || "",
+  );
   const [onsiteOnly, setOnsiteOnly] = useState(
     initialData?.onsiteOnly || false,
   );
