@@ -1,5 +1,5 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { query, mutation } from "./_generated/server";
+import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAuthenticatedUser,
@@ -16,13 +16,138 @@ import {
   validateRoleSlugs,
 } from "./lib";
 import { internal } from "./_generated/api";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { IdeaListItem } from "../lib/types";
 
 const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
 const TRANSFER_STATUS_DECLINED = "declined";
 const TRANSFER_STATUS_CANCELED = "canceled";
+
+async function getIdeaListViewerId(ctx: QueryCtx): Promise<Id<"users"> | null> {
+  const authId = await getAuthUserId(ctx);
+  if (!authId) return null;
+
+  const user = await ctx.db.get(authId);
+  if (!user || !user.email || !isEmailAllowed(user.email)) {
+    return null;
+  }
+
+  return authId;
+}
+
+async function buildIdeaListItems(
+  ctx: QueryCtx,
+  ideas: Doc<"ideas">[],
+  userId: Id<"users">,
+) {
+  const resourceNameMap = await getResourceNameMap(ctx);
+
+  const results = await Promise.all(
+    ideas.map(async (idea) => {
+      const owner = await ctx.db.get(idea.ownerId);
+      const category = idea.categoryId ? await ctx.db.get(idea.categoryId) : null;
+
+      const members = await ctx.db
+        .query("ideaMembers")
+        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+        .collect();
+
+      const interestDocs = await ctx.db
+        .query("ideaInterest")
+        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+        .collect();
+
+      const reactionDocs = await ctx.db
+        .query("reactions")
+        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+        .collect();
+
+      const resourceDocs = await ctx.db
+        .query("resourceRequests")
+        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+        .collect();
+
+      const reactionCounts: Record<string, number> = {};
+      for (const r of reactionDocs) {
+        reactionCounts[r.type] = (reactionCounts[r.type] || 0) + 1;
+      }
+
+      const userReactions = reactionDocs
+        .filter((r) => r.userId === userId)
+        .map((r) => r.type);
+
+      const filledRoles = new Set(
+        members.flatMap(
+          (m) =>
+            mergeUniqueStringArrays(
+              m.memberRoles,
+              m.role ? [m.role] : undefined,
+            ) ?? [],
+        ),
+      );
+      const missingRoles = idea.lookingForRoles.filter(
+        (role) => !filledRoles.has(role),
+      );
+
+      const isMember = members.some((m) => m.userId === userId);
+      const isInterested = interestDocs.some((i) => i.userId === userId);
+      const isOwner = idea.ownerId === userId;
+
+      let room: IdeaListItem["room"] = null;
+      if (idea.roomId) {
+        const roomDoc = await ctx.db.get(idea.roomId);
+        if (roomDoc) {
+          const sharedWithIdeas: { _id: Id<"ideas">; title: string }[] = [];
+          if (roomDoc.type === "shared") {
+            const otherIdeasInRoom = await ctx.db
+              .query("ideas")
+              .withIndex("by_room", (q) => q.eq("roomId", roomDoc._id))
+              .collect();
+            for (const other of otherIdeasInRoom) {
+              if (other._id !== idea._id) {
+                sharedWithIdeas.push({ _id: other._id, title: other.title });
+              }
+            }
+          }
+          room = {
+            roomId: roomDoc._id,
+            roomName: roomDoc.name,
+            roomType: roomDoc.type,
+            sharedWithIdeas,
+          };
+        }
+      }
+
+      const { teamSizeWanted: _legacyTeamSize, ...ideaRest } = idea;
+      return {
+        ...ideaRest,
+        teamSize: resolveTeamSize(idea),
+        categoryName: category?.name,
+        ownerName: getUserDisplayName(owner),
+        ownerImage: owner?.image,
+        ownerHandle: owner?.handle,
+        memberCount: members.length,
+        interestCount: interestDocs.length,
+        reactionCounts,
+        userReactions,
+        missingRoles,
+        hasUnresolvedResources: resourceDocs.some((r) => !r.resolved),
+        resourceRequestCount: resourceDocs.length,
+        resourceRequests: resourceDocs.map((resource) => ({
+          ...resource,
+          resourceName: resourceNameMap[resource.tag] || resource.tag,
+        })),
+        isMember,
+        isInterested,
+        isOwner,
+        room,
+      };
+    }),
+  );
+
+  return results.sort((a, b) => b._creationTime - a._creationTime);
+}
 
 function assertOnsiteEligibleForIdea(
   idea: { onsiteOnly?: boolean },
@@ -549,124 +674,25 @@ export const cancelOwnershipTransfer = mutation({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const authId = await getAuthUserId(ctx);
-    if (!authId) return [];
-
-    const user = await ctx.db.get(authId);
-    if (!user || !user.email || !isEmailAllowed(user.email)) {
-      return [];
-    }
-    const userId = authId;
-
+    const userId = await getIdeaListViewerId(ctx);
+    if (!userId) return [];
     const ideas = await ctx.db.query("ideas").collect();
-    const resourceNameMap = await getResourceNameMap(ctx);
+    return await buildIdeaListItems(ctx, ideas, userId);
+  },
+});
 
-    const results = await Promise.all(
-      ideas.map(async (idea) => {
-        const owner = await ctx.db.get(idea.ownerId);
-        const category = idea.categoryId
-          ? await ctx.db.get(idea.categoryId)
-          : null;
+export const listByCategory = query({
+  args: { categoryId: v.id("categories") },
+  handler: async (ctx, args) => {
+    const userId = await getIdeaListViewerId(ctx);
+    if (!userId) return [];
 
-        const members = await ctx.db
-          .query("ideaMembers")
-          .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-          .collect();
+    const ideas = await ctx.db
+      .query("ideas")
+      .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
+      .collect();
 
-        const interestDocs = await ctx.db
-          .query("ideaInterest")
-          .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-          .collect();
-
-        const reactionDocs = await ctx.db
-          .query("reactions")
-          .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-          .collect();
-
-        const resourceDocs = await ctx.db
-          .query("resourceRequests")
-          .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-          .collect();
-
-        const reactionCounts: Record<string, number> = {};
-        for (const r of reactionDocs) {
-          reactionCounts[r.type] = (reactionCounts[r.type] || 0) + 1;
-        }
-
-        const userReactions = reactionDocs
-          .filter((r) => r.userId === userId)
-          .map((r) => r.type);
-
-        const filledRoles = new Set(
-          members.flatMap(
-            (m) =>
-              mergeUniqueStringArrays(
-                m.memberRoles,
-                m.role ? [m.role] : undefined,
-              ) ?? [],
-          ),
-        );
-        const missingRoles = idea.lookingForRoles.filter(
-          (role) => !filledRoles.has(role),
-        );
-
-        const isMember = members.some((m) => m.userId === userId);
-        const isInterested = interestDocs.some((i) => i.userId === userId);
-        const isOwner = idea.ownerId === userId;
-
-        let room: IdeaListItem["room"] = null;
-        if (idea.roomId) {
-          const roomDoc = await ctx.db.get(idea.roomId);
-          if (roomDoc) {
-            const sharedWithIdeas: { _id: Id<"ideas">; title: string }[] = [];
-            if (roomDoc.type === "shared") {
-              const otherIdeasInRoom = await ctx.db
-                .query("ideas")
-                .withIndex("by_room", (q) => q.eq("roomId", roomDoc._id))
-                .collect();
-              for (const other of otherIdeasInRoom) {
-                if (other._id !== idea._id) {
-                  sharedWithIdeas.push({ _id: other._id, title: other.title });
-                }
-              }
-            }
-            room = {
-              roomId: roomDoc._id,
-              roomName: roomDoc.name,
-              roomType: roomDoc.type,
-              sharedWithIdeas,
-            };
-          }
-        }
-
-        const { teamSizeWanted: _legacyTeamSize, ...ideaRest } = idea;
-        return {
-          ...ideaRest,
-          teamSize: resolveTeamSize(idea),
-          categoryName: category?.name,
-          ownerName: getUserDisplayName(owner),
-          ownerImage: owner?.image,
-          ownerHandle: owner?.handle,
-          memberCount: members.length,
-          interestCount: interestDocs.length,
-          reactionCounts,
-          userReactions,
-          missingRoles,
-          hasUnresolvedResources: resourceDocs.some((r) => !r.resolved),
-          resourceRequestCount: resourceDocs.length,
-          resourceRequests: resourceDocs.map((resource) => ({
-            ...resource,
-            resourceName: resourceNameMap[resource.tag] || resource.tag,
-          })),
-          isMember,
-          isInterested,
-          isOwner,
-          room,
-        };
-      }),
-    );
-
-    return results.sort((a, b) => b._creationTime - a._creationTime);
+    return await buildIdeaListItems(ctx, ideas, userId);
   },
 });
 

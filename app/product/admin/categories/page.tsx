@@ -18,7 +18,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -35,9 +35,43 @@ export default function AdminCategoriesPage() {
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editImageId, setEditImageId] = useState<Id<"_storage"> | null>(null);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [editImageUrl, setEditImageUrl] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const resetFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const revokePreviewUrl = (url: string | null) => {
+    if (url) {
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      revokePreviewUrl(editImageUrl);
+    };
+  }, [editImageUrl]);
+
+  const clearSelectedImage = () => {
+    revokePreviewUrl(editImageUrl);
+    setEditImageFile(null);
+    setEditImageUrl(null);
+    resetFileInput();
+  };
+
+  const stopEditing = () => {
+    clearSelectedImage();
+    setEditingId(null);
+    setEditName("");
+    setEditDescription("");
+    setEditImageId(null);
+  };
 
   const handleDelete = async (id: Id<"categories">, name: string) => {
     if (
@@ -60,37 +94,51 @@ export default function AdminCategoriesPage() {
   const startEditing = (
     cat: { _id: Id<"categories">; name: string; description?: string; imageId?: Id<"_storage"> },
   ) => {
+    clearSelectedImage();
     setEditingId(cat._id);
     setEditName(cat.name);
     setEditDescription(cat.description || "");
     setEditImageId(cat.imageId || null);
-    setEditImageUrl(null);
   };
 
-  const handleImageUpload = async (file: File) => {
-    const postUrl = await generateUploadUrl();
-    const result = await fetch(postUrl, {
-      method: "POST",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-    const { storageId } = await result.json();
-    setEditImageId(storageId as Id<"_storage">);
+  const handleImageSelection = (file: File) => {
+    clearSelectedImage();
+    setEditImageFile(file);
     setEditImageUrl(URL.createObjectURL(file));
   };
 
   const handleSaveEdit = async () => {
     if (!editingId || !editName.trim()) return;
     setIsSaving(true);
+    let uploadedImageId: Id<"_storage"> | null = null;
     try {
+      let nextImageId = editImageId || undefined;
+
+      if (editImageFile) {
+        const postUrl = await generateUploadUrl();
+        const result = await fetch(postUrl, {
+          method: "POST",
+          headers: { "Content-Type": editImageFile.type },
+          body: editImageFile,
+        });
+
+        if (!result.ok) {
+          throw new Error("Failed to upload image");
+        }
+
+        const { storageId } = await result.json();
+        uploadedImageId = storageId as Id<"_storage">;
+        nextImageId = uploadedImageId;
+      }
+
       await updateMutation({
         categoryId: editingId,
         name: editName,
         description: editDescription || undefined,
-        imageId: editImageId || undefined,
+        imageId: nextImageId,
       });
       toast.success("Category updated");
-      setEditingId(null);
+      stopEditing();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update");
     } finally {
@@ -203,10 +251,10 @@ export default function AdminCategoriesPage() {
                     <div className="space-y-2">
                       <Label>Image</Label>
                       <div className="flex items-center gap-3">
-                        {(editImageUrl || cat.imageId) && (
+                        {editImageUrl && (
                           <div className="h-16 w-24 rounded bg-muted overflow-hidden">
                             <img
-                              src={editImageUrl || undefined}
+                              src={editImageUrl}
                               alt=""
                               className="h-full w-full object-cover"
                             />
@@ -220,7 +268,7 @@ export default function AdminCategoriesPage() {
                             className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
-                              if (file) handleImageUpload(file);
+                              if (file) handleImageSelection(file);
                             }}
                           />
                           <Button
@@ -241,8 +289,8 @@ export default function AdminCategoriesPage() {
                               size="sm"
                               className="ml-2 text-xs text-destructive"
                               onClick={() => {
+                                clearSelectedImage();
                                 setEditImageId(null);
-                                setEditImageUrl(null);
                               }}
                             >
                               Remove
@@ -265,7 +313,7 @@ export default function AdminCategoriesPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setEditingId(null)}
+                        onClick={stopEditing}
                       >
                         Cancel
                       </Button>

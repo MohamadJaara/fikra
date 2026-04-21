@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -18,13 +18,11 @@ import type { IdeaListItem } from "@/lib/types";
 
 export default function CategoryDetailPage() {
   const params = useParams<{ slug: string }>();
-  const router = useRouter();
   const category = useQuery(api.categories.getBySlug, { slug: params.slug });
-  const ideas = useQuery(api.ideas.list) as IdeaListItem[] | undefined;
-
-  const filteredIdeas = ideas
-    ? ideas.filter((idea) => idea.categoryId === category?._id)
-    : undefined;
+  const ideas = useQuery(
+    api.ideas.listByCategory,
+    category?._id ? { categoryId: category._id } : "skip",
+  ) as IdeaListItem[] | undefined;
 
   if (category === undefined) {
     return (
@@ -91,8 +89,8 @@ export default function CategoryDetailPage() {
               )}
               <Badge variant="secondary" className="mt-2">
                 <Sparkles className="h-3 w-3 mr-1" />
-                {filteredIdeas ? filteredIdeas.length : "..."}{" "}
-                {filteredIdeas?.length === 1 ? "idea" : "ideas"}
+                {ideas ? ideas.length : "..."}{" "}
+                {ideas?.length === 1 ? "idea" : "ideas"}
               </Badge>
             </div>
             <Link
@@ -107,13 +105,13 @@ export default function CategoryDetailPage() {
         </div>
       </div>
 
-      {filteredIdeas === undefined ? (
+      {ideas === undefined ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <IdeaCardSkeleton key={i} />
           ))}
         </div>
-      ) : filteredIdeas.length === 0 ? (
+      ) : ideas.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4">💡</div>
           <p className="text-lg font-medium mb-2">No ideas yet in this theme</p>
@@ -131,7 +129,7 @@ export default function CategoryDetailPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredIdeas.map((idea, i) => (
+          {ideas.map((idea, i) => (
             <div
               key={idea._id}
               className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}

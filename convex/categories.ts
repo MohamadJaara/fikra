@@ -2,6 +2,21 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedUser, getAdminUser, sanitizeText } from "./lib";
 
+function createCategorySlug(name: string) {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  if (!slug) {
+    throw new Error(
+      "Category name must include at least one English letter or number",
+    );
+  }
+
+  return slug;
+}
+
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -74,10 +89,7 @@ export const create = mutation({
     await getAdminUser(ctx);
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Category name is required");
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+    const slug = createCategorySlug(name);
     const existing = await ctx.db
       .query("categories")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -109,10 +121,7 @@ export const createMany = mutation({
     const created: string[] = [];
     const skipped: string[] = [];
     for (const name of items) {
-      const slug = name
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
+      const slug = createCategorySlug(name);
       const existing = await ctx.db
         .query("categories")
         .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -137,17 +146,36 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     await getAdminUser(ctx);
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) {
+      if (args.imageId) {
+        await ctx.storage.delete(args.imageId);
+      }
+      throw new Error("Category not found");
+    }
+    const cleanupReplacementImage = async () => {
+      if (args.imageId && args.imageId !== category.imageId) {
+        await ctx.storage.delete(args.imageId);
+      }
+    };
     const name = sanitizeText(args.name);
-    if (!name) throw new Error("Category name is required");
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+    if (!name) {
+      await cleanupReplacementImage();
+      throw new Error("Category name is required");
+    }
+    let slug: string;
+    try {
+      slug = createCategorySlug(name);
+    } catch (error) {
+      await cleanupReplacementImage();
+      throw error;
+    }
     const existing = await ctx.db
       .query("categories")
       .withIndex("by_slug", (q) => q.eq("slug", slug))
       .first();
     if (existing && existing._id !== args.categoryId) {
+      await cleanupReplacementImage();
       throw new Error("Category already exists");
     }
     const description = args.description
@@ -159,6 +187,9 @@ export const update = mutation({
       description,
       imageId: args.imageId,
     });
+    if (category.imageId && category.imageId !== args.imageId) {
+      await ctx.storage.delete(category.imageId);
+    }
   },
 });
 
@@ -168,6 +199,8 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     await getAdminUser(ctx);
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) throw new Error("Category not found");
     const ideasWithCategory = await ctx.db
       .query("ideas")
       .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
@@ -176,5 +209,8 @@ export const remove = mutation({
       await ctx.db.patch(idea._id, { categoryId: undefined });
     }
     await ctx.db.delete(args.categoryId);
+    if (category.imageId) {
+      await ctx.storage.delete(category.imageId);
+    }
   },
 });
