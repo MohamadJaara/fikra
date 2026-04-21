@@ -2,11 +2,11 @@
 
 import { IdeaForm, type IdeaFormData } from "@/components/IdeaForm";
 import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Lightbulb } from "lucide-react";
 import Link from "next/link";
 
 export default function CreateIdeaPage() {
@@ -16,6 +16,10 @@ export default function CreateIdeaPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const preselectedCategoryId = searchParams.get("categoryId") || undefined;
+  const categories = useQuery(api.categories.list);
+  const selectedCategory = categories?.find(
+    (c) => c._id === preselectedCategoryId,
+  );
 
   const handleSubmit = async (data: IdeaFormData) => {
     setIsSubmitting(true);
@@ -47,15 +51,40 @@ export default function CreateIdeaPage() {
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      <Link
-        href="/product"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Themes
-      </Link>
+      {selectedCategory ? (
+        <Link
+          href={`/product/categories/${selectedCategory.slug}`}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {selectedCategory.name}
+        </Link>
+      ) : (
+        <Link
+          href="/product"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Themes
+        </Link>
+      )}
 
-      <h1 className="text-2xl font-bold mb-6">Create a New Idea</h1>
+      <h1 className="text-2xl font-bold mb-1">Create a New Idea</h1>
+      {selectedCategory ? (
+        <p className="text-sm text-muted-foreground mb-6 flex items-center gap-1.5">
+          <Lightbulb className="h-3.5 w-3.5 text-yellow-500" />
+          Under{" "}
+          <span className="font-medium text-foreground">
+            {selectedCategory.name}
+          </span>
+          {selectedCategory.description &&
+            ` — ${selectedCategory.description}`}
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground mb-6">
+          Describe your idea and what problem it solves
+        </p>
+      )}
 
       <IdeaForm
         onSubmit={handleSubmit}

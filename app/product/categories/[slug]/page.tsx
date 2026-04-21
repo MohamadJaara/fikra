@@ -13,8 +13,19 @@ import {
   PlusCircle,
   Lightbulb,
   Sparkles,
+  Eye,
+  Users,
 } from "lucide-react";
 import type { IdeaListItem } from "@/lib/types";
+
+const GRADIENTS = [
+  "from-blue-500/20 to-cyan-500/20",
+  "from-purple-500/20 to-pink-500/20",
+  "from-amber-500/20 to-orange-500/20",
+  "from-emerald-500/20 to-teal-500/20",
+  "from-rose-500/20 to-red-500/20",
+  "from-indigo-500/20 to-violet-500/20",
+];
 
 export default function CategoryDetailPage() {
   const params = useParams<{ slug: string }>();
@@ -55,6 +66,10 @@ export default function CategoryDetailPage() {
     );
   }
 
+  const gradientIndex =
+    category.name.charCodeAt(0) % GRADIENTS.length;
+  const gradient = GRADIENTS[gradientIndex];
+
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <Link
@@ -66,15 +81,21 @@ export default function CategoryDetailPage() {
       </Link>
 
       <div className="flex flex-col md:flex-row md:items-start gap-5 mb-8">
-        {category.imageUrl && (
-          <div className="w-full md:w-64 h-40 md:h-36 rounded-lg overflow-hidden bg-muted shrink-0">
+        <div className="w-full md:w-64 h-40 md:h-36 rounded-lg overflow-hidden bg-muted shrink-0">
+          {category.imageUrl ? (
             <img
               src={category.imageUrl}
               alt={category.name}
               className="h-full w-full object-cover"
             />
-          </div>
-        )}
+          ) : (
+            <div
+              className={`h-full w-full bg-gradient-to-br ${gradient} flex items-center justify-center`}
+            >
+              <Lightbulb className="h-12 w-12 text-muted-foreground/30" />
+            </div>
+          )}
+        </div>
         <div className="flex-1">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -93,9 +114,7 @@ export default function CategoryDetailPage() {
                 {ideas?.length === 1 ? "idea" : "ideas"}
               </Badge>
             </div>
-            <Link
-              href={`/product/ideas/new?categoryId=${category._id}`}
-            >
+            <Link href={`/product/ideas/new?categoryId=${category._id}`}>
               <Button>
                 <PlusCircle className="h-4 w-4 mr-2" />
                 New Idea
@@ -104,6 +123,19 @@ export default function CategoryDetailPage() {
           </div>
         </div>
       </div>
+
+      {ideas && ideas.length > 0 && (
+        <div className="flex items-center gap-4 mb-5 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Eye className="h-3 w-3" />
+            Browse ideas below
+          </span>
+          <span className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            Join a team or start your own
+          </span>
+        </div>
+      )}
 
       {ideas === undefined ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -114,13 +146,18 @@ export default function CategoryDetailPage() {
       ) : ideas.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4">💡</div>
-          <p className="text-lg font-medium mb-2">No ideas yet in this theme</p>
-          <p className="text-sm text-muted-foreground mb-4">
-            Be the first to create an idea for {category.name}!
+          <p className="text-lg font-medium mb-2">
+            No ideas yet in this theme
           </p>
-          <Link
-            href={`/product/ideas/new?categoryId=${category._id}`}
-          >
+          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+            This is a blank canvas. Share a problem you want to solve or an
+            idea you&apos;ve been thinking about in{" "}
+            <span className="font-medium text-foreground">
+              {category.name}
+            </span>
+            .
+          </p>
+          <Link href={`/product/ideas/new?categoryId=${category._id}`}>
             <Button>
               <PlusCircle className="h-4 w-4 mr-2" />
               Create the First Idea
