@@ -88,11 +88,11 @@ export default function ThemesPage() {
       </div>
 
       {categories === undefined ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="h-56 rounded-xl bg-muted/40 animate-pulse"
+              className="h-72 rounded-xl bg-muted/40 animate-pulse"
             />
           ))}
         </div>
@@ -105,7 +105,7 @@ export default function ThemesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {categories.map((cat, i) => {
             const gradient = GRADIENTS[i % GRADIENTS.length];
             return (
@@ -114,8 +114,8 @@ export default function ThemesPage() {
                 href={`/product/categories/${cat.slug}`}
                 className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
               >
-                <Card className="group h-full hover:shadow-md transition-all duration-200 hover:border-primary/30 overflow-hidden">
-                  <div className="h-36 w-full overflow-hidden bg-muted relative">
+                <Card className="group h-full hover:shadow-lg transition-all duration-300 hover:border-primary/30 overflow-hidden">
+                  <div className="h-48 w-full overflow-hidden bg-muted relative">
                     {cat.imageUrl ? (
                       <img
                         src={cat.imageUrl}
@@ -126,29 +126,29 @@ export default function ThemesPage() {
                       <div
                         className={`h-full w-full bg-gradient-to-br ${gradient} flex items-center justify-center`}
                       >
-                        <Lightbulb className="h-10 w-10 text-muted-foreground/30" />
+                        <Lightbulb className="h-12 w-12 text-muted-foreground/30" />
                       </div>
                     )}
                   </div>
-                  <CardContent className="p-5">
+                  <CardContent className="p-6">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <h2 className="font-semibold text-base truncate">
+                        <h2 className="font-semibold text-lg truncate">
                           {cat.name}
                         </h2>
                         {cat.description ? (
-                          <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">
+                          <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
                             {cat.description}
                           </p>
                         ) : (
-                          <p className="text-sm text-muted-foreground/60 mt-1.5 italic">
+                          <p className="text-sm text-muted-foreground/60 mt-2 italic">
                             No description yet
                           </p>
                         )}
                       </div>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1 group-hover:translate-x-0.5 transition-transform" />
+                      <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1 group-hover:translate-x-1 transition-transform" />
                     </div>
-                    <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-2 mt-4">
                       {cat.ideaCount === 0 ? (
                         <Badge
                           variant="outline"
