@@ -12,13 +12,35 @@ import {
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 import type { IdeaListItem } from "@/lib/types";
-import { Users, Package, Heart, MapPin } from "lucide-react";
+import { Users, Package, Heart, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { UserLink, UserAvatar } from "@/components/UserLink";
+import { api } from "@/convex/_generated/api";
+import { useMutation } from "convex/react";
+import { useState } from "react";
 
 export function IdeaCard({ idea }: { idea: IdeaListItem }) {
   const roleLabels = useRolesMap();
   const ideaHref = `/product/ideas/${idea._id}`;
+  const expressInterest = useMutation(api.interest.express);
+  const removeInterest = useMutation(api.interest.remove);
+  const [isToggling, setIsToggling] = useState(false);
+
+  const handleToggleInterest = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsToggling(true);
+    try {
+      if (idea.isInterested) {
+        await removeInterest({ ideaId: idea._id });
+      } else {
+        await expressInterest({ ideaId: idea._id });
+      }
+    } catch {
+    } finally {
+      setIsToggling(false);
+    }
+  };
 
   return (
     <Card className="relative h-full hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer group">
@@ -164,20 +186,23 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
               })}
             </div>
             <div className="flex items-center gap-1">
-              {idea.interestCount > 0 && (
-                <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                  <Heart className="h-3 w-3" />
-                  {idea.interestCount}
-                </span>
-              )}
-              {idea.isInterested && !idea.isMember && (
-                <Badge
-                  variant="secondary"
-                  className="text-[10px] px-1.5 py-0 ml-1"
-                >
-                  Interested
-                </Badge>
-              )}
+              <button
+                onClick={handleToggleInterest}
+                disabled={isToggling || idea.isMember || idea.isOwner}
+                className={`pointer-events-auto inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 transition-colors text-xs ${
+                  idea.isInterested
+                    ? "text-rose-500 font-medium"
+                    : "text-muted-foreground hover:text-rose-400"
+                } ${(idea.isMember || idea.isOwner) ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-muted"}`}
+                aria-label={idea.isInterested ? "Remove interest" : "Express interest"}
+              >
+                {isToggling ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Heart className={`h-3 w-3 ${idea.isInterested ? "fill-current" : ""}`} />
+                )}
+                {idea.interestCount > 0 && idea.interestCount}
+              </button>
             </div>
           </div>
         </CardContent>
