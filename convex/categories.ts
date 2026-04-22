@@ -21,7 +21,8 @@ export const list = query({
   args: {},
   handler: async (ctx) => {
     await getAuthenticatedUser(ctx);
-    return await ctx.db.query("categories").order("asc").collect();
+    const categories = await ctx.db.query("categories").order("asc").collect();
+    return categories.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
   },
 });
 
@@ -30,6 +31,7 @@ export const listWithDetails = query({
   handler: async (ctx) => {
     await getAuthenticatedUser(ctx);
     const categories = await ctx.db.query("categories").order("asc").collect();
+    const sorted = categories.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
     const ideas = await ctx.db.query("ideas").collect();
 
     const countByCategory: Record<string, number> = {};
@@ -41,7 +43,7 @@ export const listWithDetails = query({
     }
 
     return await Promise.all(
-      categories.map(async (cat) => {
+      sorted.map(async (cat) => {
         const imageUrl = cat.imageId
           ? await ctx.storage.getUrl(cat.imageId)
           : null;
@@ -103,6 +105,7 @@ export const create = mutation({
       slug,
       description,
       imageId: args.imageId,
+      order: Date.now(),
     });
   },
 });
@@ -129,7 +132,7 @@ export const createMany = mutation({
       if (existing) {
         skipped.push(name);
       } else {
-        await ctx.db.insert("categories", { name, slug });
+        await ctx.db.insert("categories", { name, slug, order: Date.now() });
         created.push(name);
       }
     }
@@ -211,6 +214,18 @@ export const remove = mutation({
     await ctx.db.delete(args.categoryId);
     if (category.imageId) {
       await ctx.storage.delete(category.imageId);
+    }
+  },
+});
+
+export const reorder = mutation({
+  args: {
+    orderedIds: v.array(v.id("categories")),
+  },
+  handler: async (ctx, { orderedIds }) => {
+    await getAdminUser(ctx);
+    for (let i = 0; i < orderedIds.length; i++) {
+      await ctx.db.patch(orderedIds[i], { order: i });
     }
   },
 });

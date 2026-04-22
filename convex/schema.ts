@@ -34,8 +34,10 @@ export default defineSchema({
     slug: v.string(),
     description: v.optional(v.string()),
     imageId: v.optional(v.id("_storage")),
+    order: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
+    .index("by_order", ["order"])
     .searchIndex("search_name", { searchField: "name" }),
 
   resources: defineTable({

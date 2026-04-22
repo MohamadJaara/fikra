@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   ArrowLeft,
+  ArrowUp,
+  ArrowDown,
   PlusCircle,
   Trash2,
   Loader2,
@@ -27,6 +29,7 @@ export default function AdminCategoriesPage() {
   const createMutation = useMutation(api.categories.create);
   const updateMutation = useMutation(api.categories.update);
   const deleteMutation = useMutation(api.categories.remove);
+  const reorderMutation = useMutation(api.categories.reorder);
   const generateUploadUrl = useMutation(api.categories.generateUploadUrl);
   const [input, setInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
@@ -71,6 +74,19 @@ export default function AdminCategoriesPage() {
     setEditName("");
     setEditDescription("");
     setEditImageId(null);
+  };
+
+  const handleMove = async (index: number, direction: "up" | "down") => {
+    if (!categories) return;
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= categories.length) return;
+    const orderedIds = categories.map((c) => c._id);
+    [orderedIds[index], orderedIds[newIndex]] = [orderedIds[newIndex], orderedIds[index]];
+    try {
+      await reorderMutation({ orderedIds });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to reorder");
+    }
   };
 
   const handleDelete = async (id: Id<"categories">, name: string) => {
@@ -218,7 +234,7 @@ export default function AdminCategoriesPage() {
         <Card>
           <CardContent className="p-0">
             <div className="divide-y">
-              {categories.map((cat) =>
+              {categories.map((cat, index) =>
                 editingId === cat._id ? (
                   <div key={cat._id} className="p-4 space-y-3 bg-muted/20">
                     <div className="flex items-center justify-between">
@@ -324,13 +340,35 @@ export default function AdminCategoriesPage() {
                     key={cat._id}
                     className="flex items-center justify-between px-4 py-3"
                   >
-                    <div className="min-w-0">
-                      <span className="font-medium text-sm">{cat.name}</span>
-                      {cat.description && (
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">
-                          {cat.description}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex flex-col shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0"
+                          disabled={index === 0}
+                          onClick={() => handleMove(index, "up")}
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0"
+                          disabled={index === (categories?.length ?? 0) - 1}
+                          onClick={() => handleMove(index, "down")}
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="min-w-0">
+                        <span className="font-medium text-sm">{cat.name}</span>
+                        {cat.description && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {cat.description}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
                       <Button
