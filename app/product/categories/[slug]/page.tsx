@@ -1,8 +1,8 @@
 "use client";
 
-import { IdeaCard } from "@/components/IdeaCard";
+import { IdeaMasonryItem } from "@/components/IdeaMasonryItem";
 import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
-import { IdeaCardSkeleton, IdeaExpandedRowSkeleton } from "@/components/Skeleton";
+import { IdeaMasonryItemSkeleton, IdeaExpandedRowSkeleton } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/convex/_generated/api";
@@ -18,7 +18,7 @@ import {
   Eye,
   Users,
   LayoutGrid,
-  AlignLeft,
+  List,
 } from "lucide-react";
 import type { IdeaListItem } from "@/lib/types";
 
@@ -38,15 +38,15 @@ export default function CategoryDetailPage() {
     api.ideas.listByCategory,
     category?._id ? { categoryId: category._id } : "skip",
   ) as IdeaListItem[] | undefined;
-  const [viewMode, setViewMode] = useState<"grid" | "expanded">("expanded");
+  const [viewMode, setViewMode] = useState<"list" | "masonry">("masonry");
 
   if (category === undefined) {
     return (
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <div className="h-8 w-48 bg-muted/40 rounded animate-pulse mb-6" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <IdeaCardSkeleton key={i} />
+        <div className="columns-1 md:columns-2 lg:columns-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <IdeaMasonryItemSkeleton key={i} />
           ))}
         </div>
       </div>
@@ -143,32 +143,34 @@ export default function CategoryDetailPage() {
           </div>
           <div className="flex border rounded-md">
             <button
-              onClick={() => setViewMode("grid")}
-              className={`h-8 w-8 flex items-center justify-center rounded-r-none transition-colors ${viewMode === "grid" ? "bg-secondary" : "hover:bg-muted"}`}
-              aria-label="Grid view"
+              onClick={() => setViewMode("list")}
+              className={`h-8 w-8 flex items-center justify-center rounded-r-none transition-colors ${viewMode === "list" ? "bg-secondary" : "hover:bg-muted"}`}
+              aria-label="List view"
             >
-              <LayoutGrid className="h-3.5 w-3.5" />
+              <List className="h-3.5 w-3.5" />
             </button>
             <button
-              onClick={() => setViewMode("expanded")}
-              className={`h-8 w-8 flex items-center justify-center rounded-l-none border-l transition-colors ${viewMode === "expanded" ? "bg-secondary" : "hover:bg-muted"}`}
-              aria-label="Expanded view"
+              onClick={() => setViewMode("masonry")}
+              className={`h-8 w-8 flex items-center justify-center rounded-l-none border-l transition-colors ${viewMode === "masonry" ? "bg-secondary" : "hover:bg-muted"}`}
+              aria-label="Masonry view"
             >
-              <AlignLeft className="h-3.5 w-3.5" />
+              <LayoutGrid className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
       )}
 
       {ideas === undefined ? (
-        viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <IdeaCardSkeleton key={i} />
+        viewMode === "masonry" ? (
+          <div className="columns-1 md:columns-2 lg:columns-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}>
+                <IdeaMasonryItemSkeleton />
+              </div>
             ))}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="divide-y">
             {Array.from({ length: 3 }).map((_, i) => (
               <IdeaExpandedRowSkeleton key={i} />
             ))}
@@ -195,19 +197,19 @@ export default function CategoryDetailPage() {
             </Button>
           </Link>
         </div>
-      ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      ) : viewMode === "masonry" ? (
+        <div className="columns-1 md:columns-2 lg:columns-3">
           {ideas.map((idea, i) => (
             <div
               key={idea._id}
               className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
             >
-              <IdeaCard idea={idea} />
+              <IdeaMasonryItem idea={idea} />
             </div>
           ))}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y">
           {ideas.map((idea, i) => (
             <div
               key={idea._id}
