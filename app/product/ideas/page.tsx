@@ -1,10 +1,11 @@
 "use client";
 
 import { IdeaCard } from "@/components/IdeaCard";
+import { IdeaListRow } from "@/components/IdeaListRow";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { IdeaCardSkeleton } from "@/components/Skeleton";
+import { IdeaCardSkeleton, IdeaListRowSkeleton } from "@/components/Skeleton";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -26,6 +27,8 @@ import {
   X,
   ArrowUpDown,
   Sparkles,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   Select,
@@ -62,6 +65,7 @@ export default function BrowseIdeasPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const filtered = useMemo(() => {
     if (!ideas) return [];
@@ -229,6 +233,26 @@ export default function BrowseIdeasPage() {
               </Badge>
             )}
           </Button>
+          <div className="flex border rounded-md">
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-9 w-9 rounded-r-none"
+              onClick={() => setViewMode("grid")}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-9 w-9 rounded-l-none"
+              onClick={() => setViewMode("list")}
+              aria-label="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {showFilters && (
@@ -344,13 +368,23 @@ export default function BrowseIdeasPage() {
       </div>
 
       {ideas === undefined ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
-              <IdeaCardSkeleton />
-            </div>
-          ))}
-        </div>
+        viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
+                <IdeaCardSkeleton />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
+                <IdeaListRowSkeleton />
+              </div>
+            ))}
+          </div>
+        )
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4 animate-float">
@@ -375,7 +409,7 @@ export default function BrowseIdeasPage() {
             </Link>
           )}
         </div>
-      ) : (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((idea, i) => (
             <div
@@ -383,6 +417,17 @@ export default function BrowseIdeasPage() {
               className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
             >
               <IdeaCard idea={idea} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((idea, i) => (
+            <div
+              key={idea._id}
+              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+            >
+              <IdeaListRow idea={idea} />
             </div>
           ))}
         </div>
