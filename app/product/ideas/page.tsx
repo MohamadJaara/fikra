@@ -1,10 +1,11 @@
 "use client";
 
 import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
+import { IdeaMasonryItem } from "@/components/IdeaMasonryItem";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { IdeaExpandedRowSkeleton } from "@/components/Skeleton";
+import { IdeaExpandedRowSkeleton, IdeaMasonryItemSkeleton } from "@/components/Skeleton";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -26,6 +27,8 @@ import {
   X,
   ArrowUpDown,
   Sparkles,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   Select,
@@ -62,6 +65,7 @@ export default function BrowseIdeasPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
+  const [viewMode, setViewMode] = useState<"list" | "masonry">("list");
 
   const filtered = useMemo(() => {
     if (!ideas) return [];
@@ -229,6 +233,26 @@ export default function BrowseIdeasPage() {
               </Badge>
             )}
           </Button>
+          <div className="flex border rounded-md">
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-9 w-9 rounded-r-none"
+              onClick={() => setViewMode("list")}
+              aria-label="List view"
+            >
+              <List className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "masonry" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-9 w-9 rounded-l-none"
+              onClick={() => setViewMode("masonry")}
+              aria-label="Masonry view"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         {showFilters && (
@@ -344,13 +368,23 @@ export default function BrowseIdeasPage() {
       </div>
 
       {ideas === undefined ? (
-        <div className="divide-y">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
-              <IdeaExpandedRowSkeleton noBorder />
-            </div>
-          ))}
-        </div>
+        viewMode === "masonry" ? (
+          <div className="columns-1 md:columns-2 lg:columns-3">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <div key={i} className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}>
+                <IdeaMasonryItemSkeleton />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="divide-y">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
+                <IdeaExpandedRowSkeleton noBorder />
+              </div>
+            ))}
+          </div>
+        )
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4 animate-float">
@@ -374,6 +408,17 @@ export default function BrowseIdeasPage() {
               </Button>
             </Link>
           )}
+        </div>
+      ) : viewMode === "masonry" ? (
+        <div className="columns-1 md:columns-2 lg:columns-3">
+          {filtered.map((idea, i) => (
+            <div
+              key={idea._id}
+              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+            >
+              <IdeaMasonryItem idea={idea} />
+            </div>
+          ))}
         </div>
       ) : (
         <div className="divide-y">

@@ -36,6 +36,13 @@ export const STATUS_COLORS: Record<Status, string> = {
   building: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
 };
 
+export const STATUS_BORDER_COLORS: Record<Status, string> = {
+  exploring: "border-l-blue-400 dark:border-l-blue-500",
+  forming_team: "border-l-amber-400 dark:border-l-amber-500",
+  full: "border-l-gray-300 dark:border-l-gray-600",
+  building: "border-l-emerald-400 dark:border-l-emerald-500",
+};
+
 export const PARTICIPATION_MODES = ["onsite", "remote"] as const;
 export type ParticipationMode = (typeof PARTICIPATION_MODES)[number];
 

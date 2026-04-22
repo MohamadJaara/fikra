@@ -75,6 +75,24 @@ export function IdeaExpandedRowSkeleton({ noBorder }: { noBorder?: boolean } = {
   );
 }
 
+export function IdeaMasonryItemSkeleton() {
+  return (
+    <div className="break-inside-avoid mb-4 pl-4 py-3 border-l-[3px] border-l-muted space-y-2">
+      <div className="flex items-start justify-between gap-2">
+        <Skeleton className="h-4 w-3/5 rounded" />
+        <Skeleton className="h-4 w-14 rounded-full" />
+      </div>
+      <Skeleton className="h-3 w-full rounded" />
+      <Skeleton className="h-3 w-4/5 rounded" />
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-4 w-4 rounded-full" />
+        <Skeleton className="h-3 w-16 rounded" />
+        <Skeleton className="h-3 w-10 rounded" />
+      </div>
+    </div>
+  );
+}
+
 export function NotificationSkeleton() {
   return (
     <div className="space-y-1">
