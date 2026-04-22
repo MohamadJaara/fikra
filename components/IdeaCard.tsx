@@ -30,11 +30,11 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
 
       <div className="relative z-10 pointer-events-none">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between gap-2">
+          <div className="space-y-2">
             <h3 className="font-semibold text-base leading-tight line-clamp-2">
               {idea.title}
             </h3>
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5">
               {idea.categoryName && (
                 <Badge variant="outline" className="text-[11px]">
                   {idea.categoryName}
