@@ -116,12 +116,12 @@ export default function PeoplePage() {
         </>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="divide-y">
             {filtered.map((user: PublicUser) => (
               <Link
                 key={user._id}
                 href={`/product/profile/${user.handle}`}
-                className="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                className="flex items-center gap-3 py-3 hover:bg-muted/30 transition-colors"
               >
                 <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={user.image} />
@@ -140,25 +140,25 @@ export default function PeoplePage() {
                       @{user.handle}
                     </p>
                   )}
-                  {user.roles && user.roles.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {user.roles.slice(0, 3).map((r) => (
-                        <Badge
-                          key={r}
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0"
-                        >
-                          {roleLabels[r] || r}
-                        </Badge>
-                      ))}
-                      {user.roles.length > 3 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          +{user.roles.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
                 </div>
+                {user.roles && user.roles.length > 0 && (
+                  <div className="flex flex-wrap gap-1 justify-end">
+                    {user.roles.slice(0, 3).map((r) => (
+                      <Badge
+                        key={r}
+                        variant="secondary"
+                        className="text-[10px] px-1.5 py-0"
+                      >
+                        {roleLabels[r] || r}
+                      </Badge>
+                    ))}
+                    {user.roles.length > 3 && (
+                      <span className="text-[10px] text-muted-foreground">
+                        +{user.roles.length - 3}
+                      </span>
+                    )}
+                  </div>
+                )}
               </Link>
             ))}
           </div>
