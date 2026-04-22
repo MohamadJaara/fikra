@@ -54,7 +54,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   Edit,
@@ -109,13 +108,6 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
   const comments = useQuery(api.comments.list, { ideaId });
   const searchParams = useSearchParams();
   const commentId = searchParams.get("comment");
-  const [activeTab, setActiveTab] = useState(commentId ? "comments" : "team");
-
-  useEffect(() => {
-    if (commentId) {
-      setActiveTab("comments");
-    }
-  }, [commentId]);
 
   useEffect(() => {
     if (!commentId || !comments) return;
@@ -172,56 +164,45 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
         <IdeaContent idea={idea} />
         <RoomSection idea={idea} />
         <Separator />
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList>
-            <TabsTrigger value="team" className="gap-1.5">
-              <Users className="h-3.5 w-3.5" />
-              Team
-            </TabsTrigger>
-            <TabsTrigger value="resources" className="gap-1.5">
-              <Package className="h-3.5 w-3.5" />
-              Resources
-            </TabsTrigger>
-            <TabsTrigger value="reactions" className="gap-1.5">
-              <Heart className="h-3.5 w-3.5" />
-              Reactions
-            </TabsTrigger>
-            <TabsTrigger value="interest" className="gap-1.5">
-              <MessageSquare className="h-3.5 w-3.5" />
-              Interest
-            </TabsTrigger>
-            <TabsTrigger value="related" className="gap-1.5">
-              <GitMerge className="h-3.5 w-3.5" />
-              Related
-            </TabsTrigger>
-            <TabsTrigger value="comments" className="gap-1.5">
-              <MessageSquare className="h-3.5 w-3.5" />
-              Comments
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent value="team" className="mt-4">
+        <div className="space-y-8">
+          <section id="team" className="scroll-mt-24">
             <TeamSection idea={idea} ideaId={ideaId} />
-          </TabsContent>
-          <TabsContent value="resources" className="mt-4">
+          </section>
+
+          <Separator />
+
+          <section id="resources" className="scroll-mt-24">
             <ResourceSection idea={idea} />
-          </TabsContent>
-          <TabsContent value="reactions" className="mt-4">
+          </section>
+
+          <Separator />
+
+          <section id="reactions" className="scroll-mt-24">
             <ReactionSection idea={idea} ideaId={ideaId} />
-          </TabsContent>
-          <TabsContent value="interest" className="mt-4">
+          </section>
+
+          <Separator />
+
+          <section id="interest" className="scroll-mt-24">
             <InterestSection idea={idea} ideaId={ideaId} />
-          </TabsContent>
-          <TabsContent value="related" className="mt-4">
+          </section>
+
+          <Separator />
+
+          <section id="related" className="scroll-mt-24">
             <RelatedIdeasSection ideaId={ideaId} isOwner={idea.isOwner} />
-          </TabsContent>
-          <TabsContent value="comments" className="mt-4">
+          </section>
+
+          <Separator />
+
+          <section id="comments" className="scroll-mt-24">
             <CommentSection
               comments={comments}
               ideaId={ideaId}
               isOwner={idea.isOwner}
             />
-          </TabsContent>
-        </Tabs>
+          </section>
+        </div>
       </div>
 
       <Toaster />
