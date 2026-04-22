@@ -170,7 +170,7 @@ export default function ThemesPage() {
                     />
 
                     {cat.description && (
-                      <p className="text-[15px] md:text-base text-white/60 mt-4 max-w-lg leading-relaxed">
+                      <p className="text-base md:text-lg text-white/90 mt-4 max-w-lg leading-relaxed font-medium">
                         {cat.description}
                       </p>
                     )}
