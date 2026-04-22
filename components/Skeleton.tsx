@@ -72,6 +72,26 @@ export function IdeaListSkeleton() {
   );
 }
 
+export function IdeaExpandedRowSkeleton() {
+  return (
+    <div className="rounded-lg border px-5 py-4 space-y-2.5">
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-5 w-2/5 rounded" />
+        <Skeleton className="h-5 w-16 rounded-full" />
+        <Skeleton className="h-5 w-12 rounded-full" />
+      </div>
+      <Skeleton className="h-4 w-full rounded" />
+      <Skeleton className="h-4 w-3/4 rounded" />
+      <div className="flex items-center gap-4 pt-0.5">
+        <Skeleton className="h-5 w-5 rounded-full" />
+        <Skeleton className="h-3 w-20 rounded" />
+        <Skeleton className="h-3 w-16 rounded" />
+        <Skeleton className="h-3 w-24 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
 export function NotificationSkeleton() {
   return (
     <div className="space-y-1">

@@ -1,13 +1,15 @@
 "use client";
 
 import { IdeaCard } from "@/components/IdeaCard";
-import { IdeaCardSkeleton } from "@/components/Skeleton";
+import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
+import { IdeaCardSkeleton, IdeaExpandedRowSkeleton } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useState } from "react";
 import {
   ArrowLeft,
   PlusCircle,
@@ -15,6 +17,8 @@ import {
   Sparkles,
   Eye,
   Users,
+  LayoutGrid,
+  AlignLeft,
 } from "lucide-react";
 import type { IdeaListItem } from "@/lib/types";
 
@@ -34,6 +38,7 @@ export default function CategoryDetailPage() {
     api.ideas.listByCategory,
     category?._id ? { categoryId: category._id } : "skip",
   ) as IdeaListItem[] | undefined;
+  const [viewMode, setViewMode] = useState<"grid" | "expanded">("expanded");
 
   if (category === undefined) {
     return (
@@ -125,24 +130,50 @@ export default function CategoryDetailPage() {
       </div>
 
       {ideas && ideas.length > 0 && (
-        <div className="flex items-center gap-4 mb-5 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            Browse ideas below
-          </span>
-          <span className="flex items-center gap-1">
-            <Users className="h-3 w-3" />
-            Join a team or start your own
-          </span>
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              Browse ideas below
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              Join a team or start your own
+            </span>
+          </div>
+          <div className="flex border rounded-md">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`h-8 w-8 flex items-center justify-center rounded-r-none transition-colors ${viewMode === "grid" ? "bg-secondary" : "hover:bg-muted"}`}
+              aria-label="Grid view"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode("expanded")}
+              className={`h-8 w-8 flex items-center justify-center rounded-l-none border-l transition-colors ${viewMode === "expanded" ? "bg-secondary" : "hover:bg-muted"}`}
+              aria-label="Expanded view"
+            >
+              <AlignLeft className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       )}
 
       {ideas === undefined ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <IdeaCardSkeleton key={i} />
-          ))}
-        </div>
+        viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <IdeaCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <IdeaExpandedRowSkeleton key={i} />
+            ))}
+          </div>
+        )
       ) : ideas.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4">💡</div>
@@ -164,7 +195,7 @@ export default function CategoryDetailPage() {
             </Button>
           </Link>
         </div>
-      ) : (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {ideas.map((idea, i) => (
             <div
@@ -172,6 +203,17 @@ export default function CategoryDetailPage() {
               className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
             >
               <IdeaCard idea={idea} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {ideas.map((idea, i) => (
+            <div
+              key={idea._id}
+              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+            >
+              <IdeaExpandedRow idea={idea} />
             </div>
           ))}
         </div>
