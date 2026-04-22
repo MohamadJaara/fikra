@@ -1,15 +1,12 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import Link from "next/link";
 import {
   Lightbulb,
   ArrowRight,
-  PlusCircle,
   Sparkles,
   List,
   Users,
@@ -18,12 +15,12 @@ import {
 } from "lucide-react";
 
 const GRADIENTS = [
-  "from-blue-500/20 to-cyan-500/20",
-  "from-purple-500/20 to-pink-500/20",
-  "from-amber-500/20 to-orange-500/20",
-  "from-emerald-500/20 to-teal-500/20",
-  "from-rose-500/20 to-red-500/20",
-  "from-indigo-500/20 to-violet-500/20",
+  "from-blue-600 to-cyan-500",
+  "from-purple-600 to-pink-500",
+  "from-amber-600 to-orange-500",
+  "from-emerald-600 to-teal-500",
+  "from-rose-600 to-red-500",
+  "from-indigo-600 to-violet-500",
 ];
 
 export default function ThemesPage() {
@@ -88,11 +85,11 @@ export default function ThemesPage() {
       </div>
 
       {categories === undefined ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="h-72 rounded-xl bg-muted/40 animate-pulse"
+              className="aspect-[3/2] rounded-xl bg-muted/40 animate-pulse"
             />
           ))}
         </div>
@@ -105,67 +102,54 @@ export default function ThemesPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {categories.map((cat, i) => {
             const gradient = GRADIENTS[i % GRADIENTS.length];
             return (
               <Link
                 key={cat._id}
                 href={`/product/categories/${cat.slug}`}
-                className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+                className={`animate-fade-in stagger-${Math.min(i + 1, 9)} group relative aspect-[3/2] rounded-xl overflow-hidden block`}
               >
-                <Card className="group h-full hover:shadow-lg transition-all duration-300 hover:border-primary/30 overflow-hidden">
-                  <div className="h-48 w-full overflow-hidden bg-muted relative">
-                    {cat.imageUrl ? (
-                      <img
-                        src={cat.imageUrl}
-                        alt={cat.name}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div
-                        className={`h-full w-full bg-gradient-to-br ${gradient} flex items-center justify-center`}
-                      >
-                        <Lightbulb className="h-12 w-12 text-muted-foreground/30" />
-                      </div>
-                    )}
-                  </div>
-                  <CardContent className="p-6">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h2 className="font-semibold text-lg truncate">
-                          {cat.name}
-                        </h2>
-                        {cat.description ? (
-                          <p className="text-sm text-muted-foreground mt-2 line-clamp-3">
-                            {cat.description}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-muted-foreground/60 mt-2 italic">
-                            No description yet
-                          </p>
-                        )}
-                      </div>
-                      <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0 mt-1 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                    <div className="flex items-center gap-2 mt-4">
+                {cat.imageUrl ? (
+                  <img
+                    src={cat.imageUrl}
+                    alt={cat.name}
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                ) : (
+                  <div
+                    className={`absolute inset-0 bg-gradient-to-br ${gradient}`}
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="absolute inset-0 flex flex-col justify-end p-5">
+                  <h2 className="font-semibold text-lg text-white drop-shadow-md">
+                    {cat.name}
+                  </h2>
+                  {cat.description && (
+                    <p className="text-sm text-white/80 mt-1 line-clamp-2">
+                      {cat.description}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between mt-3">
+                    <span className="inline-flex items-center gap-1 text-xs text-white/70">
                       {cat.ideaCount === 0 ? (
-                        <Badge
-                          variant="outline"
-                          className="text-xs text-primary border-primary/30"
-                        >
-                          <Rocket className="h-3 w-3 mr-1" />
+                        <>
+                          <Rocket className="h-3 w-3" />
                           Be the first!
-                        </Badge>
+                        </>
                       ) : (
-                        <Badge variant="secondary" className="text-xs">
+                        <>
+                          <Lightbulb className="h-3 w-3" />
                           {cat.ideaCount}{" "}
                           {cat.ideaCount === 1 ? "idea" : "ideas"}
-                        </Badge>
+                        </>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-white/60 group-hover:translate-x-1 group-hover:text-white transition-all" />
+                  </div>
+                </div>
               </Link>
             );
           })}
