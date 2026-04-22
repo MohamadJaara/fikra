@@ -189,7 +189,7 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
               <button
                 onClick={handleToggleInterest}
                 disabled={isToggling || idea.isMember || idea.isOwner}
-                className={`pointer-events-auto inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 transition-colors text-xs ${
+                className={`pointer-events-auto inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors text-sm ${
                   idea.isInterested
                     ? "text-rose-500 font-medium"
                     : "text-muted-foreground hover:text-rose-400"
@@ -197,11 +197,11 @@ export function IdeaCard({ idea }: { idea: IdeaListItem }) {
                 aria-label={idea.isInterested ? "Remove interest" : "Express interest"}
               >
                 {isToggling ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Heart className={`h-3 w-3 ${idea.isInterested ? "fill-current" : ""}`} />
+                  <Heart className={`h-4 w-4 ${idea.isInterested ? "fill-current" : ""}`} />
                 )}
-                {idea.interestCount > 0 && idea.interestCount}
+                {idea.interestCount > 0 && <span className="text-xs">{idea.interestCount}</span>}
               </button>
             </div>
           </div>
