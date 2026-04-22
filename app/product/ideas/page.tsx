@@ -1,14 +1,12 @@
 "use client";
 
 import { IdeaCard } from "@/components/IdeaCard";
-import { IdeaListRow } from "@/components/IdeaListRow";
 import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   IdeaCardSkeleton,
-  IdeaListRowSkeleton,
   IdeaExpandedRowSkeleton,
 } from "@/components/Skeleton";
 import {
@@ -33,7 +31,6 @@ import {
   ArrowUpDown,
   Sparkles,
   LayoutGrid,
-  List,
   AlignLeft,
 } from "lucide-react";
 import {
@@ -71,7 +68,7 @@ export default function BrowseIdeasPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "list" | "expanded">("expanded");
+  const [viewMode, setViewMode] = useState<"grid" | "expanded">("expanded");
 
   const filtered = useMemo(() => {
     if (!ideas) return [];
@@ -250,18 +247,9 @@ export default function BrowseIdeasPage() {
               <LayoutGrid className="h-4 w-4" />
             </Button>
             <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-9 w-9 rounded-none border-x"
-              onClick={() => setViewMode("list")}
-              aria-label="List view"
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
               variant={viewMode === "expanded" ? "secondary" : "ghost"}
               size="icon"
-              className="h-9 w-9 rounded-l-none"
+              className="h-9 w-9 rounded-l-none border-l"
               onClick={() => setViewMode("expanded")}
               aria-label="Expanded view"
             >
@@ -391,14 +379,6 @@ export default function BrowseIdeasPage() {
               </div>
             ))}
           </div>
-        ) : viewMode === "list" ? (
-          <div className="space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
-                <IdeaListRowSkeleton />
-              </div>
-            ))}
-          </div>
         ) : (
           <div className="space-y-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -440,17 +420,6 @@ export default function BrowseIdeasPage() {
               className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
             >
               <IdeaCard idea={idea} />
-            </div>
-          ))}
-        </div>
-      ) : viewMode === "list" ? (
-        <div className="space-y-2">
-          {filtered.map((idea, i) => (
-            <div
-              key={idea._id}
-              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-            >
-              <IdeaListRow idea={idea} />
             </div>
           ))}
         </div>
