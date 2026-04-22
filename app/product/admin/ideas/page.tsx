@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -133,23 +132,22 @@ export default function AdminIdeasPage() {
         />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Idea</TableHead>
-                <TableHead>Owner</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Members</TableHead>
-                <TableHead>Reactions</TableHead>
-                <TableHead>Comments</TableHead>
-                <TableHead>Missing Roles</TableHead>
-                <TableHead>Room</TableHead>
-                <TableHead>On-site</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Idea</TableHead>
+              <TableHead>Owner</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Members</TableHead>
+              <TableHead>Reactions</TableHead>
+              <TableHead>Comments</TableHead>
+              <TableHead>Missing Roles</TableHead>
+              <TableHead>Room</TableHead>
+              <TableHead>On-site</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
@@ -276,8 +274,7 @@ export default function AdminIdeasPage() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </div>
 
       <Toaster />
     </div>

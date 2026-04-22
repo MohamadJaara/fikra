@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -197,8 +196,8 @@ export default function AdminRoomsPage() {
               room.type === "team" && room.assignedIdeaIds.length > 0;
 
             return (
-            <Card key={room._id}>
-              <CardContent className="pt-6 space-y-3">
+            <div key={room._id} className="border rounded-lg overflow-hidden">
+              <div className="px-4 py-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{room.name}</span>
@@ -352,8 +351,8 @@ export default function AdminRoomsPage() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
             );
           })}
         </div>

@@ -4,7 +4,6 @@ import { useMutation, useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft,
@@ -114,9 +113,8 @@ export default function AdminResourcesPage() {
           No resources yet. Add some above.
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="divide-y">
+        <div className="border rounded-lg overflow-hidden">
+          <div className="divide-y">
               {resources.map((resource) => (
                 <div
                   key={resource._id}
@@ -140,8 +138,7 @@ export default function AdminResourcesPage() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+        </div>
       )}
 
       <Toaster />

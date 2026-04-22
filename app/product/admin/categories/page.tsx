@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -231,9 +230,8 @@ export default function AdminCategoriesPage() {
           images.
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="divide-y">
+        <div className="border rounded-lg overflow-hidden">
+          <div className="divide-y">
               {categories.map((cat, index) =>
                 editingId === cat._id ? (
                   <div key={cat._id} className="p-4 space-y-3 bg-muted/20">
@@ -399,8 +397,7 @@ export default function AdminCategoriesPage() {
                 ),
               )}
             </div>
-          </CardContent>
-        </Card>
+        </div>
       )}
 
       <Toaster />

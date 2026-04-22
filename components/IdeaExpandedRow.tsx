@@ -36,21 +36,20 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
         await expressInterest({ ideaId: idea._id });
       }
     } catch {
-      // optimistic UI will revert on error
     } finally {
       setIsToggling(false);
     }
   };
 
   return (
-    <div className="relative rounded-lg border hover:bg-muted/30 transition-colors duration-150 group">
+    <div className="relative group">
       <Link
         href={ideaHref}
         aria-label={`View idea: ${idea.title}`}
-        className="absolute inset-0 z-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="absolute inset-0 z-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset rounded-sm"
       />
 
-      <div className="relative z-10 pointer-events-none px-5 py-4 space-y-2.5">
+      <div className="relative z-10 pointer-events-none py-5 space-y-2.5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-base leading-tight">

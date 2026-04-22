@@ -7,13 +7,7 @@ import { useRolesList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
@@ -102,15 +96,13 @@ export default function SettingsPage() {
 
       <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Personal Information</CardTitle>
-            <CardDescription>
-              Update your name and email details.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-0">
+        <div className="py-6">
+          <h2 className="text-base font-semibold mb-1">Personal Information</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Update your name and email details.
+          </p>
+          <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="firstName">First Name *</Label>
@@ -145,88 +137,88 @@ export default function SettingsPage() {
                 Email cannot be changed.
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Roles</CardTitle>
-            <CardDescription>
-              You can pick more than one! This doesn&apos;t have to match your
-              day-to-day role at work — feel free to explore. Want to try PM, or
-              build backend as an iOS dev? Go for it.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {roles.map((role) => (
-                <Badge
-                  key={role.slug}
-                  variant={
-                    selectedRoles.includes(role.slug) ? "default" : "outline"
-                  }
-                  className="cursor-pointer select-none text-sm px-3 py-1.5"
-                  onClick={() => toggleRole(role.slug)}
-                >
-                  {role.name}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <Separator />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Participation Mode</CardTitle>
-            <CardDescription>
-              Are you joining the hackathon on-site or remotely? This is shown
-              on your profile and helps team owners match participants.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {PARTICIPATION_MODES.map((mode) => (
-                <Badge
-                  key={mode}
-                  variant={participationMode === mode ? "default" : "outline"}
-                  className={cn(
-                    "cursor-pointer select-none text-sm px-3 py-1.5",
-                    participationMode === mode &&
-                      PARTICIPATION_MODE_COLORS[mode],
-                  )}
-                  onClick={() =>
-                    setParticipationMode((prev) =>
-                      prev === mode ? undefined : mode,
-                    )
-                  }
-                >
-                  {mode === "onsite" ? (
-                    <MapPin className="h-3 w-3 mr-1.5" />
-                  ) : (
-                    <Wifi className="h-3 w-3 mr-1.5" />
-                  )}
-                  {PARTICIPATION_MODE_LABELS[mode]}
-                </Badge>
-              ))}
-              {!participationMode && (
-                <Badge
-                  variant="secondary"
-                  className="text-sm px-3 py-1.5 text-muted-foreground"
-                >
-                  Not decided yet
-                </Badge>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="py-6">
+          <h2 className="text-base font-semibold mb-1">Roles</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            You can pick more than one! This doesn&apos;t have to match your
+            day-to-day role at work — feel free to explore. Want to try PM, or
+            build backend as an iOS dev? Go for it.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {roles.map((role) => (
+              <Badge
+                key={role.slug}
+                variant={
+                  selectedRoles.includes(role.slug) ? "default" : "outline"
+                }
+                className="cursor-pointer select-none text-sm px-3 py-1.5"
+                onClick={() => toggleRole(role.slug)}
+              >
+                {role.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
 
-        <Button
-          type="submit"
-          disabled={isSubmitting || firstName.trim().length === 0}
-        >
-          <Save className="h-4 w-4 mr-2" />
-          {isSubmitting ? "Saving..." : "Save Changes"}
-        </Button>
+        <Separator />
+
+        <div className="py-6">
+          <h2 className="text-base font-semibold mb-1">Participation Mode</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Are you joining the hackathon on-site or remotely? This is shown
+            on your profile and helps team owners match participants.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PARTICIPATION_MODES.map((mode) => (
+              <Badge
+                key={mode}
+                variant={participationMode === mode ? "default" : "outline"}
+                className={cn(
+                  "cursor-pointer select-none text-sm px-3 py-1.5",
+                  participationMode === mode &&
+                    PARTICIPATION_MODE_COLORS[mode],
+                )}
+                onClick={() =>
+                  setParticipationMode((prev) =>
+                    prev === mode ? undefined : mode,
+                  )
+                }
+              >
+                {mode === "onsite" ? (
+                  <MapPin className="h-3 w-3 mr-1.5" />
+                ) : (
+                  <Wifi className="h-3 w-3 mr-1.5" />
+                )}
+                {PARTICIPATION_MODE_LABELS[mode]}
+              </Badge>
+            ))}
+            {!participationMode && (
+              <Badge
+                variant="secondary"
+                className="text-sm px-3 py-1.5 text-muted-foreground"
+              >
+                Not decided yet
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
+        <div className="py-6">
+          <Button
+            type="submit"
+            disabled={isSubmitting || firstName.trim().length === 0}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isSubmitting ? "Saving..." : "Save Changes"}
+          </Button>
+        </div>
       </form>
 
       <Toaster />

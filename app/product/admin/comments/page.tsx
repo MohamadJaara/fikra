@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -84,9 +83,8 @@ export default function AdminCommentsPage() {
         />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Comment</TableHead>
@@ -152,8 +150,7 @@ export default function AdminCommentsPage() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </div>
 
       <Toaster />
     </div>

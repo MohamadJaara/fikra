@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, PlusCircle, Trash2, Loader2, Shield } from "lucide-react";
@@ -105,9 +104,8 @@ export default function AdminRolesPage() {
           No roles yet. Add some above.
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-0">
-            <div className="divide-y">
+        <div className="border rounded-lg overflow-hidden">
+          <div className="divide-y">
               {roles.map((role) => (
                 <div
                   key={role._id}
@@ -131,8 +129,7 @@ export default function AdminRolesPage() {
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+        </div>
       )}
 
       <Toaster />

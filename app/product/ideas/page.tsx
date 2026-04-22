@@ -1,14 +1,10 @@
 "use client";
 
-import { IdeaCard } from "@/components/IdeaCard";
 import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  IdeaCardSkeleton,
-  IdeaExpandedRowSkeleton,
-} from "@/components/Skeleton";
+import { IdeaExpandedRowSkeleton } from "@/components/Skeleton";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -30,8 +26,6 @@ import {
   X,
   ArrowUpDown,
   Sparkles,
-  LayoutGrid,
-  AlignLeft,
 } from "lucide-react";
 import {
   Select,
@@ -68,7 +62,6 @@ export default function BrowseIdeasPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
-  const [viewMode, setViewMode] = useState<"grid" | "expanded">("expanded");
 
   const filtered = useMemo(() => {
     if (!ideas) return [];
@@ -236,30 +229,10 @@ export default function BrowseIdeasPage() {
               </Badge>
             )}
           </Button>
-          <div className="flex border rounded-md">
-            <Button
-              variant={viewMode === "grid" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-9 w-9 rounded-r-none"
-              onClick={() => setViewMode("grid")}
-              aria-label="Grid view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === "expanded" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-9 w-9 rounded-l-none border-l"
-              onClick={() => setViewMode("expanded")}
-              aria-label="Expanded view"
-            >
-              <AlignLeft className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
 
         {showFilters && (
-          <div className="border rounded-lg p-4 space-y-4 bg-muted/30 animate-fade-in">
+          <div className="border-b border-t py-4 space-y-4 animate-fade-in">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Filters</span>
               {activeFilterCount > 0 && (
@@ -371,23 +344,13 @@ export default function BrowseIdeasPage() {
       </div>
 
       {ideas === undefined ? (
-        viewMode === "grid" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
-                <IdeaCardSkeleton />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
-                <IdeaExpandedRowSkeleton />
-              </div>
-            ))}
-          </div>
-        )
+        <div className="divide-y">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
+              <IdeaExpandedRowSkeleton noBorder />
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4 animate-float">
@@ -412,19 +375,8 @@ export default function BrowseIdeasPage() {
             </Link>
           )}
         </div>
-      ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((idea, i) => (
-            <div
-              key={idea._id}
-              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-            >
-              <IdeaCard idea={idea} />
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y">
           {filtered.map((idea, i) => (
             <div
               key={idea._id}
