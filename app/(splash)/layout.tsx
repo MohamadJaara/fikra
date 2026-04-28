@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ReactNode } from "react";
-import ConvexClientProvider from "@/components/ConvexClientProvider";
 
 export default function SplashPageLayout({
   children,
@@ -9,8 +8,7 @@ export default function SplashPageLayout({
   children: ReactNode;
 }) {
   return (
-    <ConvexClientProvider>
-      <div className="flex min-h-screen w-full flex-col">
+    <div className="flex min-h-screen w-full flex-col">
         <header className="sticky top-0 z-10 flex h-16 border-b bg-background/80 px-4 backdrop-blur md:px-6">
           <nav className="container hidden w-full justify-between gap-6 text-lg font-medium md:flex md:flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
             <Link href="/">
@@ -43,6 +41,5 @@ export default function SplashPageLayout({
           </div>
         </footer>
       </div>
-    </ConvexClientProvider>
   );
 }
