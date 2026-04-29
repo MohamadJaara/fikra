@@ -13,6 +13,7 @@ import type * as auth from "../auth.js";
 import type * as categories from "../categories.js";
 import type * as comments from "../comments.js";
 import type * as http from "../http.js";
+import type * as ideaStats from "../ideaStats.js";
 import type * as ideas from "../ideas.js";
 import type * as interest from "../interest.js";
 import type * as lib from "../lib.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   categories: typeof categories;
   comments: typeof comments;
   http: typeof http;
+  ideaStats: typeof ideaStats;
   ideas: typeof ideas;
   interest: typeof interest;
   lib: typeof lib;
