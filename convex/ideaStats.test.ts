@@ -57,8 +57,10 @@ describe("Denormalized idea stats", () => {
       type: "exciting",
     });
 
-    const listForOther = await asOther.query(api.ideas.list, {});
-    const listed = listForOther.find((idea) => idea._id === ideaId);
+    const listForOther = await asOther.query(api.ideas.list, {
+      paginationOpts: { numItems: 100, cursor: null },
+    });
+    const listed = listForOther.page.find((idea) => idea._id === ideaId);
     expect(listed?.memberCount).toBe(2);
     expect(listed?.interestCount).toBe(1);
     expect(listed?.reactionCounts).toEqual({ exciting: 1 });
@@ -92,8 +94,10 @@ describe("Denormalized idea stats", () => {
     expect(storedIdea.hasUnresolvedResources).toBe(false);
     expect(storedIdea.resourceRequestSummary[0].resolved).toBe(true);
 
-    const listForOwner = await asOwner.query(api.ideas.list, {});
-    const listedForOwner = listForOwner.find((idea) => idea._id === ideaId);
+    const listForOwner = await asOwner.query(api.ideas.list, {
+      paginationOpts: { numItems: 100, cursor: null },
+    });
+    const listedForOwner = listForOwner.page.find((idea) => idea._id === ideaId);
     expect(listedForOwner?.missingRoles).toEqual(["developer"]);
     expect(listedForOwner?.hasUnresolvedResources).toBe(false);
     expect(listedForOwner?.resourceRequests[0].resolved).toBe(true);

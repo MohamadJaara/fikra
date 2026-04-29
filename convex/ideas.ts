@@ -1,6 +1,7 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import {
   getAuthenticatedUser,
   getResourceNameMap,
@@ -29,6 +30,23 @@ const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
 const TRANSFER_STATUS_DECLINED = "declined";
 const TRANSFER_STATUS_CANCELED = "canceled";
+const IDEA_LIST_SORT_OPTIONS = [
+  "newest",
+  "oldest",
+  "most_reactions",
+  "most_interest",
+] as const;
+
+type IdeaListSortOption = (typeof IDEA_LIST_SORT_OPTIONS)[number];
+type IdeaListFilters = {
+  search?: string;
+  statuses?: string[];
+  roles?: string[];
+  resourceTags?: string[];
+  categories?: Array<Id<"categories"> | "__none__">;
+  needsTeammates?: boolean;
+  needsResources?: boolean;
+};
 
 async function getIdeaListMembershipMaps(ctx: QueryCtx, userId: Id<"users">) {
   const [memberships, interests, reactions] = await Promise.all([
@@ -82,7 +100,9 @@ async function buildIdeaListItems(
   const results = await Promise.all(
     ideas.map(async (idea) => {
       const owner = await ctx.db.get(idea.ownerId);
-      const category = idea.categoryId ? await ctx.db.get(idea.categoryId) : null;
+      const category = idea.categoryId
+        ? await ctx.db.get(idea.categoryId)
+        : null;
 
       const [legacyMembers, legacyInterestDocs, legacyReactionDocs] =
         idea.memberCount === undefined ||
@@ -190,7 +210,134 @@ async function buildIdeaListItems(
     }),
   );
 
-  return results.sort((a, b) => b._creationTime - a._creationTime);
+  return results;
+}
+
+function getReactionTotal(idea: IdeaListItem) {
+  return Object.values(idea.reactionCounts).reduce((total, count) => {
+    return total + count;
+  }, 0);
+}
+
+function matchesIdeaListFilters(idea: IdeaListItem, filters?: IdeaListFilters) {
+  if (!filters) return true;
+
+  const search = filters.search?.trim().toLowerCase();
+  if (
+    search &&
+    !idea.title.toLowerCase().includes(search) &&
+    !idea.pitch.toLowerCase().includes(search)
+  ) {
+    return false;
+  }
+
+  if (filters.statuses?.length && !filters.statuses.includes(idea.status)) {
+    return false;
+  }
+
+  if (
+    filters.roles?.length &&
+    !filters.roles.some((role) => idea.missingRoles.includes(role))
+  ) {
+    return false;
+  }
+
+  if (
+    filters.resourceTags?.length &&
+    !filters.resourceTags.some((tag) =>
+      idea.resourceRequests.some(
+        (request) => request.tag === tag && !request.resolved,
+      ),
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    filters.categories?.length &&
+    !filters.categories.some((categoryId) =>
+      categoryId === "__none__"
+        ? !idea.categoryId
+        : idea.categoryId === categoryId,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    filters.needsTeammates &&
+    (idea.status === "full" || idea.missingRoles.length === 0)
+  ) {
+    return false;
+  }
+
+  if (filters.needsResources && !idea.hasUnresolvedResources) {
+    return false;
+  }
+
+  return true;
+}
+
+function hasActiveIdeaListFilters(filters?: IdeaListFilters) {
+  if (!filters) return false;
+  return Boolean(
+    filters.search?.trim() ||
+    filters.statuses?.length ||
+    filters.roles?.length ||
+    filters.resourceTags?.length ||
+    filters.categories?.length ||
+    filters.needsTeammates ||
+    filters.needsResources,
+  );
+}
+
+function sortIdeaListItems(
+  ideas: IdeaListItem[],
+  sortBy: IdeaListSortOption = "newest",
+) {
+  const sorted = [...ideas];
+  switch (sortBy) {
+    case "oldest":
+      sorted.sort((a, b) => a._creationTime - b._creationTime);
+      break;
+    case "most_reactions":
+      sorted.sort((a, b) => {
+        const reactionDelta = getReactionTotal(b) - getReactionTotal(a);
+        return reactionDelta || b._creationTime - a._creationTime;
+      });
+      break;
+    case "most_interest":
+      sorted.sort((a, b) => {
+        const interestDelta = b.interestCount - a.interestCount;
+        return interestDelta || b._creationTime - a._creationTime;
+      });
+      break;
+    default:
+      sorted.sort((a, b) => b._creationTime - a._creationTime);
+  }
+  return sorted;
+}
+
+function parsePaginationCursor(cursor: string | null) {
+  if (!cursor) return 0;
+  const offset = Number.parseInt(cursor, 10);
+  return Number.isFinite(offset) && offset > 0 ? offset : 0;
+}
+
+function paginateIdeaListItems(
+  ideas: IdeaListItem[],
+  paginationOpts: {
+    numItems: number;
+    cursor: string | null;
+  },
+) {
+  const start = parsePaginationCursor(paginationOpts.cursor);
+  const end = Math.min(start + paginationOpts.numItems, ideas.length);
+  return {
+    page: ideas.slice(start, end),
+    isDone: end >= ideas.length,
+    continueCursor: String(end),
+  };
 }
 
 function assertOnsiteEligibleForIdea(
@@ -724,28 +871,78 @@ export const cancelOwnershipTransfer = mutation({
 });
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: {
+    paginationOpts: paginationOptsValidator,
+    filters: v.optional(
+      v.object({
+        search: v.optional(v.string()),
+        statuses: v.optional(v.array(v.string())),
+        roles: v.optional(v.array(v.string())),
+        resourceTags: v.optional(v.array(v.string())),
+        categories: v.optional(
+          v.array(v.union(v.id("categories"), v.literal("__none__"))),
+        ),
+        needsTeammates: v.optional(v.boolean()),
+        needsResources: v.optional(v.boolean()),
+      }),
+    ),
+    sortBy: v.optional(
+      v.union(
+        v.literal("newest"),
+        v.literal("oldest"),
+        v.literal("most_reactions"),
+        v.literal("most_interest"),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
     const userId = await getIdeaListViewerId(ctx);
-    if (!userId) return [];
-    const ideas = await ctx.db.query("ideas").order("desc").take(100);
-    return await buildIdeaListItems(ctx, ideas, userId);
+    if (!userId) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
+
+    const sortBy = args.sortBy ?? "newest";
+    if (
+      !hasActiveIdeaListFilters(args.filters) &&
+      (sortBy === "newest" || sortBy === "oldest")
+    ) {
+      const { page, isDone, continueCursor } = await ctx.db
+        .query("ideas")
+        .order(sortBy === "oldest" ? "asc" : "desc")
+        .paginate(args.paginationOpts);
+      const enrichedPage = await buildIdeaListItems(ctx, page, userId);
+      return { page: enrichedPage, isDone, continueCursor };
+    }
+
+    const ideas = await ctx.db.query("ideas").collect();
+    const enrichedIdeas = await buildIdeaListItems(ctx, ideas, userId);
+    const filteredIdeas = enrichedIdeas.filter((idea) =>
+      matchesIdeaListFilters(idea, args.filters),
+    );
+    const sortedIdeas = sortIdeaListItems(filteredIdeas, sortBy);
+    return paginateIdeaListItems(sortedIdeas, args.paginationOpts);
   },
 });
 
 export const listByCategory = query({
-  args: { categoryId: v.id("categories") },
+  args: {
+    categoryId: v.id("categories"),
+    paginationOpts: paginationOptsValidator,
+  },
   handler: async (ctx, args) => {
     const userId = await getIdeaListViewerId(ctx);
-    if (!userId) return [];
+    if (!userId) {
+      return { page: [], isDone: true, continueCursor: "" };
+    }
 
-    const ideas = await ctx.db
+    const { page, isDone, continueCursor } = await ctx.db
       .query("ideas")
       .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
       .order("desc")
-      .take(100);
+      .paginate(args.paginationOpts);
 
-    return await buildIdeaListItems(ctx, ideas, userId);
+    const enrichedPage = await buildIdeaListItems(ctx, page, userId);
+    return { page: enrichedPage, isDone, continueCursor };
   },
 });
 

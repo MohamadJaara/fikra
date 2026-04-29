@@ -6,7 +6,7 @@ import { IdeaMasonryItemSkeleton, IdeaExpandedRowSkeleton } from "@/components/S
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import { usePaginatedQuery, useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
@@ -19,8 +19,11 @@ import {
   Users,
   LayoutGrid,
   List,
+  Loader2,
 } from "lucide-react";
 import type { IdeaListItem } from "@/lib/types";
+
+const PAGE_SIZE = 20;
 
 const GRADIENTS = [
   "from-blue-500/20 to-cyan-500/20",
@@ -34,10 +37,15 @@ const GRADIENTS = [
 export default function CategoryDetailPage() {
   const params = useParams<{ slug: string }>();
   const category = useQuery(api.categories.getBySlug, { slug: params.slug });
-  const ideas = useQuery(
+  const {
+    results: ideas,
+    status: ideasStatus,
+    loadMore,
+  } = usePaginatedQuery(
     api.ideas.listByCategory,
     category?._id ? { categoryId: category._id } : "skip",
-  ) as IdeaListItem[] | undefined;
+    { initialNumItems: PAGE_SIZE },
+  );
   const [viewMode, setViewMode] = useState<"list" | "masonry">("masonry");
 
   if (category === undefined) {
@@ -115,8 +123,9 @@ export default function CategoryDetailPage() {
               )}
               <Badge variant="secondary" className="mt-2">
                 <Sparkles className="h-3 w-3 mr-1" />
-                {ideas ? ideas.length : "..."}{" "}
-                {ideas?.length === 1 ? "idea" : "ideas"}
+                {ideasStatus === "LoadingFirstPage"
+                  ? "..."
+                  : `${ideas.length} ${ideas.length === 1 ? "idea" : "ideas"}`}
               </Badge>
             </div>
             <Link href={`/product/ideas/new?categoryId=${category._id}`}>
@@ -129,7 +138,7 @@ export default function CategoryDetailPage() {
         </div>
       </div>
 
-      {ideas && ideas.length > 0 && (
+      {ideas.length > 0 && ideasStatus !== "LoadingFirstPage" && (
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
@@ -160,7 +169,7 @@ export default function CategoryDetailPage() {
         </div>
       )}
 
-      {ideas === undefined ? (
+      {ideasStatus === "LoadingFirstPage" ? (
         viewMode === "masonry" ? (
           <div className="columns-1 md:columns-2 lg:columns-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -197,28 +206,44 @@ export default function CategoryDetailPage() {
             </Button>
           </Link>
         </div>
-      ) : viewMode === "masonry" ? (
-        <div className="columns-1 md:columns-2 lg:columns-3">
-          {ideas.map((idea, i) => (
-            <div
-              key={idea._id}
-              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-            >
-              <IdeaMasonryItem idea={idea} />
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="divide-y">
-          {ideas.map((idea, i) => (
-            <div
-              key={idea._id}
-              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-            >
-              <IdeaExpandedRow idea={idea} />
+        <>
+          {viewMode === "masonry" ? (
+            <div className="columns-1 md:columns-2 lg:columns-3">
+              {(ideas as IdeaListItem[]).map((idea, i) => (
+                <div
+                  key={idea._id}
+                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+                >
+                  <IdeaMasonryItem idea={idea} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="divide-y">
+              {(ideas as IdeaListItem[]).map((idea, i) => (
+                <div
+                  key={idea._id}
+                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+                >
+                  <IdeaExpandedRow idea={idea} />
+                </div>
+              ))}
+            </div>
+          )}
+          {ideasStatus === "CanLoadMore" && (
+            <div className="flex justify-center mt-6">
+              <Button variant="outline" onClick={() => loadMore(PAGE_SIZE)}>
+                Load more
+              </Button>
+            </div>
+          )}
+          {ideasStatus === "LoadingMore" && (
+            <div className="flex justify-center mt-6">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

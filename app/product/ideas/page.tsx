@@ -5,7 +5,10 @@ import { IdeaMasonryItem } from "@/components/IdeaMasonryItem";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { IdeaExpandedRowSkeleton, IdeaMasonryItemSkeleton } from "@/components/Skeleton";
+import {
+  IdeaExpandedRowSkeleton,
+  IdeaMasonryItemSkeleton,
+} from "@/components/Skeleton";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -15,8 +18,9 @@ import {
 import type { SortOption } from "@/lib/constants";
 import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
-import { useState, useMemo } from "react";
+import type { Id } from "@/convex/_generated/dataModel";
+import { usePaginatedQuery, useQuery } from "convex/react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   PlusCircle,
@@ -29,6 +33,7 @@ import {
   Sparkles,
   LayoutGrid,
   List,
+  Loader2,
 } from "lucide-react";
 import {
   Select,
@@ -39,18 +44,19 @@ import {
 } from "@/components/ui/select";
 import type { IdeaListItem } from "@/lib/types";
 
+const PAGE_SIZE = 20;
+
 type FilterState = {
   search: string;
   statuses: string[];
   roles: string[];
   resourceTags: string[];
-  categories: string[];
+  categories: Array<Id<"categories"> | "__none__">;
   needsTeammates: boolean;
   needsResources: boolean;
 };
 
 export default function BrowseIdeasPage() {
-  const ideas = useQuery(api.ideas.list) as IdeaListItem[] | undefined;
   const categoryList = useQuery(api.categories.list);
   const rolesList = useRolesList();
   const resourcesList = useResourcesList();
@@ -66,78 +72,27 @@ export default function BrowseIdeasPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [viewMode, setViewMode] = useState<"list" | "masonry">("list");
-
-  const filtered = useMemo(() => {
-    if (!ideas) return [];
-    const result = ideas.filter((idea) => {
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        if (
-          !idea.title.toLowerCase().includes(q) &&
-          !idea.pitch.toLowerCase().includes(q)
-        ) {
-          return false;
-        }
-      }
-      if (
-        filters.statuses.length > 0 &&
-        !filters.statuses.includes(idea.status)
-      ) {
-        return false;
-      }
-      if (
-        filters.roles.length > 0 &&
-        !filters.roles.some((r) => idea.missingRoles.includes(r))
-      ) {
-        return false;
-      }
-      if (
-        filters.resourceTags.length > 0 &&
-        !filters.resourceTags.some((t) =>
-          idea.resourceRequests.some((rr) => rr.tag === t && !rr.resolved),
-        )
-      ) {
-        return false;
-      }
-      if (
-        filters.categories.length > 0 &&
-        !filters.categories.some((c) =>
-          c === "__none__" ? !idea.categoryId : idea.categoryId === c,
-        )
-      ) {
-        return false;
-      }
-      if (
-        filters.needsTeammates &&
-        (idea.status === "full" || idea.missingRoles.length === 0)
-      ) {
-        return false;
-      }
-      if (filters.needsResources && !idea.hasUnresolvedResources) {
-        return false;
-      }
-      return true;
-    });
-
-    const totalReactions = (idea: IdeaListItem) =>
-      Object.values(idea.reactionCounts).reduce((a, b) => a + b, 0);
-
-    switch (sortBy) {
-      case "oldest":
-        result.sort((a, b) => a._creationTime - b._creationTime);
-        break;
-      case "most_reactions":
-        result.sort((a, b) => totalReactions(b) - totalReactions(a));
-        break;
-      case "most_interest":
-        result.sort((a, b) => b.interestCount - a.interestCount);
-        break;
-      default:
-        result.sort((a, b) => b._creationTime - a._creationTime);
-    }
-
-    return result;
-  }, [ideas, filters, sortBy]);
+  const {
+    results: ideas,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.ideas.list,
+    {
+      filters: {
+        search: filters.search,
+        statuses: filters.statuses,
+        roles: filters.roles,
+        resourceTags: filters.resourceTags,
+        categories: filters.categories,
+        needsTeammates: filters.needsTeammates,
+        needsResources: filters.needsResources,
+      },
+      sortBy,
+    },
+    { initialNumItems: PAGE_SIZE },
+  );
+  const ideaResults = ideas as IdeaListItem[];
 
   const activeFilterCount =
     filters.statuses.length +
@@ -147,8 +102,8 @@ export default function BrowseIdeasPage() {
     (filters.needsTeammates ? 1 : 0) +
     (filters.needsResources ? 1 : 0);
 
-  const toggleFilter = (
-    key: "statuses" | "roles" | "resourceTags" | "categories",
+  const toggleStringFilter = (
+    key: "statuses" | "roles" | "resourceTags",
     value: string,
   ) => {
     setFilters((prev) => ({
@@ -156,6 +111,15 @@ export default function BrowseIdeasPage() {
       [key]: prev[key].includes(value)
         ? prev[key].filter((v) => v !== value)
         : [...prev[key], value],
+    }));
+  };
+
+  const toggleCategoryFilter = (value: Id<"categories"> | "__none__") => {
+    setFilters((prev) => ({
+      ...prev,
+      categories: prev.categories.includes(value)
+        ? prev.categories.filter((v) => v !== value)
+        : [...prev.categories, value],
     }));
   };
 
@@ -181,7 +145,9 @@ export default function BrowseIdeasPage() {
               All Ideas
             </h1>
             <p className="text-sm text-muted-foreground">
-              {ideas ? `${ideas.length} ideas` : "Loading..."}
+              {status === "LoadingFirstPage"
+                ? "Loading..."
+                : `${ideaResults.length} idea${ideaResults.length !== 1 ? "s" : ""}`}
             </p>
           </div>
           <Link href="/product/ideas/new">
@@ -275,7 +241,7 @@ export default function BrowseIdeasPage() {
                     key={s}
                     label={STATUS_LABELS[s]}
                     active={filters.statuses.includes(s)}
-                    onClick={() => toggleFilter("statuses", s)}
+                    onClick={() => toggleStringFilter("statuses", s)}
                   />
                 ))}
               </div>
@@ -291,7 +257,7 @@ export default function BrowseIdeasPage() {
                     key={r.slug}
                     label={r.name}
                     active={filters.roles.includes(r.slug)}
-                    onClick={() => toggleFilter("roles", r.slug)}
+                    onClick={() => toggleStringFilter("roles", r.slug)}
                   />
                 ))}
               </div>
@@ -309,7 +275,7 @@ export default function BrowseIdeasPage() {
                       label={resource.name}
                       active={filters.resourceTags.includes(resource.slug)}
                       onClick={() =>
-                        toggleFilter("resourceTags", resource.slug)
+                        toggleStringFilter("resourceTags", resource.slug)
                       }
                     />
                   ))}
@@ -325,14 +291,14 @@ export default function BrowseIdeasPage() {
                     key="__none__"
                     label="No Category"
                     active={filters.categories.includes("__none__")}
-                    onClick={() => toggleFilter("categories", "__none__")}
+                    onClick={() => toggleCategoryFilter("__none__")}
                   />
                   {categoryList.map((cat) => (
                     <FilterBadge
                       key={cat._id}
                       label={cat.name}
                       active={filters.categories.includes(cat._id)}
-                      onClick={() => toggleFilter("categories", cat._id)}
+                      onClick={() => toggleCategoryFilter(cat._id)}
                     />
                   ))}
                 </div>
@@ -367,11 +333,14 @@ export default function BrowseIdeasPage() {
         )}
       </div>
 
-      {ideas === undefined ? (
+      {status === "LoadingFirstPage" ? (
         viewMode === "masonry" ? (
           <div className="columns-1 md:columns-2 lg:columns-3">
             {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}>
+              <div
+                key={i}
+                className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+              >
                 <IdeaMasonryItemSkeleton />
               </div>
             ))}
@@ -385,22 +354,22 @@ export default function BrowseIdeasPage() {
             ))}
           </div>
         )
-      ) : filtered.length === 0 ? (
+      ) : ideaResults.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4 animate-float">
-            {ideas.length === 0 ? "💡" : "🔍"}
+            {activeFilterCount === 0 && !filters.search ? "💡" : "🔍"}
           </div>
           <p className="text-lg font-medium mb-2">
-            {ideas.length === 0
+            {activeFilterCount === 0 && !filters.search
               ? "No ideas yet"
               : "No ideas match your filters"}
           </p>
           <p className="text-sm text-muted-foreground mb-4">
-            {ideas.length === 0
+            {activeFilterCount === 0 && !filters.search
               ? "Be the first to add an idea for the hackathon!"
               : "Try adjusting your filters or search."}
           </p>
-          {ideas.length === 0 && (
+          {activeFilterCount === 0 && !filters.search && (
             <Link href="/product/ideas/new">
               <Button>
                 <PlusCircle className="h-4 w-4 mr-2" />
@@ -409,28 +378,44 @@ export default function BrowseIdeasPage() {
             </Link>
           )}
         </div>
-      ) : viewMode === "masonry" ? (
-        <div className="columns-1 md:columns-2 lg:columns-3">
-          {filtered.map((idea, i) => (
-            <div
-              key={idea._id}
-              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-            >
-              <IdeaMasonryItem idea={idea} />
-            </div>
-          ))}
-        </div>
       ) : (
-        <div className="divide-y">
-          {filtered.map((idea, i) => (
-            <div
-              key={idea._id}
-              className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-            >
-              <IdeaExpandedRow idea={idea} />
+        <>
+          {viewMode === "masonry" ? (
+            <div className="columns-1 md:columns-2 lg:columns-3">
+              {ideaResults.map((idea, i) => (
+                <div
+                  key={idea._id}
+                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+                >
+                  <IdeaMasonryItem idea={idea} />
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="divide-y">
+              {ideaResults.map((idea, i) => (
+                <div
+                  key={idea._id}
+                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+                >
+                  <IdeaExpandedRow idea={idea} />
+                </div>
+              ))}
+            </div>
+          )}
+          {status === "CanLoadMore" && (
+            <div className="flex justify-center mt-6">
+              <Button variant="outline" onClick={() => loadMore(PAGE_SIZE)}>
+                Load more
+              </Button>
+            </div>
+          )}
+          {status === "LoadingMore" && (
+            <div className="flex justify-center mt-6">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          )}
+        </>
       )}
     </div>
   );

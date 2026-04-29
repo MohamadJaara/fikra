@@ -21,8 +21,10 @@ describe("Authentication & email domain gate", () => {
 
   test("unauthenticated query returns empty list", async () => {
     const t = initTest();
-    const result = await t.query(api.ideas.list, {});
-    expect(result).toEqual([]);
+    const result = await t.query(api.ideas.list, {
+      paginationOpts: { numItems: 100, cursor: null },
+    });
+    expect(result.page).toEqual([]);
   });
 
   test("user with disallowed email is rejected", async () => {
