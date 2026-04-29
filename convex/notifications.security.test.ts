@@ -8,7 +8,7 @@ import {
   makeIdeaArgs,
   seedCategory,
   DOMAIN,
-} from "./testHelpers";
+} from "./testHelpers.test";
 
 describe("Notification authorization", () => {
   test("user cannot mark another user's notification as read", async () => {

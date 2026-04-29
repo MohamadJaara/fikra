@@ -10,7 +10,7 @@ import {
   seedResources,
   seedRoles,
   DOMAIN,
-} from "./testHelpers";
+} from "./testHelpers.test";
 
 describe("Denormalized idea stats", () => {
   test("keeps list stats in sync with mutations", async () => {

@@ -9,7 +9,7 @@ import {
   seedCategory,
   getCommentId,
   DOMAIN,
-} from "./testHelpers";
+} from "./testHelpers.test";
 
 describe("Comment authorization", () => {
   test("non-author cannot edit another user's comment", async () => {

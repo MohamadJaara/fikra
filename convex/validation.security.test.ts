@@ -9,7 +9,7 @@ import {
   seedCategory,
   seedResources,
   DOMAIN,
-} from "./testHelpers";
+} from "./testHelpers.test";
 
 describe("Input validation & enum enforcement", () => {
   test("rejects invalid status on idea creation", async () => {

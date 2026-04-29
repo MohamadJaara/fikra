@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 export const modules = import.meta.glob("./**/*.ts");
@@ -27,12 +28,12 @@ export async function insertUser(
       ...overrides,
     });
   });
-  return id as string;
+  return id as Id<"users">;
 }
 
 export function asUser(
   t: ReturnType<typeof convexTest>,
-  userId: string,
+  userId: Id<"users">,
   email: string,
 ) {
   return t.withIdentity({
@@ -42,7 +43,7 @@ export function asUser(
   });
 }
 
-export function makeIdeaArgs(categoryId: string) {
+export function makeIdeaArgs(categoryId: Id<"categories">) {
   return {
     title: "Test Idea",
     pitch: "A test pitch",
@@ -62,7 +63,7 @@ export async function seedCategory(t: ReturnType<typeof convexTest>) {
       name: "Test Category",
       slug: "test-category",
     });
-  })) as string;
+  })) as Id<"categories">;
 }
 
 export async function seedRoles(t: ReturnType<typeof convexTest>) {
@@ -79,7 +80,7 @@ export async function seedResources(t: ReturnType<typeof convexTest>) {
 
 export async function getCommentId(
   t: ReturnType<typeof convexTest>,
-  ideaId: string,
+  ideaId: Id<"ideas">,
 ) {
   return (await t.run(async (ctx: any) => {
     const comments = await ctx.db
@@ -87,5 +88,5 @@ export async function getCommentId(
       .withIndex("by_idea", (q: any) => q.eq("ideaId", ideaId))
       .collect();
     return comments[0]._id;
-  })) as string;
+  })) as Id<"comments">;
 }

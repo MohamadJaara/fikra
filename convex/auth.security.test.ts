@@ -7,7 +7,7 @@ import {
   asUser,
   makeIdeaArgs,
   seedCategory,
-} from "./testHelpers";
+} from "./testHelpers.test";
 
 describe("Authentication & email domain gate", () => {
   test("unauthenticated user cannot create an idea", async () => {

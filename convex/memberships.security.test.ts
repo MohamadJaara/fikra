@@ -9,7 +9,7 @@ import {
   seedCategory,
   seedRoles,
   DOMAIN,
-} from "./testHelpers";
+} from "./testHelpers.test";
 
 describe("Membership authorization", () => {
   test("owner cannot leave their own idea", async () => {

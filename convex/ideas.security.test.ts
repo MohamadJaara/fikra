@@ -8,7 +8,7 @@ import {
   makeIdeaArgs,
   seedCategory,
   DOMAIN,
-} from "./testHelpers";
+} from "./testHelpers.test";
 
 describe("Owner-only idea mutations", () => {
   test("non-owner cannot update an idea", async () => {

@@ -8,7 +8,7 @@ import {
   makeIdeaArgs,
   seedCategory,
   DOMAIN,
-} from "./testHelpers";
+} from "./testHelpers.test";
 
 describe("Ownership transfer authorization", () => {
   test("non-owner cannot initiate ownership transfer", async () => {
