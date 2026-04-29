@@ -10,6 +10,10 @@ import {
 import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
+import {
+  refreshIdeaInterestStats,
+  refreshIdeaMemberStats,
+} from "./ideaStats";
 
 const RELATION_TYPES = ["related", "duplicate"] as const;
 type RelationType = (typeof RELATION_TYPES)[number];
@@ -295,11 +299,9 @@ export const acceptMerge = mutation({
       .collect();
     for (const r of sourceResources) await ctx.db.delete(r._id);
 
-    const sourceNotifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_idea", (q) => q.eq("ideaId", sourceId))
-      .collect();
-    for (const n of sourceNotifications) await ctx.db.delete(n._id);
+    await ctx.runMutation(internal.notifications.deleteForIdea, {
+      ideaId: sourceId,
+    });
 
     const sourceInterestDocs = await ctx.db
       .query("ideaInterest")
@@ -332,6 +334,9 @@ export const acceptMerge = mutation({
     }
 
     await ctx.db.delete(sourceId);
+
+    await refreshIdeaMemberStats(ctx, targetId);
+    await refreshIdeaInterestStats(ctx, targetId);
 
     await ctx.runMutation(internal.notifications.create, {
       recipientId: relation.mergeRequestedById,

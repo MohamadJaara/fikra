@@ -18,11 +18,45 @@ import {
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { IdeaListItem } from "../lib/types";
+import {
+  getResourceRequestSummary,
+  refreshIdeaInterestStats,
+  refreshIdeaMemberStats,
+  refreshIdeaResourceStats,
+} from "./ideaStats";
 
 const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
 const TRANSFER_STATUS_DECLINED = "declined";
 const TRANSFER_STATUS_CANCELED = "canceled";
+
+async function getIdeaListMembershipMaps(ctx: QueryCtx, userId: Id<"users">) {
+  const [memberships, interests, reactions] = await Promise.all([
+    ctx.db
+      .query("ideaMembers")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+    ctx.db
+      .query("ideaInterest")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+    ctx.db
+      .query("reactions")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
+  ]);
+
+  const memberIdeaIds = new Set(memberships.map((m) => m.ideaId));
+  const interestedIdeaIds = new Set(interests.map((i) => i.ideaId));
+  const reactionsByIdeaId = new Map<Id<"ideas">, string[]>();
+  for (const reaction of reactions) {
+    const existing = reactionsByIdeaId.get(reaction.ideaId) ?? [];
+    existing.push(reaction.type);
+    reactionsByIdeaId.set(reaction.ideaId, existing);
+  }
+
+  return { memberIdeaIds, interestedIdeaIds, reactionsByIdeaId };
+}
 
 async function getIdeaListViewerId(ctx: QueryCtx): Promise<Id<"users"> | null> {
   const authId = await getAuthUserId(ctx);
@@ -42,56 +76,65 @@ async function buildIdeaListItems(
   userId: Id<"users">,
 ) {
   const resourceNameMap = await getResourceNameMap(ctx);
+  const { memberIdeaIds, interestedIdeaIds, reactionsByIdeaId } =
+    await getIdeaListMembershipMaps(ctx, userId);
 
   const results = await Promise.all(
     ideas.map(async (idea) => {
       const owner = await ctx.db.get(idea.ownerId);
       const category = idea.categoryId ? await ctx.db.get(idea.categoryId) : null;
 
-      const members = await ctx.db
-        .query("ideaMembers")
-        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-        .collect();
+      const [legacyMembers, legacyInterestDocs, legacyReactionDocs] =
+        idea.memberCount === undefined ||
+        idea.filledRoles === undefined ||
+        idea.interestCount === undefined ||
+        idea.reactionCounts === undefined
+          ? await Promise.all([
+              idea.memberCount === undefined || idea.filledRoles === undefined
+                ? ctx.db
+                    .query("ideaMembers")
+                    .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+                    .collect()
+                : Promise.resolve(null),
+              idea.interestCount === undefined
+                ? ctx.db
+                    .query("ideaInterest")
+                    .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+                    .collect()
+                : Promise.resolve(null),
+              idea.reactionCounts === undefined
+                ? ctx.db
+                    .query("reactions")
+                    .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+                    .collect()
+                : Promise.resolve(null),
+            ])
+          : [null, null, null];
 
-      const interestDocs = await ctx.db
-        .query("ideaInterest")
-        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-        .collect();
-
-      const reactionDocs = await ctx.db
-        .query("reactions")
-        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-        .collect();
-
-      const resourceDocs = await ctx.db
-        .query("resourceRequests")
-        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
-        .collect();
-
-      const reactionCounts: Record<string, number> = {};
-      for (const r of reactionDocs) {
-        reactionCounts[r.type] = (reactionCounts[r.type] || 0) + 1;
+      const legacyReactionCounts: Record<string, number> = {};
+      for (const reaction of legacyReactionDocs ?? []) {
+        legacyReactionCounts[reaction.type] =
+          (legacyReactionCounts[reaction.type] || 0) + 1;
       }
 
-      const userReactions = reactionDocs
-        .filter((r) => r.userId === userId)
-        .map((r) => r.type);
+      const legacyFilledRoles = new Set<string>();
+      for (const member of legacyMembers ?? []) {
+        for (const role of mergeUniqueStringArrays(
+          member.memberRoles,
+          member.role ? [member.role] : undefined,
+        ) ?? []) {
+          legacyFilledRoles.add(role);
+        }
+      }
 
-      const filledRoles = new Set(
-        members.flatMap(
-          (m) =>
-            mergeUniqueStringArrays(
-              m.memberRoles,
-              m.role ? [m.role] : undefined,
-            ) ?? [],
-        ),
-      );
+      const resourceDocs = await getResourceRequestSummary(ctx, idea);
+      const filledRoles = new Set(idea.filledRoles ?? [...legacyFilledRoles]);
       const missingRoles = idea.lookingForRoles.filter(
         (role) => !filledRoles.has(role),
       );
 
-      const isMember = members.some((m) => m.userId === userId);
-      const isInterested = interestDocs.some((i) => i.userId === userId);
+      const isMember = memberIdeaIds.has(idea._id);
+      const isInterested = interestedIdeaIds.has(idea._id);
       const isOwner = idea.ownerId === userId;
 
       let room: IdeaListItem["room"] = null;
@@ -127,13 +170,14 @@ async function buildIdeaListItems(
         ownerName: getUserDisplayName(owner),
         ownerImage: owner?.image,
         ownerHandle: owner?.handle,
-        memberCount: members.length,
-        interestCount: interestDocs.length,
-        reactionCounts,
-        userReactions,
+        memberCount: idea.memberCount ?? legacyMembers?.length ?? 0,
+        interestCount: idea.interestCount ?? legacyInterestDocs?.length ?? 0,
+        reactionCounts: idea.reactionCounts ?? legacyReactionCounts,
+        userReactions: reactionsByIdeaId.get(idea._id) ?? [],
         missingRoles,
-        hasUnresolvedResources: resourceDocs.some((r) => !r.resolved),
-        resourceRequestCount: resourceDocs.length,
+        hasUnresolvedResources:
+          idea.hasUnresolvedResources ?? resourceDocs.some((r) => !r.resolved),
+        resourceRequestCount: idea.resourceRequestCount ?? resourceDocs.length,
         resourceRequests: resourceDocs.map((resource) => ({
           ...resource,
           resourceName: resourceNameMap[resource.tag] || resource.tag,
@@ -214,6 +258,13 @@ export const create = mutation({
       ownerId: userId,
       categoryId: args.categoryId,
       onsiteOnly: args.onsiteOnly ?? false,
+      memberCount: 1,
+      interestCount: 0,
+      reactionCounts: {},
+      filledRoles: [],
+      resourceRequestCount: 0,
+      hasUnresolvedResources: false,
+      resourceRequestSummary: [],
     });
 
     await ctx.db.insert("ideaMembers", {
@@ -246,6 +297,7 @@ export const create = mutation({
           resolved: false,
         });
       }
+      await refreshIdeaResourceStats(ctx, ideaId);
     }
 
     return ideaId;
@@ -351,11 +403,7 @@ export const remove = mutation({
       .collect();
     for (const r of resources) await ctx.db.delete(r._id);
 
-    const notifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const n of notifications) await ctx.db.delete(n._id);
+    await ctx.runMutation(internal.notifications.deleteForIdea, { ideaId });
 
     const transferRequests = await ctx.db
       .query("ownershipTransferRequests")
@@ -573,6 +621,10 @@ export const acceptOwnershipTransfer = mutation({
     }
 
     await ctx.db.patch(request.ideaId, { ownerId: newOwnerId });
+    await refreshIdeaMemberStats(ctx, request.ideaId);
+    if (targetInterest) {
+      await refreshIdeaInterestStats(ctx, request.ideaId);
+    }
     await ctx.db.patch(requestId, {
       status: TRANSFER_STATUS_ACCEPTED,
       respondedAt: Date.now(),
@@ -676,7 +728,7 @@ export const list = query({
   handler: async (ctx) => {
     const userId = await getIdeaListViewerId(ctx);
     if (!userId) return [];
-    const ideas = await ctx.db.query("ideas").collect();
+    const ideas = await ctx.db.query("ideas").order("desc").take(100);
     return await buildIdeaListItems(ctx, ideas, userId);
   },
 });
@@ -690,7 +742,8 @@ export const listByCategory = query({
     const ideas = await ctx.db
       .query("ideas")
       .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
-      .collect();
+      .order("desc")
+      .take(100);
 
     return await buildIdeaListItems(ctx, ideas, userId);
   },

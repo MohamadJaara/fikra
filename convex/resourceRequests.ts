@@ -7,6 +7,7 @@ import {
   sanitizeText,
   validateResourceSlugs,
 } from "./lib";
+import { refreshIdeaResourceStats } from "./ideaStats";
 
 export const add = mutation({
   args: {
@@ -40,6 +41,7 @@ export const add = mutation({
       notes: notes ? sanitizeText(notes) : undefined,
       resolved: false,
     });
+    await refreshIdeaResourceStats(ctx, ideaId);
   },
 });
 
@@ -60,6 +62,7 @@ export const resolve = mutation({
     }
 
     await ctx.db.patch(requestId, { resolved: true });
+    await refreshIdeaResourceStats(ctx, request.ideaId);
   },
 });
 
@@ -80,6 +83,7 @@ export const unresolve = mutation({
     }
 
     await ctx.db.patch(requestId, { resolved: false });
+    await refreshIdeaResourceStats(ctx, request.ideaId);
   },
 });
 
@@ -100,6 +104,7 @@ export const remove = mutation({
     }
 
     await ctx.db.delete(requestId);
+    await refreshIdeaResourceStats(ctx, request.ideaId);
   },
 });
 

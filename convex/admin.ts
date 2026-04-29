@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { getAdminUser, getUserDisplayName, resolveTeamSize } from "./lib";
 import { STATUSES } from "../lib/constants";
+import { internal } from "./_generated/api";
 
 const statusValidator = v.union(...STATUSES.map((s) => v.literal(s)));
 
@@ -247,11 +248,7 @@ export const deleteIdea = mutation({
       .collect();
     for (const r of resources) await ctx.db.delete(r._id);
 
-    const notifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const n of notifications) await ctx.db.delete(n._id);
+    await ctx.runMutation(internal.notifications.deleteForIdea, { ideaId });
 
     const transferRequests = await ctx.db
       .query("ownershipTransferRequests")

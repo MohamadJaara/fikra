@@ -1,6 +1,27 @@
-import { query, mutation, internalMutation } from "./_generated/server";
+import {
+  query,
+  mutation,
+  internalMutation,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedUser, getUserDisplayName } from "./lib";
+import type { Id } from "./_generated/dataModel";
+
+async function countUnreadForRecipient(
+  ctx: QueryCtx | MutationCtx,
+  recipientId: Id<"users">,
+) {
+  return (
+    await ctx.db
+      .query("notifications")
+      .withIndex("by_recipient_and_read", (q) =>
+        q.eq("recipientId", recipientId).eq("read", false),
+      )
+      .collect()
+  ).length;
+}
 
 export const NOTIFICATION_TYPES = [
   "member_joined",
@@ -43,7 +64,7 @@ export const create = internalMutation({
       throw new Error("Invalid notification type");
     }
 
-    return await ctx.db.insert("notifications", {
+    const notificationId = await ctx.db.insert("notifications", {
       recipientId: args.recipientId,
       actorId: args.actorId,
       ideaId: args.ideaId,
@@ -51,6 +72,49 @@ export const create = internalMutation({
       read: false,
       commentId: args.commentId,
     });
+
+    const recipient = await ctx.db.get(args.recipientId);
+    await ctx.db.patch(args.recipientId, {
+      unreadNotificationCount:
+        typeof recipient?.unreadNotificationCount === "number"
+          ? recipient.unreadNotificationCount + 1
+          : await countUnreadForRecipient(ctx, args.recipientId),
+    });
+
+    return notificationId;
+  },
+});
+
+export const deleteForIdea = internalMutation({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, { ideaId }) => {
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
+      .collect();
+
+    const unreadByRecipient = new Map<Id<"users">, number>();
+    for (const notification of notifications) {
+      if (!notification.read) {
+        unreadByRecipient.set(
+          notification.recipientId,
+          (unreadByRecipient.get(notification.recipientId) ?? 0) + 1,
+        );
+      }
+      await ctx.db.delete(notification._id);
+    }
+
+    for (const [recipientId, removedUnread] of unreadByRecipient) {
+      const recipient = await ctx.db.get(recipientId);
+      if (typeof recipient?.unreadNotificationCount === "number") {
+        await ctx.db.patch(recipient._id, {
+          unreadNotificationCount: Math.max(
+            0,
+            recipient.unreadNotificationCount - removedUnread,
+          ),
+        });
+      }
+    }
   },
 });
 
@@ -83,7 +147,11 @@ export const list = query({
 export const unreadCount = query({
   args: {},
   handler: async (ctx) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
+
+    if (typeof user.unreadNotificationCount === "number") {
+      return user.unreadNotificationCount;
+    }
 
     const unread = await ctx.db
       .query("notifications")
@@ -99,14 +167,27 @@ export const unreadCount = query({
 export const markRead = mutation({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, { notificationId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const notification = await ctx.db.get(notificationId);
     if (!notification) throw new Error("Notification not found");
     if (notification.recipientId !== userId)
       throw new Error("Not your notification");
 
+    if (!notification.read && typeof user.unreadNotificationCount === "number") {
+      await ctx.db.patch(userId, {
+        unreadNotificationCount: Math.max(
+          0,
+          user.unreadNotificationCount - 1,
+        ),
+      });
+    }
     await ctx.db.patch(notificationId, { read: true });
+    if (!notification.read && user.unreadNotificationCount === undefined) {
+      await ctx.db.patch(userId, {
+        unreadNotificationCount: await countUnreadForRecipient(ctx, userId),
+      });
+    }
   },
 });
 
@@ -125,5 +206,6 @@ export const markAllRead = mutation({
     for (const n of unread) {
       await ctx.db.patch(n._id, { read: true });
     }
+    await ctx.db.patch(userId, { unreadNotificationCount: 0 });
   },
 });

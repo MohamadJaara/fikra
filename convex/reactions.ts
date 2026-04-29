@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedUser, REACTION_TYPES } from "./lib";
 import { internal } from "./_generated/api";
+import { refreshIdeaReactionStats } from "./ideaStats";
 
 export const toggle = mutation({
   args: {
@@ -29,8 +30,10 @@ export const toggle = mutation({
 
     if (sameType) {
       await ctx.db.delete(sameType._id);
+      await refreshIdeaReactionStats(ctx, ideaId);
     } else {
       await ctx.db.insert("reactions", { ideaId, userId, type });
+      await refreshIdeaReactionStats(ctx, ideaId);
       await ctx.runMutation(internal.notifications.create, {
         recipientId: idea.ownerId,
         actorId: userId,

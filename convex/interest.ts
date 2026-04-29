@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedUser } from "./lib";
 import { internal } from "./_generated/api";
+import { refreshIdeaInterestStats } from "./ideaStats";
 
 export const express = mutation({
   args: { ideaId: v.id("ideas") },
@@ -20,6 +21,7 @@ export const express = mutation({
     if (existing) throw new Error("Already expressed interest");
 
     await ctx.db.insert("ideaInterest", { ideaId, userId });
+    await refreshIdeaInterestStats(ctx, ideaId);
 
     await ctx.runMutation(internal.notifications.create, {
       recipientId: idea.ownerId,
@@ -44,6 +46,7 @@ export const remove = mutation({
     if (!interest) throw new Error("Not interested");
 
     await ctx.db.delete(interest._id);
+    await refreshIdeaInterestStats(ctx, interest.ideaId);
   },
 });
 

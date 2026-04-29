@@ -17,6 +17,7 @@ export default defineSchema({
     handle: v.optional(v.string()),
     isAdmin: v.optional(v.boolean()),
     participationMode: v.optional(v.string()),
+    unreadNotificationCount: v.optional(v.number()),
   })
     .index("email", ["email"])
     .index("handle", ["handle"])
@@ -84,6 +85,24 @@ export default defineSchema({
     categoryId: v.optional(v.id("categories")),
     roomId: v.optional(v.id("rooms")),
     onsiteOnly: v.optional(v.boolean()),
+    memberCount: v.optional(v.number()),
+    interestCount: v.optional(v.number()),
+    reactionCounts: v.optional(v.record(v.string(), v.number())),
+    filledRoles: v.optional(v.array(v.string())),
+    resourceRequestCount: v.optional(v.number()),
+    hasUnresolvedResources: v.optional(v.boolean()),
+    resourceRequestSummary: v.optional(
+      v.array(
+        v.object({
+          _id: v.id("resourceRequests"),
+          _creationTime: v.number(),
+          ideaId: v.id("ideas"),
+          tag: v.string(),
+          notes: v.optional(v.string()),
+          resolved: v.boolean(),
+        }),
+      ),
+    ),
   })
     .index("by_owner", ["ownerId"])
     .index("by_status", ["status"])
@@ -125,6 +144,7 @@ export default defineSchema({
     type: v.string(),
   })
     .index("by_idea", ["ideaId"])
+    .index("by_user", ["userId"])
     .index("by_idea_and_user", ["ideaId", "userId"]),
 
   resourceRequests: defineTable({

@@ -7,6 +7,7 @@ import {
   validateRoleSlugs,
 } from "./lib";
 import { internal } from "./_generated/api";
+import { refreshIdeaMemberStats } from "./ideaStats";
 
 export const join = mutation({
   args: {
@@ -43,6 +44,7 @@ export const join = mutation({
       userId,
       memberRoles: roles,
     });
+    await refreshIdeaMemberStats(ctx, ideaId);
 
     await ctx.runMutation(internal.notifications.create, {
       recipientId: idea.ownerId,
@@ -72,6 +74,7 @@ export const leave = mutation({
     if (!membership) throw new Error("Not a member");
 
     await ctx.db.delete(membership._id);
+    await refreshIdeaMemberStats(ctx, ideaId);
   },
 });
 
@@ -106,6 +109,7 @@ export const updateMemberRoles = mutation({
       memberRoles: roles,
       role: undefined,
     });
+    await refreshIdeaMemberStats(ctx, ideaId);
   },
 });
 
