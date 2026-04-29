@@ -8,9 +8,11 @@ Built with Next.js 16 (App Router) + Convex backend + Convex Auth + shadcn/ui (n
 - `npm run predev` — one-time setup: pushes Convex schema, runs `setup.mjs` for auth env vars, opens Convex dashboard
 - `npm run build` — `next build`
 - `npm run lint` — `next lint` (uses `next/core-web-vitals` + `next/typescript` via flat config in `eslint.config.mjs`)
+- `npm test` — `vitest run` (runs all tests)
+- `npm run test:watch` — `vitest` (watch mode)
 - Formatter: Prettier with empty config (all defaults)
 
-No test framework is configured. No CI workflows exist.
+Testing uses vitest + convex-test + @edge-runtime/vm. Test files live in `convex/` as `*.test.ts`.
 
 ## Architecture
 
@@ -57,7 +59,6 @@ Frontend (Next.js) and backend (Convex) run as separate processes via `npm-run-a
 - **Auth env vars**: Requires `.env.local` with `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_DEPLOYMENT`. The `predev` script walks through Resend credential setup.
 - **Convex-generated imports**: Frontend imports Convex API as `@/convex/_generated/api`; backend functions import from `./_generated/server`. Both are auto-generated.
 - **shadcn/ui**: Use `npx shadcn@latest add <component>` to add new UI components. Config is in `components.json`.
-- **No tests**: No test runner or test files exist. Verify changes manually via `npm run dev`.
 
 <!-- convex-ai-start -->
 This project uses [Convex](https://convex.dev) as its backend.
