@@ -52,9 +52,15 @@ export async function refreshIdeaMemberStats(
       filledRoles.add(role);
     }
   }
+  const idea = await ctx.db.get(ideaId);
+  const needsTeammates =
+    !!idea &&
+    idea.status !== "full" &&
+    idea.lookingForRoles.some((role) => !filledRoles.has(role));
   await ctx.db.patch(ideaId, {
     memberCount: members.length,
     filledRoles: [...filledRoles],
+    needsTeammates,
   });
 }
 
@@ -80,10 +86,12 @@ export async function refreshIdeaReactionStats(
     .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
     .collect();
   const reactionCounts: Record<string, number> = {};
+  let reactionTotal = 0;
   for (const reaction of reactions) {
     reactionCounts[reaction.type] = (reactionCounts[reaction.type] || 0) + 1;
+    reactionTotal++;
   }
-  await ctx.db.patch(ideaId, { reactionCounts });
+  await ctx.db.patch(ideaId, { reactionCounts, reactionTotal });
 }
 
 export async function refreshIdeaResourceStats(

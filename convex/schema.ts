@@ -88,9 +88,11 @@ export default defineSchema({
     memberCount: v.optional(v.number()),
     interestCount: v.optional(v.number()),
     reactionCounts: v.optional(v.record(v.string(), v.number())),
+    reactionTotal: v.optional(v.number()),
     filledRoles: v.optional(v.array(v.string())),
     resourceRequestCount: v.optional(v.number()),
     hasUnresolvedResources: v.optional(v.boolean()),
+    needsTeammates: v.optional(v.boolean()),
     resourceRequestSummary: v.optional(
       v.array(
         v.object({
@@ -108,7 +110,12 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_category", ["categoryId"])
     .index("by_room", ["roomId"])
-    .searchIndex("search_title", { searchField: "title" }),
+    .index("by_interestCount", ["interestCount"])
+    .index("by_reactionTotal", ["reactionTotal"])
+    .index("by_needsTeammates", ["needsTeammates"])
+    .index("by_hasUnresolvedResources", ["hasUnresolvedResources"])
+    .searchIndex("search_title", { searchField: "title" })
+    .searchIndex("search_pitch", { searchField: "pitch" }),
 
   ideaMembers: defineTable({
     ideaId: v.id("ideas"),
