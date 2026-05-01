@@ -6,7 +6,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { ReactNode, useEffect } from "react";
 
 export function OnboardingGuard({ children }: { children: ReactNode }) {
-  const viewer = useQuery(api.users.viewer);
+  const viewer = useQuery(api.users.viewerOrNull);
   const router = useRouter();
   const pathname = usePathname();
 

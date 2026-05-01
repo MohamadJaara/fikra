@@ -1,4 +1,5 @@
 import { query, mutation } from "./_generated/server";
+import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import {
@@ -8,6 +9,7 @@ import {
   mergeUniqueStringArrays,
   validateRoleSlugs,
   PARTICIPATION_MODES,
+  isEmailAllowed,
 } from "./lib";
 import type { Doc } from "./_generated/dataModel";
 
@@ -38,6 +40,19 @@ export const viewer = query({
   args: {},
   handler: async (ctx) => {
     const { user } = await getAuthenticatedUser(ctx);
+    return pickViewerFields(user);
+  },
+});
+
+export const viewerOrNull = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return null;
+
+    const user = await ctx.db.get(userId);
+    if (!user?.email || !isEmailAllowed(user.email)) return null;
+
     return pickViewerFields(user);
   },
 });

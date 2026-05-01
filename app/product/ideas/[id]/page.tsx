@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
+import { useProductViewer } from "@/components/ProductLayoutClient";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   REACTION_EMOJI,
@@ -491,7 +492,7 @@ function TeamSection({
   const leaveMutation = useMutation(api.memberships.leave);
   const requestOwnershipMutation = useMutation(api.ideas.requestOwnership);
   const roles = useQuery(api.roles.list);
-  const viewer = useQuery(api.users.viewer);
+  const viewer = useProductViewer();
   const roleLabels = useMemo(() => {
     if (!roles) return {} as Record<string, string>;
     const map: Record<string, string> = {};
@@ -1021,7 +1022,7 @@ function TeamSection({
 }
 
 function ResourceSection({ idea }: { idea: IdeaDetail }) {
-  const viewer = useQuery(api.users.viewer);
+  const viewer = useProductViewer();
   const resources = useQuery(api.resources.list);
   const addMutation = useMutation(api.resourceRequests.add);
   const resolveMutation = useMutation(api.resourceRequests.resolve);

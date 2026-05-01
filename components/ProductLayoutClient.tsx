@@ -2,26 +2,42 @@
 
 import { AppShell } from "@/components/AppShell";
 import { api } from "@/convex/_generated/api";
-import { useConvexAuth, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
+import { useQuery } from "convex/react";
 import { Lightbulb } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { ReactNode, useEffect } from "react";
+import {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+} from "react";
+
+type ProductViewer = NonNullable<
+  FunctionReturnType<typeof api.users.viewerOrNull>
+>;
+
+const ProductViewerContext = createContext<ProductViewer | null>(null);
+
+export function useProductViewer() {
+  const viewer = useContext(ProductViewerContext);
+  if (!viewer) {
+    throw new Error("useProductViewer must be used within ProductLayoutClient");
+  }
+  return viewer;
+}
 
 export function ProductLayoutClient({ children }: { children: ReactNode }) {
-  const { isLoading, isAuthenticated } = useConvexAuth();
-  const viewer = useQuery(
-    api.users.viewer,
-    !isLoading && isAuthenticated ? {} : "skip",
-  );
+  const viewer = useQuery(api.users.viewerOrNull);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (viewer === undefined) return;
+    if (viewer === null) {
       router.replace("/signin");
       return;
     }
-    if (viewer === undefined || viewer === null) return;
 
     const onOnboardingPage = pathname === "/product/onboarding";
 
@@ -30,9 +46,9 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
     } else if (viewer.onboardingComplete && onOnboardingPage) {
       router.replace("/product");
     }
-  }, [isLoading, isAuthenticated, viewer, pathname, router]);
+  }, [viewer, pathname, router]);
 
-  if (isLoading || viewer === undefined) {
+  if (viewer === undefined) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -49,5 +65,9 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
   if (!viewer.onboardingComplete && !onOnboardingPage) return null;
   if (viewer.onboardingComplete && onOnboardingPage) return null;
 
-  return <AppShell viewer={viewer}>{children}</AppShell>;
+  return (
+    <ProductViewerContext.Provider value={viewer}>
+      <AppShell viewer={viewer}>{children}</AppShell>
+    </ProductViewerContext.Provider>
+  );
 }

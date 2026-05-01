@@ -11,11 +11,12 @@ const isProtectedRoute = createRouteMatcher(["/product(.*)"]);
 const isAdminRoute = createRouteMatcher(["/product/admin(.*)"]);
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
-  if (isSignInPage(request) && (await convexAuth.isAuthenticated())) {
+  const token = await convexAuth.getToken();
+
+  if (isSignInPage(request) && token) {
     return nextjsMiddlewareRedirect(request, "/product");
   }
   if (isAdminRoute(request)) {
-    const token = await convexAuth.getToken();
     if (!token) {
       return nextjsMiddlewareRedirect(request, "/signin");
     }
@@ -27,7 +28,7 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
     }
     return;
   }
-  if (isProtectedRoute(request) && !(await convexAuth.getToken())) {
+  if (isProtectedRoute(request) && !token) {
     return nextjsMiddlewareRedirect(request, "/signin");
   }
 });

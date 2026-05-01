@@ -1,7 +1,8 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useProductViewer } from "@/components/ProductLayoutClient";
 import { useState, useEffect } from "react";
 import { useRolesList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ import { ArrowLeft, Save, MapPin, Wifi } from "lucide-react";
 import Link from "next/link";
 
 export default function SettingsPage() {
-  const viewer = useQuery(api.users.viewer);
+  const viewer = useProductViewer();
   const updateProfile = useMutation(api.users.updateProfile);
   const roles = useRolesList();
 
@@ -47,16 +48,6 @@ export default function SettingsPage() {
       setLoaded(true);
     }
   }, [viewer, loaded]);
-
-  if (viewer === undefined) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
-
-  if (viewer === null) return null;
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>

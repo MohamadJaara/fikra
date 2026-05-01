@@ -1,7 +1,8 @@
 "use client";
 
-import { useMutation, useQuery } from "convex/react";
+import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useProductViewer } from "@/components/ProductLayoutClient";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { useRolesList } from "@/lib/hooks";
@@ -45,7 +46,7 @@ function parseNameFromEmail(email: string): {
 }
 
 export default function OnboardingPage() {
-  const viewer = useQuery(api.users.viewer);
+  const viewer = useProductViewer();
   const completeOnboarding = useMutation(api.users.completeOnboarding);
   const roles = useRolesList();
   const router = useRouter();
@@ -64,7 +65,7 @@ export default function OnboardingPage() {
   const [initialized, setInitialized] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (viewer !== undefined && viewer !== null && !initialized) {
+  if (!initialized) {
     if (!firstName && parsed.firstName) setFirstName(parsed.firstName);
     if (!lastName && parsed.lastName) setLastName(parsed.lastName);
     if (viewer.roles && viewer.roles.length > 0) {
@@ -72,19 +73,6 @@ export default function OnboardingPage() {
     }
     setInitialized(true);
   }
-
-  if (viewer === undefined) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Lightbulb className="h-8 w-8 text-yellow-500 animate-float" />
-          <div className="animate-shimmer h-4 w-24 rounded" />
-        </div>
-      </div>
-    );
-  }
-
-  if (viewer === null) return null;
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>

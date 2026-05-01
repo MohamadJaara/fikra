@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
+import { useProductViewer } from "@/components/ProductLayoutClient";
 import type { Id } from "@/convex/_generated/dataModel";
 import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
 import type { Status } from "@/lib/constants";
@@ -21,12 +22,12 @@ export default function ProfilePage({
 }) {
   const { handle } = use(params);
   const profile = useQuery(api.users.getProfile, { handle });
-  const viewer = useQuery(api.users.viewer);
+  const viewer = useProductViewer();
   const roleLabels = useRolesMap();
 
   const isOwnProfile = profile && viewer && profile._id === viewer._id;
 
-  if (profile === undefined || viewer === undefined) {
+  if (profile === undefined) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-muted-foreground">Loading...</div>
