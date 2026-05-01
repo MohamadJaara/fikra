@@ -35,6 +35,7 @@ import {
   List,
   Loader2,
 } from "lucide-react";
+import { FeatureTip } from "@/components/FeatureTip";
 import {
   Select,
   SelectContent,
@@ -158,6 +159,9 @@ export default function BrowseIdeasPage() {
           </Link>
         </div>
 
+        <FeatureTip tipKey="ideas-filter">
+          Use the <strong>Filters</strong> button to find ideas by missing roles, resource needs, or status. Try "Needs Teammates" to find ideas looking for someone with your skills.
+        </FeatureTip>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -188,7 +192,12 @@ export default function BrowseIdeasPage() {
           </Select>
           <Button
             variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
+            onClick={() => {
+              setShowFilters(!showFilters);
+              try {
+                localStorage.setItem("fikra_seen_tips", JSON.stringify([...JSON.parse(localStorage.getItem("fikra_seen_tips") || "[]"), "ideas-filter"]));
+              } catch {}
+            }}
             className="relative"
           >
             <Filter className="h-4 w-4 mr-2" />

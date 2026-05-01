@@ -81,17 +81,25 @@ export const backfillIdeaListStats = migrations.define({
     }
 
     const reactionCounts: Record<string, number> = {};
+    let reactionTotal = 0;
     for (const reaction of reactions) {
       reactionCounts[reaction.type] = (reactionCounts[reaction.type] || 0) + 1;
+      reactionTotal++;
     }
+
+    const needsTeammates =
+      idea.status !== "full" &&
+      idea.lookingForRoles.some((role) => !filledRoles.has(role));
 
     await ctx.db.patch(idea._id, {
       memberCount: members.length,
       interestCount: interests.length,
       reactionCounts,
+      reactionTotal,
       filledRoles: [...filledRoles],
       resourceRequestCount: resources.length,
       hasUnresolvedResources: resources.some((resource) => !resource.resolved),
+      needsTeammates,
       resourceRequestSummary: resources.map((resource) => ({
         _id: resource._id,
         _creationTime: resource._creationTime,
@@ -100,6 +108,61 @@ export const backfillIdeaListStats = migrations.define({
         notes: resource.notes,
         resolved: resource.resolved,
       })),
+    });
+  },
+});
+
+export const backfillIdeaListDerivedStats = migrations.define({
+  table: "ideas",
+  migrateOne: async (ctx, idea) => {
+    if (idea.reactionTotal !== undefined && idea.needsTeammates !== undefined) {
+      return;
+    }
+
+    let reactionTotal = idea.reactionTotal;
+    if (reactionTotal === undefined) {
+      if (idea.reactionCounts !== undefined) {
+        reactionTotal = Object.values(idea.reactionCounts).reduce(
+          (total, count) => total + count,
+          0,
+        );
+      } else {
+        reactionTotal = (
+          await ctx.db
+            .query("reactions")
+            .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+            .collect()
+        ).length;
+      }
+    }
+
+    let filledRoles = idea.filledRoles;
+    if (filledRoles === undefined && idea.needsTeammates === undefined) {
+      const members = await ctx.db
+        .query("ideaMembers")
+        .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+        .collect();
+      const filled = new Set<string>();
+      for (const member of members) {
+        for (const role of mergeUniqueStringArrays(
+          member.memberRoles,
+          member.role ? [member.role] : undefined,
+        ) ?? []) {
+          filled.add(role);
+        }
+      }
+      filledRoles = [...filled];
+    }
+
+    const filledRoleSet = new Set(filledRoles ?? []);
+    const needsTeammates =
+      idea.needsTeammates ??
+      (idea.status !== "full" &&
+        idea.lookingForRoles.some((role) => !filledRoleSet.has(role)));
+
+    await ctx.db.patch(idea._id, {
+      reactionTotal,
+      needsTeammates,
     });
   },
 });
@@ -129,5 +192,6 @@ export const runAll = migrations.runner([
   internal.migrations.backfillHandles,
   internal.migrations.backfillTeamSize,
   internal.migrations.backfillIdeaListStats,
+  internal.migrations.backfillIdeaListDerivedStats,
   internal.migrations.backfillUnreadNotificationCounts,
 ]);

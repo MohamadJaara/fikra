@@ -32,6 +32,8 @@ import {
   renderMentionContent,
 } from "@/components/MentionTextarea";
 import { UserLink, UserAvatar } from "@/components/UserLink";
+import { FeatureTip } from "@/components/FeatureTip";
+import { OwnerWelcomeBanner } from "@/components/OwnerWelcomeBanner";
 import { IdeaDetailSkeleton } from "@/components/Skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +58,13 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   ArrowLeft,
   Edit,
   Trash2,
@@ -78,6 +87,7 @@ import {
   DoorOpen,
   MapPin,
   Wifi,
+  MoreHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -161,6 +171,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
       <div className="space-y-6 animate-fade-in">
         <IdeaHeader idea={idea} />
+        {idea.isOwner && <OwnerWelcomeBanner ideaId={idea._id} />}
         <OwnershipTransferRequestBanner idea={idea} />
         <IdeaContent idea={idea} />
         <RoomSection idea={idea} />
@@ -745,7 +756,13 @@ function TeamSection({
       )}
 
       {!idea.isOwner && (
-        <div className="flex items-center gap-2 flex-wrap">
+        <>
+          {idea.isMember && !idea.pendingOwnershipTransfer && (
+            <FeatureTip tipKey="member-request-ownership">
+              Want to lead this idea? You can <strong>request ownership</strong> — the current owner will be notified and can accept or decline.
+            </FeatureTip>
+          )}
+          <div className="flex items-center gap-2 flex-wrap">
           {idea.isMember ? (
             <>
               <Button
@@ -1016,6 +1033,7 @@ function TeamSection({
             </>
           )}
         </div>
+        </>
       )}
     </div>
   );
@@ -1924,6 +1942,9 @@ function CommentSection({
       </h2>
 
       <form onSubmit={handleSubmit} className="mb-6 space-y-2">
+        <FeatureTip tipKey="comment-mention">
+          Type <strong>@</strong> in the comment box to mention a teammate — they'll get notified. Use the quick prompts above to kickstart the discussion.
+        </FeatureTip>
         <div className="flex flex-wrap gap-1.5 mb-2">
           {QUICK_PROMPTS.map((prompt) => (
             <button
@@ -2411,7 +2432,7 @@ function TransferCandidateButton({
   );
 }
 
-function TransferOwnershipDialog({ idea }: { idea: IdeaDetail }) {
+function TransferOwnershipDialog({ idea, asDropdownItem }: { idea: IdeaDetail; asDropdownItem?: boolean }) {
   const requestMutation = useMutation(api.ideas.requestOwnershipTransfer);
   const cancelMutation = useMutation(api.ideas.cancelOwnershipTransfer);
   const [open, setOpen] = useState(false);
@@ -2500,14 +2521,28 @@ function TransferOwnershipDialog({ idea }: { idea: IdeaDetail }) {
     }
   };
 
+  const trigger = asDropdownItem ? (
+    <DropdownMenuItem
+      onSelect={(e) => {
+        e.preventDefault();
+        setOpen(true);
+      }}
+    >
+      <ArrowRightLeft className="h-4 w-4 mr-2" />
+      {pending ? "Transfer pending..." : "Transfer ownership"}
+    </DropdownMenuItem>
+  ) : (
+    <DialogTrigger asChild>
+      <Button variant="outline" size="sm">
+        <ArrowRightLeft className="h-4 w-4 mr-1" />
+        {pending ? "Transfer pending" : "Transfer"}
+      </Button>
+    </DialogTrigger>
+  );
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <ArrowRightLeft className="h-4 w-4 mr-1" />
-          {pending ? "Transfer pending" : "Transfer"}
-        </Button>
-      </DialogTrigger>
+      {trigger}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>
@@ -2703,25 +2738,49 @@ function OwnerActions({ idea }: { idea: IdeaDetail }) {
 
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      {(!idea.pendingOwnershipTransfer ||
-        idea.pendingOwnershipTransfer.isOwnerInitiated) && (
-        <TransferOwnershipDialog idea={idea} />
-      )}
       <Link href={`/product/ideas/${ideaId}/edit`}>
         <Button variant="outline" size="sm">
           <Edit className="h-4 w-4 mr-1" />
           Edit
         </Button>
       </Link>
-      <Button
-        variant="outline"
-        size="sm"
-        className="text-destructive"
-        onClick={handleDelete}
-      >
-        <Trash2 className="h-4 w-4 mr-1" />
-        Delete
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm">
+            <MoreHorizontal className="h-4 w-4 mr-1" />
+            More
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          {(!idea.pendingOwnershipTransfer ||
+            idea.pendingOwnershipTransfer.isOwnerInitiated) && (
+            <TransferOwnershipDialog
+              idea={idea}
+              asDropdownItem
+            />
+          )}
+          <DropdownMenuItem onClick={() => {
+            document.getElementById("related")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}>
+            <Link2 className="h-4 w-4 mr-2" />
+            Find duplicates & link ideas
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => {
+            document.getElementById("resources")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }}>
+            <Package className="h-4 w-4 mr-2" />
+            Manage resources
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete idea
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
   );
 }
