@@ -5,7 +5,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { cn } from "@/lib/utils";
-import { useQuery } from "convex/react";
 import {
   Lightbulb,
   List,
@@ -23,23 +22,26 @@ import {
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ReactNode, useState } from "react";
-import { api } from "@/convex/_generated/api";
 import { NotificationBell } from "@/components/NotificationBell";
 
-export function AppShell({ children }: { children: ReactNode }) {
-  const viewer = useQuery(api.users.viewer);
-  const [mobileOpen, setMobileOpen] = useState(false);
+export type AppShellViewer = {
+  firstName?: string;
+  lastName?: string;
+  name?: string;
+  email?: string;
+  image?: string;
+  isAdmin?: boolean;
+  handle?: string;
+} | null;
 
-  if (viewer === undefined) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Lightbulb className="h-8 w-8 text-yellow-500 animate-float" />
-          <div className="animate-shimmer h-4 w-24 rounded" />
-        </div>
-      </div>
-    );
-  }
+export function AppShell({
+  children,
+  viewer,
+}: {
+  children: ReactNode;
+  viewer: AppShellViewer;
+}) {
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen w-full">
@@ -93,15 +95,7 @@ function SidebarContent({
   viewer,
   onClose,
 }: {
-  viewer: {
-    firstName?: string;
-    lastName?: string;
-    name?: string;
-    email?: string;
-    image?: string;
-    isAdmin?: boolean;
-    handle?: string;
-  } | null;
+  viewer: AppShellViewer;
   onClose?: () => void;
 }) {
   return (

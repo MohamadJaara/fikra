@@ -14,18 +14,21 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   if (isSignInPage(request) && (await convexAuth.isAuthenticated())) {
     return nextjsMiddlewareRedirect(request, "/product");
   }
-  if (isProtectedRoute(request) && !(await convexAuth.isAuthenticated())) {
-    return nextjsMiddlewareRedirect(request, "/signin");
-  }
   if (isAdminRoute(request)) {
     const token = await convexAuth.getToken();
     if (!token) {
       return nextjsMiddlewareRedirect(request, "/signin");
     }
-    const viewer = await fetchQuery(api.users.viewer, {}, { token });
+    const viewer = await fetchQuery(api.users.viewer, {}, { token }).catch(
+      () => null,
+    );
     if (!viewer?.isAdmin) {
       return nextjsMiddlewareRedirect(request, "/product");
     }
+    return;
+  }
+  if (isProtectedRoute(request) && !(await convexAuth.getToken())) {
+    return nextjsMiddlewareRedirect(request, "/signin");
   }
 });
 
