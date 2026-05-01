@@ -10,6 +10,7 @@ import {
   List,
   PlusCircle,
   Activity,
+  Compass,
   Menu,
   X,
   User,
@@ -126,6 +127,13 @@ function SidebarContent({
           onClick={onClose}
         >
           Themes
+        </NavLink>
+        <NavLink
+          href="/product/discover"
+          icon={<Compass className="h-4 w-4" />}
+          onClick={onClose}
+        >
+          Discover
         </NavLink>
         <NavLink
           href="/product/ideas"

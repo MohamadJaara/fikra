@@ -27,6 +27,7 @@ const TYPE_LABELS: Record<string, string> = {
   merge_requested: "requested to merge into",
   merge_accepted: "accepted the merge with",
   merge_declined: "declined the merge with",
+  mutual_interest: "and you both like each other's ideas — including",
 };
 
 export default function NotificationsPage() {

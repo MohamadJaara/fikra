@@ -105,6 +105,7 @@ export default defineSchema({
         }),
       ),
     ),
+    trendingScore: v.optional(v.number()),
   })
     .index("by_owner", ["ownerId"])
     .index("by_status", ["status"])
@@ -190,6 +191,13 @@ export default defineSchema({
     .index("by_ideaA_and_type", ["ideaIdA", "relationType"])
     .index("by_ideaB_and_type", ["ideaIdB", "relationType"])
     .index("by_merge_status", ["mergeStatus"]),
+
+  dismissedIdeas: defineTable({
+    ideaId: v.id("ideas"),
+    userId: v.id("users"),
+  })
+    .index("by_user", ["userId"])
+    .index("by_idea_and_user", ["ideaId", "userId"]),
 
   notifications: defineTable({
     recipientId: v.id("users"),
