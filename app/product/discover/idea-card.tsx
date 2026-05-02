@@ -86,10 +86,11 @@ export function DiscoverIdeaCard({
   return (
     <motion.div
       className="absolute inset-0 cursor-grab active:cursor-grabbing"
-      style={{ x, rotate, opacity }}
+      style={{ x, rotate, opacity, touchAction: "pan-y" }}
       drag={isTop ? "x" : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.9}
+      dragListener={isTop}
       onDragStart={() => setDragging(true)}
       onDragEnd={handleDragEnd}
       onClick={() => {
@@ -116,7 +117,7 @@ export function DiscoverIdeaCard({
           <ArrowLeft className="h-5 w-5" />
         </motion.div>
 
-        <div className="flex-1 p-6 overflow-auto">
+        <div className="flex-1 p-6 overflow-auto overscroll-contain" style={{ touchAction: "pan-y" }}>
           <div className="flex items-start justify-between gap-2 mb-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold leading-tight mb-1">
