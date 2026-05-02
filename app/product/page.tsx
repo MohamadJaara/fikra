@@ -9,7 +9,14 @@ import {
   ArrowRight,
   List,
   Rocket,
+  Compass,
+  X,
+  Heart,
+  Users,
+  Sparkles,
 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const THEME_PALETTES = [
   { bg: "bg-[#0a0f1a]", accent: "bg-cyan-400", text: "text-cyan-400" },
@@ -32,6 +39,80 @@ const ORNAMENT_PATTERNS = [
   "radial-gradient(circle at 90% 10%, rgba(255,255,255,0.03) 0%, transparent 45%)",
   "radial-gradient(circle at 60% 40%, rgba(255,255,255,0.04) 0%, transparent 50%)",
 ];
+
+const STORAGE_KEY = "fikra_discover_onboarding_seen";
+
+function DiscoverBanner() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(STORAGE_KEY) === "true") return;
+    } catch {}
+    setVisible(true);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -8 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-rose-950/30 p-6 mb-6"
+      >
+        <button
+          onClick={() => {
+            setVisible(false);
+            try {
+              localStorage.setItem(STORAGE_KEY, "true");
+            } catch {}
+          }}
+          className="absolute top-3 right-3 rounded-full p-1 text-muted-foreground/50 hover:text-foreground transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className="flex items-start gap-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 shadow-lg shadow-orange-500/20">
+            <Compass className="h-5.5 w-5.5 text-white" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-semibold tracking-tight mb-1">
+              Discover Ideas
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4 max-w-lg">
+              Swipe through ideas Tinder-style. Like what you see? Swipe right.
+              Not your vibe? Swipe left. Find your next hackathon project.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href="/product/discover">
+                <Button size="sm" className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0">
+                  <Sparkles className="h-4 w-4" />
+                  Start Swiping
+                </Button>
+              </Link>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Heart className="h-3 w-3 text-green-500" /> Like
+                </span>
+                <span className="flex items-center gap-1">
+                  <X className="h-3 w-3 text-red-400" /> Skip
+                </span>
+                <span className="flex items-center gap-1">
+                  <Users className="h-3 w-3 text-blue-500" /> Find Teams
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 export default function ThemesPage() {
   const categories = useQuery(api.categories.listWithDetails);
@@ -84,6 +165,10 @@ export default function ThemesPage() {
               Build a Team
             </span>
           </div>
+        </div>
+
+        <div className="mt-4 animate-reveal-up stagger-3">
+          <DiscoverBanner />
         </div>
       </div>
 

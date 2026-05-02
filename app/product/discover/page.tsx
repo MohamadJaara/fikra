@@ -16,6 +16,7 @@ import { ActivityTicker } from "./activity-ticker";
 import { DiscoverIdeaCard } from "./idea-card";
 import type { DiscoverIdeaCardData } from "./idea-card";
 import { EmptyDiscoverState } from "./empty-state";
+import { DiscoverOnboarding } from "./discover-onboarding";
 import { useProductViewer } from "@/components/ProductLayoutClient";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -136,6 +137,7 @@ export default function DiscoverPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)]">
+      <DiscoverOnboarding />
       <div className="px-4 md:px-6 pt-4 pb-2">
         <div className="flex items-center justify-between mb-3">
           <h1 className="text-2xl font-bold">Discover</h1>

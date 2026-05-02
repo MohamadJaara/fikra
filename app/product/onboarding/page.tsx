@@ -91,7 +91,7 @@ export default function OnboardingPage() {
         participationMode,
       });
       toast.success("Profile set up!");
-      router.push("/product");
+      router.push("/product/discover");
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save profile",
