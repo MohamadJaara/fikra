@@ -40,6 +40,8 @@ export default function DiscoverPage() {
   const expressInterest = useMutation(api.interest.express);
   const removeInterest = useMutation(api.interest.remove);
   const undoDismiss = useMutation(api.discover.undoDismissIdea);
+  const resetDismissed = useMutation(api.discover.resetDismissedIdeas);
+  const [isResetting, setIsResetting] = useState(false);
 
   const remaining = useMemo(() => {
     if (!ideas) return [];
@@ -113,6 +115,18 @@ export default function DiscoverPage() {
     setDirection(null);
   }, []);
 
+  const handleStartOver = useCallback(async () => {
+    setIsResetting(true);
+    try {
+      await resetDismissed();
+      setSwipedIds(new Set());
+      setSwipeHistory([]);
+      setDirection(null);
+    } finally {
+      setIsResetting(false);
+    }
+  }, [resetDismissed]);
+
   const userRoles = (viewer as any)?.roles ?? [];
 
   const isLoading = ideas === undefined;
@@ -167,7 +181,7 @@ export default function DiscoverPage() {
             </div>
           </div>
         ) : !currentIdea ? (
-          <EmptyDiscoverState mode={mode} />
+          <EmptyDiscoverState mode={mode} onStartOver={handleStartOver} isResetting={isResetting} />
         ) : (
           <div className="h-full relative max-w-lg mx-auto">
             <AnimatePresence mode="popLayout">

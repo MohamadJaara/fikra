@@ -1,9 +1,18 @@
 "use client";
 
-import { Lightbulb, Users } from "lucide-react";
+import { Lightbulb, RotateCcw, Users } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
-export function EmptyDiscoverState({ mode }: { mode: "browse" | "findTeam" }) {
+export function EmptyDiscoverState({
+  mode,
+  onStartOver,
+  isResetting,
+}: {
+  mode: "browse" | "findTeam";
+  onStartOver: () => void;
+  isResetting: boolean;
+}) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
       {mode === "browse" ? (
@@ -13,14 +22,26 @@ export function EmptyDiscoverState({ mode }: { mode: "browse" | "findTeam" }) {
             You&apos;ve seen all the ideas!
           </h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-            You&apos;ve gone through all available ideas. Check back later for new ones, or create your own.
+            You&apos;ve gone through all available ideas. Start over to see them again, or create your own.
           </p>
-          <Link
-            href="/product/ideas/new"
-            className="text-sm text-primary hover:underline"
-          >
-            Create an idea
-          </Link>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onStartOver}
+              disabled={isResetting}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-4 w-4" />
+              {isResetting ? "Resetting..." : "Start Over"}
+            </Button>
+            <Link
+              href="/product/ideas/new"
+              className="text-sm text-primary hover:underline"
+            >
+              Create an idea
+            </Link>
+          </div>
         </>
       ) : (
         <>
@@ -29,14 +50,26 @@ export function EmptyDiscoverState({ mode }: { mode: "browse" | "findTeam" }) {
             No teams looking for members right now
           </h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-            All teams are either full or not actively recruiting. Check back later or create your own idea.
+            All teams are either full or not actively recruiting. Start over to see them again, or create your own idea.
           </p>
-          <Link
-            href="/product/ideas/new"
-            className="text-sm text-primary hover:underline"
-          >
-            Create an idea
-          </Link>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onStartOver}
+              disabled={isResetting}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-4 w-4" />
+              {isResetting ? "Resetting..." : "Start Over"}
+            </Button>
+            <Link
+              href="/product/ideas/new"
+              className="text-sm text-primary hover:underline"
+            >
+              Create an idea
+            </Link>
+          </div>
         </>
       )}
     </div>

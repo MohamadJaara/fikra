@@ -220,6 +220,20 @@ export const undoDismissIdea = mutation({
   },
 });
 
+export const resetDismissedIdeas = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const dismissed = await ctx.db
+      .query("dismissedIdeas")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+
+    await Promise.all(dismissed.map((d) => ctx.db.delete(d._id)));
+  },
+});
+
 export const getActivityTicker = query({
   args: {},
   handler: async (ctx) => {
