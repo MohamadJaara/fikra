@@ -150,14 +150,14 @@ export default function AdminAnnouncementsPage() {
               New Announcement
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] overflow-y-auto overflow-x-hidden sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Create Announcement</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Type</label>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {ANNOUNCEMENT_TYPE_KEYS.map(
                     (t) => {
                       const meta = TYPE_META[t];
@@ -206,19 +206,21 @@ export default function AdminAnnouncementsPage() {
                     <Eye className="h-3 w-3" /> Preview
                   </p>
                   <div
-                    className={`bg-gradient-to-r ${TYPE_META[type].previewGradient} rounded-lg px-4 py-2.5`}
+                    className={`overflow-hidden rounded-lg bg-gradient-to-r ${TYPE_META[type].previewGradient} px-4 py-2.5`}
                   >
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-white">
+                    <div className="min-w-0 space-y-1 sm:flex sm:items-start sm:gap-2 sm:space-y-0">
+                      <p className="min-w-0 break-words text-sm font-semibold text-white sm:max-w-[45%]">
                         {title}
-                      </span>
+                      </p>
                       {message && (
-                        <>
-                          <span className="text-white/50">·</span>
-                          <span className="text-sm text-white/85 truncate">
-                            {message}
+                        <div className="min-w-0 sm:flex sm:flex-1 sm:items-start sm:gap-2">
+                          <span className="hidden text-white/50 sm:inline">
+                            ·
                           </span>
-                        </>
+                          <p className="min-w-0 break-words text-sm text-white/85">
+                            {message}
+                          </p>
+                        </div>
                       )}
                     </div>
                   </div>
