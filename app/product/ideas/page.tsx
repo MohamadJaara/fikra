@@ -160,7 +160,7 @@ export default function BrowseIdeasPage() {
         </div>
 
         <FeatureTip tipKey="ideas-filter">
-          Use the <strong>Filters</strong> button to find ideas by missing roles, resource needs, or status. Try "Needs Teammates" to find ideas looking for someone with your skills.
+          Use the <strong>Filters</strong> button to find ideas by missing roles, resource needs, or status. Try &quot;Needs Teammates&quot; to find ideas looking for someone with your skills.
         </FeatureTip>
         <div className="flex gap-2">
           <div className="relative flex-1">

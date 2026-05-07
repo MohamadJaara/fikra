@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Crown, ArrowRightLeft, Link2, Search, Package, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,15 +55,20 @@ const OWNER_POWERS = [
   },
 ];
 
+const emptySubscribe = () => () => {};
+
 export function OwnerWelcomeBanner({
   ideaId,
   className,
 }: OwnerWelcomeBannerProps) {
-  const [visible, setVisible] = useState(false);
+  const shouldShow = useSyncExternalStore(
+    emptySubscribe,
+    () => !hasSeenOwnerWelcome(ideaId),
+    () => false,
+  );
+  const [dismissed, setDismissed] = useState(false);
 
-  useEffect(() => {
-    setVisible(!hasSeenOwnerWelcome(ideaId));
-  }, [ideaId]);
+  const visible = shouldShow && !dismissed;
 
   if (!visible) return null;
 
@@ -79,7 +84,7 @@ export function OwnerWelcomeBanner({
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-semibold">
-              You own this idea! Here's what you can do:
+              You own this idea! Here&apos;s what you can do:
             </p>
             <Button
               variant="ghost"
@@ -87,7 +92,7 @@ export function OwnerWelcomeBanner({
               className="h-6 w-6 shrink-0 text-purple-600/60 hover:text-purple-600 dark:text-purple-300/60 dark:hover:text-purple-300"
               onClick={() => {
                 markOwnerWelcomeSeen(ideaId);
-                setVisible(false);
+                setDismissed(true);
               }}
             >
               <X className="h-3.5 w-3.5" />

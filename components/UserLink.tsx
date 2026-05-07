@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function UserLink({
   handle,
@@ -46,11 +47,12 @@ export function UserAvatar({
     md: "text-[10px]",
     lg: "text-sm",
   };
+  const sizePixels: Record<string, number> = { sm: 20, md: 28, lg: 40 };
   const containerCls = `rounded-full bg-muted flex items-center justify-center font-medium shrink-0 ${sizeClasses[size]} ${sizeTextClasses[size]}`;
   const imgCls = `rounded-full object-cover ${sizeClasses[size]}`;
 
   const inner = image ? (
-    <img src={image} alt="" className={imgCls} />
+    <Image src={image} alt="" width={sizePixels[size]} height={sizePixels[size]} className={imgCls} unoptimized />
   ) : (
     <div className={containerCls}>{name?.charAt(0)?.toUpperCase() || "?"}</div>
   );

@@ -19,6 +19,7 @@ import {
   ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -267,10 +268,13 @@ export default function AdminCategoriesPage() {
                       <div className="flex items-center gap-3">
                         {editImageUrl && (
                           <div className="h-16 w-24 rounded bg-muted overflow-hidden">
-                            <img
+                            <Image
                               src={editImageUrl}
                               alt=""
+                              width={96}
+                              height={64}
                               className="h-full w-full object-cover"
+                              unoptimized
                             />
                           </div>
                         )}

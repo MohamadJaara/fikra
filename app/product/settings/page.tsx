@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useProductViewer } from "@/components/ProductLayoutClient";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRolesList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,33 +26,34 @@ export default function SettingsPage() {
   const updateProfile = useMutation(api.users.updateProfile);
   const roles = useRolesList();
 
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [participationMode, setParticipationMode] = useState<
-    ParticipationMode | undefined
-  >(undefined);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    if (viewer && !loaded) {
-      setFirstName(viewer.firstName ?? "");
-      setLastName(viewer.lastName ?? "");
-      if (viewer.roles) {
-        setSelectedRoles(viewer.roles);
-      }
-      setParticipationMode(
+  const [form, setForm] = useState({
+    firstName: viewer.firstName ?? "",
+    lastName: viewer.lastName ?? "",
+    selectedRoles: viewer.roles ?? [],
+    participationMode:
+      viewer.participationMode as ParticipationMode | undefined,
+  });
+  const [prevViewer, setPrevViewer] = useState(viewer);
+  if (viewer !== prevViewer) {
+    setPrevViewer(viewer);
+    setForm({
+      firstName: viewer.firstName ?? "",
+      lastName: viewer.lastName ?? "",
+      selectedRoles: viewer.roles ?? [],
+      participationMode:
         viewer.participationMode as ParticipationMode | undefined,
-      );
-      setLoaded(true);
-    }
-  }, [viewer, loaded]);
+    });
+  }
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleRole = (role: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
-    );
+    setForm((prev) => ({
+      ...prev,
+      selectedRoles: prev.selectedRoles.includes(role)
+        ? prev.selectedRoles.filter((r) => r !== role)
+        : [...prev.selectedRoles, role],
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -60,10 +61,10 @@ export default function SettingsPage() {
     setIsSubmitting(true);
     try {
       await updateProfile({
-        firstName,
-        lastName,
-        roles: selectedRoles,
-        participationMode,
+        firstName: form.firstName,
+        lastName: form.lastName,
+        roles: form.selectedRoles,
+        participationMode: form.participationMode,
       });
       toast.success("Profile updated!");
     } catch (error) {
@@ -99,8 +100,10 @@ export default function SettingsPage() {
                 <Label htmlFor="firstName">First Name *</Label>
                 <Input
                   id="firstName"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  value={form.firstName}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, firstName: e.target.value }))
+                  }
                   placeholder="Enter your first name"
                   required
                   className="mt-1.5"
@@ -110,8 +113,10 @@ export default function SettingsPage() {
                 <Label htmlFor="lastName">Last Name</Label>
                 <Input
                   id="lastName"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, lastName: e.target.value }))
+                  }
                   placeholder="Enter your last name"
                   className="mt-1.5"
                 />
@@ -145,7 +150,7 @@ export default function SettingsPage() {
               <Badge
                 key={role.slug}
                 variant={
-                  selectedRoles.includes(role.slug) ? "default" : "outline"
+                  form.selectedRoles.includes(role.slug) ? "default" : "outline"
                 }
                 className="cursor-pointer select-none text-sm px-3 py-1.5"
                 onClick={() => toggleRole(role.slug)}
@@ -168,16 +173,18 @@ export default function SettingsPage() {
             {PARTICIPATION_MODES.map((mode) => (
               <Badge
                 key={mode}
-                variant={participationMode === mode ? "default" : "outline"}
+                variant={form.participationMode === mode ? "default" : "outline"}
                 className={cn(
                   "cursor-pointer select-none text-sm px-3 py-1.5",
-                  participationMode === mode &&
+                  form.participationMode === mode &&
                     PARTICIPATION_MODE_COLORS[mode],
                 )}
                 onClick={() =>
-                  setParticipationMode((prev) =>
-                    prev === mode ? undefined : mode,
-                  )
+                  setForm((prev) => ({
+                    ...prev,
+                    participationMode:
+                      prev.participationMode === mode ? undefined : mode,
+                  }))
                 }
               >
                 {mode === "onsite" ? (
@@ -188,7 +195,7 @@ export default function SettingsPage() {
                 {PARTICIPATION_MODE_LABELS[mode]}
               </Badge>
             ))}
-            {!participationMode && (
+            {!form.participationMode && (
               <Badge
                 variant="secondary"
                 className="text-sm px-3 py-1.5 text-muted-foreground"
@@ -204,7 +211,7 @@ export default function SettingsPage() {
         <div className="py-6">
           <Button
             type="submit"
-            disabled={isSubmitting || firstName.trim().length === 0}
+            disabled={isSubmitting || form.firstName.trim().length === 0}
           >
             <Save className="h-4 w-4 mr-2" />
             {isSubmitting ? "Saving..." : "Save Changes"}

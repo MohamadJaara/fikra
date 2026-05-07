@@ -9,6 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import {
   ArrowLeft,
@@ -96,10 +97,13 @@ export default function CategoryDetailPage() {
       <div className="flex flex-col md:flex-row md:items-start gap-5 mb-8">
         <div className="w-full md:w-64 h-40 md:h-36 rounded-lg overflow-hidden bg-muted shrink-0">
           {category.imageUrl ? (
-            <img
+            <Image
               src={category.imageUrl}
               alt={category.name}
+              width={256}
+              height={144}
               className="h-full w-full object-cover"
+              unoptimized
             />
           ) : (
             <div

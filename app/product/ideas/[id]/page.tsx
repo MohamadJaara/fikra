@@ -171,7 +171,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
       <div className="space-y-6 animate-fade-in">
         <IdeaHeader idea={idea} />
-        {idea.isOwner && <OwnerWelcomeBanner ideaId={idea._id} />}
+        {idea.isOwner && <OwnerWelcomeBanner key={idea._id} ideaId={idea._id} />}
         <OwnershipTransferRequestBanner idea={idea} />
         <IdeaContent idea={idea} />
         <RoomSection idea={idea} />
@@ -1943,7 +1943,7 @@ function CommentSection({
 
       <form onSubmit={handleSubmit} className="mb-6 space-y-2">
         <FeatureTip tipKey="comment-mention">
-          Type <strong>@</strong> in the comment box to mention a teammate — they'll get notified. Use the quick prompts above to kickstart the discussion.
+          Type <strong>@</strong> in the comment box to mention a teammate — they&apos;ll get notified. Use the quick prompts above to kickstart the discussion.
         </FeatureTip>
         <div className="flex flex-wrap gap-1.5 mb-2">
           {QUICK_PROMPTS.map((prompt) => (

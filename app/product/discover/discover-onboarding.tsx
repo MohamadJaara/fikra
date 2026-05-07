@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
@@ -16,6 +16,15 @@ import {
 import { Button } from "@/components/ui/button";
 
 const STORAGE_KEY = "fikra_discover_onboarding_seen";
+
+const subscribers = new Set<() => void>();
+function subscribeToStorage(callback: () => void) {
+  subscribers.add(callback);
+  return () => subscribers.delete(callback);
+}
+function notifySubscribers() {
+  subscribers.forEach((cb) => cb());
+}
 
 const steps = [
   {
@@ -56,20 +65,35 @@ const steps = [
 ];
 
 export function DiscoverOnboarding() {
-  const [visible, setVisible] = useState(false);
+  const storageValue = useSyncExternalStore(
+    (onStoreChange) => {
+      subscribers.add(onStoreChange);
+      const handler = (e: StorageEvent) => {
+        if (e.key === STORAGE_KEY) onStoreChange();
+      };
+      window.addEventListener("storage", handler);
+      return () => {
+        subscribers.delete(onStoreChange);
+        window.removeEventListener("storage", handler);
+      };
+    },
+    () => {
+      try {
+        return localStorage.getItem(STORAGE_KEY);
+      } catch {
+        return null;
+      }
+    },
+    () => "true",
+  );
+
+  const visible = storageValue !== "true";
   const [currentStep, setCurrentStep] = useState(0);
 
-  useEffect(() => {
-    try {
-      if (localStorage.getItem(STORAGE_KEY) === "true") return;
-    } catch {}
-    setVisible(true);
-  }, []);
-
   const dismiss = useCallback(() => {
-    setVisible(false);
     try {
       localStorage.setItem(STORAGE_KEY, "true");
+      notifySubscribers();
     } catch {}
   }, []);
 

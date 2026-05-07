@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Lightbulb,
   ArrowRight,
@@ -43,16 +44,18 @@ const ORNAMENT_PATTERNS = [
 const STORAGE_KEY = "fikra_discover_onboarding_seen";
 
 function DiscoverBanner() {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState<boolean | null>(null);
 
   useEffect(() => {
     try {
-      if (localStorage.getItem(STORAGE_KEY) === "true") return;
-    } catch {}
-    setVisible(true);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVisible(localStorage.getItem(STORAGE_KEY) !== "true");
+    } catch {
+      setVisible(true);
+    }
   }, []);
 
-  if (!visible) return null;
+  if (visible !== true) return null;
 
   return (
     <AnimatePresence>
@@ -204,10 +207,12 @@ export default function ThemesPage() {
                 <div className="relative aspect-[16/10] overflow-hidden">
                   {cat.imageUrl ? (
                     <>
-                      <img
+                      <Image
                         src={cat.imageUrl}
                         alt={cat.name}
-                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        fill
+                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                        unoptimized
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 group-hover:via-black/30 transition-colors duration-500" />
                     </>
