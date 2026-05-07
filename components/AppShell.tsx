@@ -1,5 +1,6 @@
 "use client";
 
+import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { ContentDisclaimer } from "@/components/ContentDisclaimer";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,7 @@ export function AppShell({
           <span className="font-semibold">Fikra</span>
           <div className="ml-auto">{viewer && <NotificationBell />}</div>
         </header>
+        <AnnouncementBanner />
         <div className="border-b px-4 py-3 md:px-6">
           <ContentDisclaimer />
         </div>

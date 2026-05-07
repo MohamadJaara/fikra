@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   DoorOpen,
   Package,
+  Megaphone,
 } from "lucide-react";
 import Link from "next/link";
 import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/lib/constants";
@@ -118,6 +119,13 @@ export default function AdminDashboard() {
       bg: "bg-green-50 dark:bg-green-950",
       title: "Moderate Comments",
       subtitle: `${stats.totalComments} comments`,
+    },
+    {
+      href: "/product/admin/announcements",
+      icon: <Megaphone className="h-5 w-5 text-fuchsia-600" />,
+      bg: "bg-fuchsia-50 dark:bg-fuchsia-950",
+      title: "Announcements",
+      subtitle: "Broadcast to all users",
     },
   ];
 

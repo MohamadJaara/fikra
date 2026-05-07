@@ -210,4 +210,20 @@ export default defineSchema({
     .index("by_recipient", ["recipientId"])
     .index("by_recipient_and_read", ["recipientId", "read"])
     .index("by_idea", ["ideaId"]),
+
+  announcements: defineTable({
+    title: v.string(),
+    message: v.string(),
+    type: v.string(),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+  })
+    .index("by_active", ["active"]),
+
+  dismissedAnnouncements: defineTable({
+    announcementId: v.id("announcements"),
+    userId: v.id("users"),
+  })
+    .index("by_announcement_and_user", ["announcementId", "userId"])
+    .index("by_user", ["userId"]),
 });
