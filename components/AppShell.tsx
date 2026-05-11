@@ -20,6 +20,7 @@ import {
   Shield,
   Users,
   Sparkles,
+  Bookmark,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -151,6 +152,13 @@ function SidebarContent({
           onClick={onClose}
         >
           Create Idea
+        </NavLink>
+        <NavLink
+          href="/product/saved"
+          icon={<Bookmark className="h-4 w-4" />}
+          onClick={onClose}
+        >
+          Saved
         </NavLink>
         <NavLink
           href="/product/activity"

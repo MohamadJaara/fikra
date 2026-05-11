@@ -28,6 +28,7 @@ export type IdeaListItem = {
   resourceRequests: ResourceRequestItem[];
   isMember: boolean;
   isInterested: boolean;
+  isBookmarked: boolean;
   isOwner: boolean;
   room: IdeaRoomInfo | null;
   onsiteOnly?: boolean;
@@ -117,6 +118,7 @@ export type IdeaDetail = {
   pendingOwnershipTransfer: OwnershipTransferRequest | null;
   isMember: boolean;
   isInterested: boolean;
+  isBookmarked: boolean;
   isOwner: boolean;
   room: IdeaRoomInfo | null;
   onsiteOnly?: boolean;

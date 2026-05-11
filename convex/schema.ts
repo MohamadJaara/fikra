@@ -199,6 +199,14 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_idea_and_user", ["ideaId", "userId"]),
 
+  ideaBookmarks: defineTable({
+    ideaId: v.id("ideas"),
+    userId: v.id("users"),
+  })
+    .index("by_user", ["userId"])
+    .index("by_idea", ["ideaId"])
+    .index("by_idea_and_user", ["ideaId", "userId"]),
+
   notifications: defineTable({
     recipientId: v.id("users"),
     actorId: v.id("users"),

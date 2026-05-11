@@ -51,7 +51,7 @@ type IdeaListFilters = {
 };
 
 async function getIdeaListMembershipMaps(ctx: QueryCtx, userId: Id<"users">) {
-  const [memberships, interests, reactions] = await Promise.all([
+  const [memberships, interests, reactions, bookmarks] = await Promise.all([
     ctx.db
       .query("ideaMembers")
       .withIndex("by_user", (q) => q.eq("userId", userId))
@@ -64,10 +64,15 @@ async function getIdeaListMembershipMaps(ctx: QueryCtx, userId: Id<"users">) {
       .query("reactions")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .collect(),
+    ctx.db
+      .query("ideaBookmarks")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect(),
   ]);
 
   const memberIdeaIds = new Set(memberships.map((m) => m.ideaId));
   const interestedIdeaIds = new Set(interests.map((i) => i.ideaId));
+  const bookmarkedIdeaIds = new Set(bookmarks.map((b) => b.ideaId));
   const reactionsByIdeaId = new Map<Id<"ideas">, string[]>();
   for (const reaction of reactions) {
     const existing = reactionsByIdeaId.get(reaction.ideaId) ?? [];
@@ -75,7 +80,7 @@ async function getIdeaListMembershipMaps(ctx: QueryCtx, userId: Id<"users">) {
     reactionsByIdeaId.set(reaction.ideaId, existing);
   }
 
-  return { memberIdeaIds, interestedIdeaIds, reactionsByIdeaId };
+  return { memberIdeaIds, interestedIdeaIds, bookmarkedIdeaIds, reactionsByIdeaId };
 }
 
 async function getIdeaListViewerId(ctx: QueryCtx): Promise<Id<"users"> | null> {
@@ -96,7 +101,7 @@ async function buildIdeaListItems(
   userId: Id<"users">,
 ) {
   const resourceNameMap = await getResourceNameMap(ctx);
-  const { memberIdeaIds, interestedIdeaIds, reactionsByIdeaId } =
+  const { memberIdeaIds, interestedIdeaIds, bookmarkedIdeaIds, reactionsByIdeaId } =
     await getIdeaListMembershipMaps(ctx, userId);
 
   const results = await Promise.all(
@@ -157,6 +162,7 @@ async function buildIdeaListItems(
 
       const isMember = memberIdeaIds.has(idea._id);
       const isInterested = interestedIdeaIds.has(idea._id);
+      const isBookmarked = bookmarkedIdeaIds.has(idea._id);
       const isOwner = idea.ownerId === userId;
 
       let room: IdeaListItem["room"] = null;
@@ -206,6 +212,7 @@ async function buildIdeaListItems(
         })),
         isMember,
         isInterested,
+        isBookmarked,
         isOwner,
         room,
       };
@@ -611,6 +618,12 @@ export const remove = mutation({
       .withIndex("by_ideaB", (q) => q.eq("ideaIdB", ideaId))
       .collect();
     for (const r of [...relAsA, ...relAsB]) await ctx.db.delete(r._id);
+
+    const allBookmarks = await ctx.db
+      .query("ideaBookmarks")
+      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
+      .collect();
+    for (const b of allBookmarks) await ctx.db.delete(b._id);
 
     await ctx.db.delete(ideaId);
   },
@@ -1207,6 +1220,13 @@ export const get = query({
       .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
       .collect();
 
+    const bookmarkDoc = await ctx.db
+      .query("ideaBookmarks")
+      .withIndex("by_idea_and_user", (q) =>
+        q.eq("ideaId", ideaId).eq("userId", userId),
+      )
+      .first();
+
     const reactionCounts: Record<string, number> = {};
     for (const r of reactionDocs) {
       reactionCounts[r.type] = (reactionCounts[r.type] || 0) + 1;
@@ -1322,6 +1342,7 @@ export const get = query({
       pendingOwnershipTransfer,
       isMember: members.some((m) => m.userId === userId),
       isInterested: interestDocs.some((i) => i.userId === userId),
+      isBookmarked: bookmarkDoc !== null,
       isOwner,
       room,
     };
@@ -1336,5 +1357,25 @@ export const getByOwner = query({
       .query("ideas")
       .withIndex("by_owner", (q) => q.eq("ownerId", userId))
       .collect();
+  },
+});
+
+export const getBookmarked = query({
+  args: {},
+  handler: async (ctx) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const bookmarks = await ctx.db
+      .query("ideaBookmarks")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .order("desc")
+      .collect();
+
+    const ideas = await Promise.all(
+      bookmarks.map((b) => ctx.db.get(b.ideaId)),
+    );
+    const existingIdeas = ideas.filter((i): i is Doc<"ideas"> => i !== null);
+
+    return await buildIdeaListItems(ctx, existingIdeas, userId);
   },
 });

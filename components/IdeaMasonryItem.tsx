@@ -13,6 +13,7 @@ import type { IdeaListItem } from "@/lib/types";
 import { Users, Package, Heart, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { UserAvatar } from "@/components/UserLink";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { useState } from "react";
@@ -168,29 +169,32 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
             <span />
           )}
 
-          <button
-            onClick={handleToggleInterest}
-            disabled={isToggling || idea.isMember || idea.isOwner}
-            className={`pointer-events-auto inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 transition-colors text-xs ${
-              idea.isInterested
-                ? "text-rose-500 font-medium"
-                : "text-muted-foreground hover:text-rose-400"
-            } ${
-              idea.isMember || idea.isOwner
-                ? "opacity-40 cursor-not-allowed"
-                : "cursor-pointer hover:bg-muted/60"
-            }`}
-            aria-label={idea.isInterested ? "Remove interest" : "Express interest"}
-          >
-            {isToggling ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Heart
-                className={`h-3.5 w-3.5 ${idea.isInterested ? "fill-current" : ""}`}
-              />
-            )}
-            {idea.interestCount > 0 && <span>{idea.interestCount}</span>}
-          </button>
+          <span className="flex items-center gap-1">
+            <BookmarkButton ideaId={idea._id} isBookmarked={idea.isBookmarked} />
+            <button
+              onClick={handleToggleInterest}
+              disabled={isToggling || idea.isMember || idea.isOwner}
+              className={`pointer-events-auto inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 transition-colors text-xs ${
+                idea.isInterested
+                  ? "text-rose-500 font-medium"
+                  : "text-muted-foreground hover:text-rose-400"
+              } ${
+                idea.isMember || idea.isOwner
+                  ? "opacity-40 cursor-not-allowed"
+                  : "cursor-pointer hover:bg-muted/60"
+              }`}
+              aria-label={idea.isInterested ? "Remove interest" : "Express interest"}
+            >
+              {isToggling ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Heart
+                  className={`h-3.5 w-3.5 ${idea.isInterested ? "fill-current" : ""}`}
+                />
+              )}
+              {idea.interestCount > 0 && <span>{idea.interestCount}</span>}
+            </button>
+          </span>
         </div>
       </div>
     </div>

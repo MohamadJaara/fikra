@@ -35,6 +35,7 @@ import { UserLink, UserAvatar } from "@/components/UserLink";
 import { FeatureTip } from "@/components/FeatureTip";
 import { OwnerWelcomeBanner } from "@/components/OwnerWelcomeBanner";
 import { IdeaDetailSkeleton } from "@/components/Skeleton";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,6 +89,7 @@ import {
   MapPin,
   Wifi,
   MoreHorizontal,
+  Bookmark,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -166,7 +168,12 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
           <ArrowLeft className="h-4 w-4" />
           Browse
         </Link>
-        {idea.isOwner && <OwnerActions idea={idea} />}
+        <div className="flex items-center gap-2">
+          {!idea.isOwner && (
+            <BookmarkButton ideaId={idea._id} isBookmarked={idea.isBookmarked} size="md" />
+          )}
+          {idea.isOwner && <OwnerActions idea={idea} />}
+        </div>
       </div>
 
       <div className="space-y-6 animate-fade-in">
@@ -223,11 +230,45 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
 }
 
 function IdeaHeader({ idea }: { idea: IdeaDetail }) {
+  const toggleBookmark = useMutation(api.bookmarks.toggle);
+  const [isTogglingBookmark, setIsTogglingBookmark] = useState(false);
+  const [justBookmarked, setJustBookmarked] = useState(false);
+
+  const handleToggleBookmark = async () => {
+    setIsTogglingBookmark(true);
+    try {
+      const result = await toggleBookmark({ ideaId: idea._id });
+      if (result) {
+        setJustBookmarked(true);
+        setTimeout(() => setJustBookmarked(false), 600);
+      }
+    } catch {
+    } finally {
+      setIsTogglingBookmark(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-start justify-between gap-3 mb-2">
         <h1 className="text-2xl font-bold">{idea.title}</h1>
         <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={handleToggleBookmark}
+            disabled={isTogglingBookmark}
+            className={`inline-flex items-center justify-center rounded-md p-1.5 transition-all duration-200 ${
+              idea.isBookmarked
+                ? "text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50"
+                : "text-muted-foreground hover:text-amber-500 hover:bg-muted"
+            } ${justBookmarked ? "animate-bounce-in" : ""}`}
+            aria-label={idea.isBookmarked ? "Remove bookmark" : "Bookmark idea"}
+          >
+            {isTogglingBookmark ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Bookmark className={`h-5 w-5 ${idea.isBookmarked ? "fill-current" : ""}`} />
+            )}
+          </button>
           {idea.categoryName && (
             <Badge variant="outline">{idea.categoryName}</Badge>
           )}

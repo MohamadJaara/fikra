@@ -14,6 +14,7 @@ import type { IdeaListItem } from "@/lib/types";
 import { Users, Package, Heart, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { UserLink, UserAvatar } from "@/components/UserLink";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { useState } from "react";
@@ -178,6 +179,7 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
                 </span>
               );
             })}
+            <BookmarkButton ideaId={idea._id} isBookmarked={idea.isBookmarked} />
             <button
               onClick={handleToggleInterest}
               disabled={isToggling || idea.isMember || idea.isOwner}
