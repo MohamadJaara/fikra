@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import {
   getAuthenticatedUser,
   getUserDisplayName,
+  isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   maxTeamSize,
   resolveTeamSize,
@@ -204,7 +205,9 @@ export const acceptMerge = mutation({
       .withIndex("by_idea", (q) => q.eq("ideaId", sourceId))
       .collect();
 
-    for (const member of sourceMembers) {
+    for (const member of sourceMembers.filter((sourceMember) =>
+      isEffectiveIdeaMember(sourceMember, sourceDoc),
+    )) {
       const sourceRoles = mergeUniqueStringArrays(
         member.memberRoles,
         member.role ? [member.role] : undefined,
@@ -220,6 +223,7 @@ export const acceptMerge = mutation({
           ideaId: targetId,
           userId: member.userId,
           memberRoles: sourceRoles,
+          joinedAsOwner: member.userId === targetDoc.ownerId ? true : undefined,
         });
         continue;
       }
@@ -232,11 +236,14 @@ export const acceptMerge = mutation({
       const rolesChanged =
         (existingRoles ?? []).length !== (mergedRoles ?? []).length ||
         (existingRoles ?? []).some((role, index) => mergedRoles?.[index] !== role);
+      const joinedAsOwnerChanged =
+        member.userId === targetDoc.ownerId && existing.joinedAsOwner !== true;
 
-      if (existing.role !== undefined || rolesChanged) {
+      if (existing.role !== undefined || rolesChanged || joinedAsOwnerChanged) {
         await ctx.db.patch(existing._id, {
           memberRoles: mergedRoles,
           role: undefined,
+          joinedAsOwner: joinedAsOwnerChanged ? true : existing.joinedAsOwner,
         });
       }
     }
@@ -528,11 +535,12 @@ export const searchPotentialDuplicates = query({
     return await Promise.all(
       scored.map(async ({ idea: i, score }) => {
         const owner = await ctx.db.get(i.ownerId);
-        const memberCount = (
-          await ctx.db
-            .query("ideaMembers")
-            .withIndex("by_idea", (q) => q.eq("ideaId", i._id))
-            .collect()
+        const members = await ctx.db
+          .query("ideaMembers")
+          .withIndex("by_idea", (q) => q.eq("ideaId", i._id))
+          .collect();
+        const memberCount = members.filter((member) =>
+          isEffectiveIdeaMember(member, i),
         ).length;
         return {
           _id: i._id,

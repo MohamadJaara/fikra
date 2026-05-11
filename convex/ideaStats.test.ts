@@ -34,7 +34,7 @@ describe("Denormalized idea stats", () => {
     let storedIdea = await t.run(async (ctx: any) => {
       return await ctx.db.get(ideaId);
     });
-    expect(storedIdea.memberCount).toBe(1);
+    expect(storedIdea.memberCount).toBe(0);
     expect(storedIdea.interestCount).toBe(0);
     expect(storedIdea.reactionCounts).toEqual({});
     expect(storedIdea.resourceRequestCount).toBe(1);
@@ -61,7 +61,7 @@ describe("Denormalized idea stats", () => {
       paginationOpts: { numItems: 100, cursor: null },
     });
     const listed = listForOther.page.find((idea) => idea._id === ideaId);
-    expect(listed?.memberCount).toBe(2);
+    expect(listed?.memberCount).toBe(1);
     expect(listed?.interestCount).toBe(1);
     expect(listed?.reactionCounts).toEqual({ exciting: 1 });
     expect(listed?.userReactions).toEqual(["exciting"]);
@@ -88,7 +88,7 @@ describe("Denormalized idea stats", () => {
     storedIdea = await t.run(async (ctx: any) => {
       return await ctx.db.get(ideaId);
     });
-    expect(storedIdea.memberCount).toBe(1);
+    expect(storedIdea.memberCount).toBe(0);
     expect(storedIdea.interestCount).toBe(0);
     expect(storedIdea.reactionCounts).toEqual({});
     expect(storedIdea.hasUnresolvedResources).toBe(false);

@@ -34,6 +34,13 @@ export function resolveTeamSize(idea: {
   return _teamSizeFromLegacyNumber(idea.teamSizeWanted ?? 3);
 }
 
+export function isEffectiveIdeaMember(
+  member: Pick<Doc<"ideaMembers">, "userId" | "joinedAsOwner">,
+  idea: Pick<Doc<"ideas">, "ownerId">,
+): boolean {
+  return member.userId !== idea.ownerId || member.joinedAsOwner === true;
+}
+
 const ALLOWED_DOMAIN = process.env.ALLOWED_DOMAIN ?? "";
 
 export function isEmailAllowed(email: string): boolean {

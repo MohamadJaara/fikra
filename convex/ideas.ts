@@ -6,6 +6,7 @@ import {
   getAuthenticatedUser,
   getResourceNameMap,
   getUserDisplayName,
+  isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   sanitizeText,
   validateStringLength,
@@ -70,7 +71,19 @@ async function getIdeaListMembershipMaps(ctx: QueryCtx, userId: Id<"users">) {
       .collect(),
   ]);
 
-  const memberIdeaIds = new Set(memberships.map((m) => m.ideaId));
+  const ownerIdeas = await ctx.db
+    .query("ideas")
+    .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+    .collect();
+  const ownedIdeaIds = new Set(ownerIdeas.map((idea) => idea._id));
+  const memberIdeaIds = new Set(
+    memberships
+      .filter((membership) => {
+        const ownsIdea = ownedIdeaIds.has(membership.ideaId);
+        return !ownsIdea || membership.joinedAsOwner === true;
+      })
+      .map((m) => m.ideaId),
+  );
   const interestedIdeaIds = new Set(interests.map((i) => i.ideaId));
   const bookmarkedIdeaIds = new Set(bookmarks.map((b) => b.ideaId));
   const reactionsByIdeaId = new Map<Id<"ideas">, string[]>();
@@ -144,8 +157,12 @@ async function buildIdeaListItems(
           (legacyReactionCounts[reaction.type] || 0) + 1;
       }
 
+      const effectiveLegacyMembers = (legacyMembers ?? []).filter((member) =>
+        isEffectiveIdeaMember(member, idea),
+      );
+
       const legacyFilledRoles = new Set<string>();
-      for (const member of legacyMembers ?? []) {
+      for (const member of effectiveLegacyMembers) {
         for (const role of mergeUniqueStringArrays(
           member.memberRoles,
           member.role ? [member.role] : undefined,
@@ -198,7 +215,7 @@ async function buildIdeaListItems(
         ownerName: getUserDisplayName(owner),
         ownerImage: owner?.image,
         ownerHandle: owner?.handle,
-        memberCount: idea.memberCount ?? legacyMembers?.length ?? 0,
+        memberCount: idea.memberCount ?? effectiveLegacyMembers.length,
         interestCount: idea.interestCount ?? legacyInterestDocs?.length ?? 0,
         reactionCounts: idea.reactionCounts ?? legacyReactionCounts,
         userReactions: reactionsByIdeaId.get(idea._id) ?? [],
@@ -448,7 +465,7 @@ export const create = mutation({
       ownerId: userId,
       categoryId: args.categoryId,
       onsiteOnly: args.onsiteOnly ?? false,
-      memberCount: 1,
+      memberCount: 0,
       interestCount: 0,
       reactionCounts: {},
       reactionTotal: 0,
@@ -457,12 +474,6 @@ export const create = mutation({
       hasUnresolvedResources: false,
       needsTeammates: args.status !== "full" && args.lookingForRoles.length > 0,
       resourceRequestSummary: [],
-    });
-
-    await ctx.db.insert("ideaMembers", {
-      ideaId,
-      userId,
-      memberRoles: undefined,
     });
 
     if (args.resourceTags && args.resourceTags.length > 0) {
@@ -793,11 +804,9 @@ export const acceptOwnershipTransfer = mutation({
       throw new Error("Requester must still be a team member");
     }
 
-    if (!newOwnerMembership) {
-      await ctx.db.insert("ideaMembers", {
-        ideaId: request.ideaId,
-        userId: newOwnerId,
-        memberRoles: undefined,
+    if (newOwnerMembership && newOwnerMembership.joinedAsOwner !== true) {
+      await ctx.db.patch(newOwnerMembership._id, {
+        joinedAsOwner: true,
       });
     }
 
@@ -813,15 +822,17 @@ export const acceptOwnershipTransfer = mutation({
       ? request.leaveAfterTransfer
       : leaveAfterTransfer === true;
 
-    if (shouldRemovePreviousOwner) {
-      const currentOwnerMembership = await ctx.db
-        .query("ideaMembers")
-        .withIndex("by_idea_and_user", (q) =>
-          q.eq("ideaId", request.ideaId).eq("userId", previousOwnerId),
-        )
-        .first();
-      if (currentOwnerMembership)
-        await ctx.db.delete(currentOwnerMembership._id);
+    const previousOwnerMembership = await ctx.db
+      .query("ideaMembers")
+      .withIndex("by_idea_and_user", (q) =>
+        q.eq("ideaId", request.ideaId).eq("userId", previousOwnerId),
+      )
+      .first();
+    if (
+      previousOwnerMembership &&
+      (shouldRemovePreviousOwner || previousOwnerMembership.joinedAsOwner !== true)
+    ) {
+      await ctx.db.delete(previousOwnerMembership._id);
     }
 
     await ctx.db.patch(request.ideaId, { ownerId: newOwnerId });
@@ -1176,8 +1187,12 @@ export const get = query({
 
     const isOwner = idea.ownerId === userId;
 
+    const effectiveMembers = members.filter((member) =>
+      isEffectiveIdeaMember(member, idea),
+    );
+
     const memberDetails = await Promise.all(
-      members.map(async (m) => {
+      effectiveMembers.map(async (m) => {
         const u = await ctx.db.get(m.userId);
         const { role, ...membership } = m;
         return {
@@ -1328,7 +1343,7 @@ export const get = query({
       ownerHandle: owner?.handle,
       ownerEmail: isOwner ? owner?.email : undefined,
       members: memberDetails,
-      memberCount: members.length,
+      memberCount: effectiveMembers.length,
       interestedUsers,
       interestCount: interestDocs.length,
       reactionCounts,
@@ -1340,7 +1355,7 @@ export const get = query({
       hasUnresolvedResources: resourceDocs.some((r) => !r.resolved),
       missingRoles,
       pendingOwnershipTransfer,
-      isMember: members.some((m) => m.userId === userId),
+      isMember: effectiveMembers.some((m) => m.userId === userId),
       isInterested: interestDocs.some((i) => i.userId === userId),
       isBookmarked: bookmarkDoc !== null,
       isOwner,

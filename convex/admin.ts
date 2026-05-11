@@ -1,7 +1,12 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { getAdminUser, getUserDisplayName, resolveTeamSize } from "./lib";
+import {
+  getAdminUser,
+  getUserDisplayName,
+  isEffectiveIdeaMember,
+  resolveTeamSize,
+} from "./lib";
 import { STATUSES } from "../lib/constants";
 import { internal } from "./_generated/api";
 
@@ -80,6 +85,16 @@ export const listUsers = query({
             .collect(),
         ]);
 
+        const effectiveMemberships = (
+          await Promise.all(
+            memberships.map(async (membership) => {
+              const idea = await ctx.db.get(membership.ideaId);
+              if (!idea || !isEffectiveIdeaMember(membership, idea)) return null;
+              return membership;
+            }),
+          )
+        ).filter((membership) => membership !== null);
+
         return {
           _id: user._id,
           _creationTime: user._creationTime,
@@ -93,7 +108,7 @@ export const listUsers = query({
           isAdmin: user.isAdmin,
           onboardingComplete: user.onboardingComplete,
           ownedIdeasCount: ownedIdeas.length,
-          membershipsCount: memberships.length,
+          membershipsCount: effectiveMemberships.length,
           interestCount: interest.length,
         };
       }),
@@ -137,6 +152,10 @@ export const listIdeas = query({
               .collect(),
           ]);
 
+        const effectiveMembers = members.filter((member) =>
+          isEffectiveIdeaMember(member, idea),
+        );
+
         return {
           _id: idea._id,
           _creationTime: idea._creationTime,
@@ -147,7 +166,7 @@ export const listIdeas = query({
           ownerId: idea.ownerId,
           ownerName: getUserDisplayName(owner),
           ownerEmail: owner?.email,
-          memberCount: members.length,
+          memberCount: effectiveMembers.length,
           commentCount: comments.length,
           reactionCount: reactions.length,
           interestCount: interest.length,

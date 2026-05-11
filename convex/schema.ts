@@ -123,6 +123,7 @@ export default defineSchema({
     userId: v.id("users"),
     role: v.optional(v.string()),
     memberRoles: v.optional(v.array(v.string())),
+    joinedAsOwner: v.optional(v.boolean()),
   })
     .index("by_idea", ["ideaId"])
     .index("by_user", ["userId"])

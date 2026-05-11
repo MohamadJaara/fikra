@@ -6,6 +6,7 @@ import {
   getAuthenticatedUser,
   generateUniqueHandle,
   getUserDisplayName,
+  isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   validateRoleSlugs,
   PARTICIPATION_MODES,
@@ -174,19 +175,17 @@ export const getProfile = query({
       .collect();
 
     const joinedIdeas = await Promise.all(
-      memberships
-        .filter((m) => !ownedIdeas.some((o) => o._id === m.ideaId))
-        .map(async (m) => {
-          const idea = await ctx.db.get(m.ideaId);
-          if (!idea) return null;
-          return {
-            ...idea,
-            memberRoles: mergeUniqueStringArrays(
-              m.memberRoles,
-              m.role ? [m.role] : undefined,
-            ),
-          };
-        }),
+      memberships.map(async (m) => {
+        const idea = await ctx.db.get(m.ideaId);
+        if (!idea || !isEffectiveIdeaMember(m, idea)) return null;
+        return {
+          ...idea,
+          memberRoles: mergeUniqueStringArrays(
+            m.memberRoles,
+            m.role ? [m.role] : undefined,
+          ),
+        };
+      }),
     );
 
     return {

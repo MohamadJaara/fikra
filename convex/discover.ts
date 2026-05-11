@@ -4,6 +4,7 @@ import {
   getAuthenticatedUser,
   getUserDisplayName,
   getResourceNameMap,
+  isEffectiveIdeaMember,
   resolveTeamSize,
 } from "./lib";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -111,7 +112,18 @@ export const getDiscoverFeed = query({
         .collect(),
     ]);
 
-    const memberIdeaIds = new Set(memberships.map((m) => m.ideaId));
+    const effectiveMemberships = await Promise.all(
+      memberships.map(async (membership) => {
+        const idea = await ctx.db.get(membership.ideaId);
+        if (!idea || !isEffectiveIdeaMember(membership, idea)) return null;
+        return membership;
+      }),
+    );
+    const memberIdeaIds = new Set(
+      effectiveMemberships
+        .filter((membership) => membership !== null)
+        .map((m) => m.ideaId),
+    );
     const interestedIdeaIds = new Set(interests.map((i) => i.ideaId));
     const dismissedIdeaIds = new Set(dismissed.map((d) => d.ideaId));
 

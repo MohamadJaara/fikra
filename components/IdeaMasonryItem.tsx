@@ -173,13 +173,13 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
             <BookmarkButton ideaId={idea._id} isBookmarked={idea.isBookmarked} />
             <button
               onClick={handleToggleInterest}
-              disabled={isToggling || idea.isMember || idea.isOwner}
+              disabled={isToggling || idea.isMember}
               className={`pointer-events-auto inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 transition-colors text-xs ${
                 idea.isInterested
                   ? "text-rose-500 font-medium"
                   : "text-muted-foreground hover:text-rose-400"
               } ${
-                idea.isMember || idea.isOwner
+                idea.isMember
                   ? "opacity-40 cursor-not-allowed"
                   : "cursor-pointer hover:bg-muted/60"
               }`}

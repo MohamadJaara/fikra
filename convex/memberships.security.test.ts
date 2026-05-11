@@ -12,7 +12,7 @@ import {
 } from "./testHelpers.test";
 
 describe("Membership authorization", () => {
-  test("owner cannot leave their own idea", async () => {
+  test("owner is not a member until they explicitly join", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);
 
@@ -28,16 +28,17 @@ describe("Membership authorization", () => {
 
     await expect(
       asOwner.mutation(api.memberships.leave, { ideaId }),
-    ).rejects.toThrow("Owner cannot leave their own idea");
+    ).rejects.toThrow("Not a member");
   });
 
-  test("cannot join an idea twice", async () => {
+  test("owner can explicitly join their own idea only once", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);
 
     const ownerId = await insertUser(t, {
       name: "Owner",
       email: `ownerm2@${DOMAIN}`,
+      handle: "ownerm2",
     });
     const asOwner = asUser(t, ownerId, `ownerm2@${DOMAIN}`);
 
@@ -45,9 +46,24 @@ describe("Membership authorization", () => {
       ...makeIdeaArgs(categoryId),
     });
 
+    await asOwner.mutation(api.memberships.join, { ideaId });
+
+    const idea = await asOwner.query(api.ideas.get, { ideaId });
+    expect(idea?.memberCount).toBe(1);
+    expect(idea?.isMember).toBe(true);
+    const profile = await asOwner.query(api.users.getProfile, {
+      handle: "ownerm2",
+    });
+    expect(profile?.joinedIdeas.map((joined) => joined._id)).toContain(ideaId);
+
     await expect(
       asOwner.mutation(api.memberships.join, { ideaId }),
     ).rejects.toThrow("Already a member");
+
+    await asOwner.mutation(api.memberships.leave, { ideaId });
+    const afterLeave = await asOwner.query(api.ideas.get, { ideaId });
+    expect(afterLeave?.memberCount).toBe(0);
+    expect(afterLeave?.isMember).toBe(false);
   });
 
   test("only idea owner can update member roles", async () => {

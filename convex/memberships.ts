@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAuthenticatedUser,
+  isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   normalizeOptionalStringArray,
   validateRoleSlugs,
@@ -26,7 +27,9 @@ export const join = mutation({
         q.eq("ideaId", ideaId).eq("userId", userId),
       )
       .first();
-    if (existing) throw new Error("Already a member");
+    if (existing && isEffectiveIdeaMember(existing, idea)) {
+      throw new Error("Already a member");
+    }
 
     if (idea.onsiteOnly && user.participationMode !== "onsite") {
       throw new Error(
@@ -39,19 +42,29 @@ export const join = mutation({
       await validateRoleSlugs(ctx, roles);
     }
 
-    await ctx.db.insert("ideaMembers", {
-      ideaId,
-      userId,
-      memberRoles: roles,
-    });
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        memberRoles: roles,
+        joinedAsOwner: true,
+      });
+    } else {
+      await ctx.db.insert("ideaMembers", {
+        ideaId,
+        userId,
+        memberRoles: roles,
+        joinedAsOwner: idea.ownerId === userId ? true : undefined,
+      });
+    }
     await refreshIdeaMemberStats(ctx, ideaId);
 
-    await ctx.runMutation(internal.notifications.create, {
-      recipientId: idea.ownerId,
-      actorId: userId,
-      ideaId,
-      type: "member_joined",
-    });
+    if (idea.ownerId !== userId) {
+      await ctx.runMutation(internal.notifications.create, {
+        recipientId: idea.ownerId,
+        actorId: userId,
+        ideaId,
+        type: "member_joined",
+      });
+    }
   },
 });
 
@@ -62,8 +75,6 @@ export const leave = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
-    if (idea.ownerId === userId)
-      throw new Error("Owner cannot leave their own idea");
 
     const membership = await ctx.db
       .query("ideaMembers")
@@ -126,6 +137,7 @@ export const getByUser = query({
     const ideas = await Promise.all(
       memberships.map(async (m) => {
         const idea = await ctx.db.get(m.ideaId);
+        if (!idea || !isEffectiveIdeaMember(m, idea)) return null;
         return idea
           ? {
               ...idea,

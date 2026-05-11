@@ -177,4 +177,80 @@ describe("Ownership transfer authorization", () => {
       asNonMember.mutation(api.ideas.requestOwnership, { ideaId }),
     ).rejects.toThrow("Only team members can request ownership");
   });
+
+  test("member remains joined after their ownership request is accepted", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `ownert6@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `ownert6@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+    });
+
+    const memberId = await insertUser(t, {
+      name: "Member",
+      email: `membert@${DOMAIN}`,
+    });
+    const asMember = asUser(t, memberId, `membert@${DOMAIN}`);
+
+    await asMember.mutation(api.memberships.join, { ideaId });
+    const requestId = await asMember.mutation(api.ideas.requestOwnership, {
+      ideaId,
+    });
+
+    await asOwner.mutation(api.ideas.acceptOwnershipTransfer, { requestId });
+
+    const ideaForNewOwner = await asMember.query(api.ideas.get, { ideaId });
+    expect(ideaForNewOwner?.isOwner).toBe(true);
+    expect(ideaForNewOwner?.isMember).toBe(true);
+    expect(ideaForNewOwner?.memberCount).toBe(1);
+    expect(ideaForNewOwner?.members.map((m) => m.userId)).toContain(memberId);
+  });
+
+  test("legacy owner membership is not counted after ownership transfer", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `ownert7@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `ownert7@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+    });
+
+    await t.run(async (ctx: any) => {
+      await ctx.db.insert("ideaMembers", {
+        ideaId,
+        userId: ownerId,
+      });
+    });
+
+    const recipientId = await insertUser(t, {
+      name: "Recipient",
+      email: `recipientt7@${DOMAIN}`,
+    });
+    const asRecipient = asUser(t, recipientId, `recipientt7@${DOMAIN}`);
+
+    const requestId = await asOwner.mutation(api.ideas.requestOwnershipTransfer, {
+      ideaId,
+      targetUserId: recipientId,
+    });
+    await asRecipient.mutation(api.ideas.acceptOwnershipTransfer, { requestId });
+
+    const ideaForPreviousOwner = await asOwner.query(api.ideas.get, { ideaId });
+    expect(ideaForPreviousOwner?.isOwner).toBe(false);
+    expect(ideaForPreviousOwner?.isMember).toBe(false);
+    expect(ideaForPreviousOwner?.memberCount).toBe(0);
+    expect(ideaForPreviousOwner?.members.map((m) => m.userId)).not.toContain(
+      ownerId,
+    );
+  });
 });

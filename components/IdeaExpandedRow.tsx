@@ -182,12 +182,12 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
             <BookmarkButton ideaId={idea._id} isBookmarked={idea.isBookmarked} />
             <button
               onClick={handleToggleInterest}
-              disabled={isToggling || idea.isMember || idea.isOwner}
+              disabled={isToggling || idea.isMember}
               className={`pointer-events-auto inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors text-sm ${
                 idea.isInterested
                   ? "text-rose-500 font-medium"
                   : "text-muted-foreground hover:text-rose-400"
-              } ${(idea.isMember || idea.isOwner) ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-muted"}`}
+              } ${idea.isMember ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-muted"}`}
               aria-label={idea.isInterested ? "Remove interest" : "Express interest"}
             >
               {isToggling ? (

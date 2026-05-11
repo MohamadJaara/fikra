@@ -2,7 +2,11 @@ import { internal } from "./_generated/api.js";
 import { Migrations } from "@convex-dev/migrations";
 import { components } from "./_generated/api.js";
 import { DataModel } from "./_generated/dataModel.js";
-import { generateUniqueHandle, mergeUniqueStringArrays } from "./lib.js";
+import {
+  generateUniqueHandle,
+  isEffectiveIdeaMember,
+  mergeUniqueStringArrays,
+} from "./lib.js";
 
 export const migrations = new Migrations<DataModel>(components.migrations);
 
@@ -70,8 +74,12 @@ export const backfillIdeaListStats = migrations.define({
         .collect(),
     ]);
 
+    const effectiveMembers = members.filter((member) =>
+      isEffectiveIdeaMember(member, idea),
+    );
+
     const filledRoles = new Set<string>();
-    for (const member of members) {
+    for (const member of effectiveMembers) {
       for (const role of mergeUniqueStringArrays(
         member.memberRoles,
         member.role ? [member.role] : undefined,
@@ -92,7 +100,7 @@ export const backfillIdeaListStats = migrations.define({
       idea.lookingForRoles.some((role) => !filledRoles.has(role));
 
     await ctx.db.patch(idea._id, {
-      memberCount: members.length,
+      memberCount: effectiveMembers.length,
       interestCount: interests.length,
       reactionCounts,
       reactionTotal,
@@ -142,8 +150,11 @@ export const backfillIdeaListDerivedStats = migrations.define({
         .query("ideaMembers")
         .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
         .collect();
+      const effectiveMembers = members.filter((member) =>
+        isEffectiveIdeaMember(member, idea),
+      );
       const filled = new Set<string>();
-      for (const member of members) {
+      for (const member of effectiveMembers) {
         for (const role of mergeUniqueStringArrays(
           member.memberRoles,
           member.role ? [member.role] : undefined,
@@ -185,6 +196,39 @@ export const backfillUnreadNotificationCounts = migrations.define({
   },
 });
 
+export const backfillOwnerMemberSeparation = migrations.define({
+  table: "ideas",
+  migrateOne: async (ctx, idea) => {
+    const members = await ctx.db
+      .query("ideaMembers")
+      .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+      .collect();
+    const effectiveMembers = members.filter((member) =>
+      isEffectiveIdeaMember(member, idea),
+    );
+
+    const filledRoles = new Set<string>();
+    for (const member of effectiveMembers) {
+      for (const role of mergeUniqueStringArrays(
+        member.memberRoles,
+        member.role ? [member.role] : undefined,
+      ) ?? []) {
+        filledRoles.add(role);
+      }
+    }
+
+    const needsTeammates =
+      idea.status !== "full" &&
+      idea.lookingForRoles.some((role) => !filledRoles.has(role));
+
+    await ctx.db.patch(idea._id, {
+      memberCount: effectiveMembers.length,
+      filledRoles: [...filledRoles],
+      needsTeammates,
+    });
+  },
+});
+
 // Not wired to a cron or HTTP endpoint. Run manually:
 //   npx convex run migrations:runAll
 export const runAll = migrations.runner([
@@ -193,5 +237,6 @@ export const runAll = migrations.runner([
   internal.migrations.backfillTeamSize,
   internal.migrations.backfillIdeaListStats,
   internal.migrations.backfillIdeaListDerivedStats,
+  internal.migrations.backfillOwnerMemberSeparation,
   internal.migrations.backfillUnreadNotificationCounts,
 ]);

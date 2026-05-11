@@ -796,15 +796,13 @@ function TeamSection({
         </div>
       )}
 
-      {!idea.isOwner && (
-        <>
-          {idea.isMember && !idea.pendingOwnershipTransfer && (
-            <FeatureTip tipKey="member-request-ownership">
-              Want to lead this idea? You can <strong>request ownership</strong> — the current owner will be notified and can accept or decline.
-            </FeatureTip>
-          )}
-          <div className="flex items-center gap-2 flex-wrap">
-          {idea.isMember ? (
+      {!idea.isOwner && idea.isMember && !idea.pendingOwnershipTransfer && (
+        <FeatureTip tipKey="member-request-ownership">
+          Want to lead this idea? You can <strong>request ownership</strong> — the current owner will be notified and can accept or decline.
+        </FeatureTip>
+      )}
+      <div className="flex items-center gap-2 flex-wrap">
+        {idea.isMember ? (
             <>
               <Button
                 variant="outline"
@@ -819,24 +817,26 @@ function TeamSection({
                 )}
                 Leave Team
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRequestOwnership}
-                disabled={
-                  isRequestingOwnership ||
-                  idea.pendingOwnershipTransfer !== null
-                }
-              >
-                {isRequestingOwnership ? (
-                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                ) : (
-                  <ArrowRightLeft className="h-4 w-4 mr-1" />
-                )}
-                {idea.pendingOwnershipTransfer
-                  ? "Ownership pending"
-                  : "Request ownership"}
-              </Button>
+              {!idea.isOwner && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRequestOwnership}
+                  disabled={
+                    isRequestingOwnership ||
+                    idea.pendingOwnershipTransfer !== null
+                  }
+                >
+                  {isRequestingOwnership ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <ArrowRightLeft className="h-4 w-4 mr-1" />
+                  )}
+                  {idea.pendingOwnershipTransfer
+                    ? "Ownership pending"
+                    : "Request ownership"}
+                </Button>
+              )}
             </>
           ) : (
             <>
@@ -1074,8 +1074,6 @@ function TeamSection({
             </>
           )}
         </div>
-        </>
-      )}
     </div>
   );
 }

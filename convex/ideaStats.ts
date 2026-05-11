@@ -1,6 +1,6 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { mergeUniqueStringArrays } from "./lib";
+import { isEffectiveIdeaMember, mergeUniqueStringArrays } from "./lib";
 
 export type ResourceRequestSummary = NonNullable<
   Doc<"ideas">["resourceRequestSummary"]
@@ -43,8 +43,12 @@ export async function refreshIdeaMemberStats(
     .query("ideaMembers")
     .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
     .collect();
+  const idea = await ctx.db.get(ideaId);
+  const effectiveMembers = idea
+    ? members.filter((member) => isEffectiveIdeaMember(member, idea))
+    : members;
   const filledRoles = new Set<string>();
-  for (const member of members) {
+  for (const member of effectiveMembers) {
     for (const role of mergeUniqueStringArrays(
       member.memberRoles,
       member.role ? [member.role] : undefined,
@@ -52,13 +56,12 @@ export async function refreshIdeaMemberStats(
       filledRoles.add(role);
     }
   }
-  const idea = await ctx.db.get(ideaId);
   const needsTeammates =
     !!idea &&
     idea.status !== "full" &&
     idea.lookingForRoles.some((role) => !filledRoles.has(role));
   await ctx.db.patch(ideaId, {
-    memberCount: members.length,
+    memberCount: effectiveMembers.length,
     filledRoles: [...filledRoles],
     needsTeammates,
   });
