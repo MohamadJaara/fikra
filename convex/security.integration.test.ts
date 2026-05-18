@@ -876,7 +876,9 @@ describe("Resource request authorization", () => {
 
     await expect(
       asOther.mutation(api.resourceRequests.resolve, { requestId }),
-    ).rejects.toThrow("Only the owner or an admin can resolve resource requests");
+    ).rejects.toThrow(
+      "Only the owner or an admin can resolve resource requests",
+    );
   });
 });
 

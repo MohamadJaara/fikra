@@ -97,7 +97,9 @@ describe("Denormalized idea stats", () => {
     const listForOwner = await asOwner.query(api.ideas.list, {
       paginationOpts: { numItems: 100, cursor: null },
     });
-    const listedForOwner = listForOwner.page.find((idea) => idea._id === ideaId);
+    const listedForOwner = listForOwner.page.find(
+      (idea) => idea._id === ideaId,
+    );
     expect(listedForOwner?.missingRoles).toEqual(["developer"]);
     expect(listedForOwner?.hasUnresolvedResources).toBe(false);
     expect(listedForOwner?.resourceRequests[0].resolved).toBe(true);

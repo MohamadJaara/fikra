@@ -20,11 +20,7 @@ describe("Related idea merges", () => {
       name: "Source Owner",
       email: `source-owner@${DOMAIN}`,
     });
-    const asSourceOwner = asUser(
-      t,
-      sourceOwnerId,
-      `source-owner@${DOMAIN}`,
-    );
+    const asSourceOwner = asUser(t, sourceOwnerId, `source-owner@${DOMAIN}`);
     const sourceId = await asSourceOwner.mutation(api.ideas.create, {
       ...makeIdeaArgs(categoryId),
       title: "Source idea",
@@ -34,11 +30,7 @@ describe("Related idea merges", () => {
       name: "Target Owner",
       email: `target-owner@${DOMAIN}`,
     });
-    const asTargetOwner = asUser(
-      t,
-      targetOwnerId,
-      `target-owner@${DOMAIN}`,
-    );
+    const asTargetOwner = asUser(t, targetOwnerId, `target-owner@${DOMAIN}`);
     const targetId = await asTargetOwner.mutation(api.ideas.create, {
       ...makeIdeaArgs(categoryId),
       title: "Target idea",

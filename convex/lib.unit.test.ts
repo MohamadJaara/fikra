@@ -50,9 +50,9 @@ describe("validateStringLength", () => {
   });
 
   test("throws when value is too long", () => {
-    expect(() => validateStringLength("a".repeat(101), 1, 100, "Title")).toThrow(
-      "Title must be at most 100 characters",
-    );
+    expect(() =>
+      validateStringLength("a".repeat(101), 1, 100, "Title"),
+    ).toThrow("Title must be at most 100 characters");
   });
 
   test("accepts value at exact min boundary", () => {
@@ -202,9 +202,10 @@ describe("normalizeOptionalStringArray", () => {
   });
 
   test("trims values and removes duplicates", () => {
-    expect(
-      normalizeOptionalStringArray(["  a  ", "b", "  a", ""]),
-    ).toEqual(["a", "b"]);
+    expect(normalizeOptionalStringArray(["  a  ", "b", "  a", ""])).toEqual([
+      "a",
+      "b",
+    ]);
   });
 
   test("removes empty strings after trimming", () => {

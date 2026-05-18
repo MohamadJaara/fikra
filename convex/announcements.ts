@@ -37,7 +37,10 @@ export const list = query({
   handler: async (ctx) => {
     await getAdminUser(ctx);
 
-    const announcements = await ctx.db.query("announcements").order("desc").collect();
+    const announcements = await ctx.db
+      .query("announcements")
+      .order("desc")
+      .collect();
 
     return Promise.all(
       announcements.map(async (a) => {

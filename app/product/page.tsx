@@ -93,7 +93,10 @@ function DiscoverBanner() {
             </p>
             <div className="flex flex-wrap items-center gap-3">
               <Link href="/product/discover">
-                <Button size="sm" className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0">
+                <Button
+                  size="sm"
+                  className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
+                >
                   <Sparkles className="h-4 w-4" />
                   Start Swiping
                 </Button>
@@ -178,10 +181,7 @@ export default function ThemesPage() {
       {categories === undefined ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-foreground/5 mx-4 md:mx-8">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="aspect-[16/10] bg-muted/20 animate-pulse"
-            />
+            <div key={i} className="aspect-[16/10] bg-muted/20 animate-pulse" />
           ))}
         </div>
       ) : categories.length === 0 ? (

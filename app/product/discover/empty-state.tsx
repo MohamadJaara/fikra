@@ -22,7 +22,8 @@ export function EmptyDiscoverState({
             You&apos;ve seen all the ideas!
           </h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-            You&apos;ve gone through all available ideas. Start over to see them again, or create your own.
+            You&apos;ve gone through all available ideas. Start over to see them
+            again, or create your own.
           </p>
           <div className="flex items-center gap-3">
             <Button
@@ -50,7 +51,8 @@ export function EmptyDiscoverState({
             No teams looking for members right now
           </h3>
           <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-            All teams are either full or not actively recruiting. Start over to see them again, or create your own idea.
+            All teams are either full or not actively recruiting. Start over to
+            see them again, or create your own idea.
           </p>
           <div className="flex items-center gap-3">
             <Button

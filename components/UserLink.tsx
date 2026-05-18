@@ -52,7 +52,14 @@ export function UserAvatar({
   const imgCls = `rounded-full object-cover ${sizeClasses[size]}`;
 
   const inner = image ? (
-    <Image src={image} alt="" width={sizePixels[size]} height={sizePixels[size]} className={imgCls} unoptimized />
+    <Image
+      src={image}
+      alt=""
+      width={sizePixels[size]}
+      height={sizePixels[size]}
+      className={imgCls}
+      unoptimized
+    />
   ) : (
     <div className={containerCls}>{name?.charAt(0)?.toUpperCase() || "?"}</div>
   );

@@ -239,11 +239,16 @@ describe("Ownership transfer authorization", () => {
     });
     const asRecipient = asUser(t, recipientId, `recipientt7@${DOMAIN}`);
 
-    const requestId = await asOwner.mutation(api.ideas.requestOwnershipTransfer, {
-      ideaId,
-      targetUserId: recipientId,
+    const requestId = await asOwner.mutation(
+      api.ideas.requestOwnershipTransfer,
+      {
+        ideaId,
+        targetUserId: recipientId,
+      },
+    );
+    await asRecipient.mutation(api.ideas.acceptOwnershipTransfer, {
+      requestId,
     });
-    await asRecipient.mutation(api.ideas.acceptOwnershipTransfer, { requestId });
 
     const ideaForPreviousOwner = await asOwner.query(api.ideas.get, { ideaId });
     expect(ideaForPreviousOwner?.isOwner).toBe(false);

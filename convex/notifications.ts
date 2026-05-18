@@ -175,12 +175,12 @@ export const markRead = mutation({
     if (notification.recipientId !== userId)
       throw new Error("Not your notification");
 
-    if (!notification.read && typeof user.unreadNotificationCount === "number") {
+    if (
+      !notification.read &&
+      typeof user.unreadNotificationCount === "number"
+    ) {
       await ctx.db.patch(userId, {
-        unreadNotificationCount: Math.max(
-          0,
-          user.unreadNotificationCount - 1,
-        ),
+        unreadNotificationCount: Math.max(0, user.unreadNotificationCount - 1),
       });
     }
     await ctx.db.patch(notificationId, { read: true });

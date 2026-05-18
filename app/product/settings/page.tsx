@@ -30,8 +30,9 @@ export default function SettingsPage() {
     firstName: viewer.firstName ?? "",
     lastName: viewer.lastName ?? "",
     selectedRoles: viewer.roles ?? [],
-    participationMode:
-      viewer.participationMode as ParticipationMode | undefined,
+    participationMode: viewer.participationMode as
+      | ParticipationMode
+      | undefined,
   });
   const [prevViewer, setPrevViewer] = useState(viewer);
   if (viewer !== prevViewer) {
@@ -40,8 +41,9 @@ export default function SettingsPage() {
       firstName: viewer.firstName ?? "",
       lastName: viewer.lastName ?? "",
       selectedRoles: viewer.roles ?? [],
-      participationMode:
-        viewer.participationMode as ParticipationMode | undefined,
+      participationMode: viewer.participationMode as
+        | ParticipationMode
+        | undefined,
     });
   }
 
@@ -166,14 +168,16 @@ export default function SettingsPage() {
         <div className="py-6">
           <h2 className="text-base font-semibold mb-1">Participation Mode</h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Are you joining the hackathon on-site or remotely? This is shown
-            on your profile and helps team owners match participants.
+            Are you joining the hackathon on-site or remotely? This is shown on
+            your profile and helps team owners match participants.
           </p>
           <div className="flex flex-wrap gap-2">
             {PARTICIPATION_MODES.map((mode) => (
               <Badge
                 key={mode}
-                variant={form.participationMode === mode ? "default" : "outline"}
+                variant={
+                  form.participationMode === mode ? "default" : "outline"
+                }
                 className={cn(
                   "cursor-pointer select-none text-sm px-3 py-1.5",
                   form.participationMode === mode &&

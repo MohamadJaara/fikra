@@ -4,7 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import { Flame, Users, MapPin, ArrowRight, ArrowLeft } from "lucide-react";
-import { STATUS_LABELS, STATUS_COLORS, TEAM_SIZE_LABELS } from "@/lib/constants";
+import {
+  STATUS_LABELS,
+  STATUS_COLORS,
+  TEAM_SIZE_LABELS,
+} from "@/lib/constants";
 import type { TeamSize } from "@/lib/constants";
 import { useCallback, useState } from "react";
 
@@ -56,7 +60,11 @@ export function DiscoverIdeaCard({
 }: IdeaCardProps) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-300, 0, 300], [-15, 0, 15]);
-  const opacity = useTransform(x, [-300, -100, 0, 100, 300], [0.5, 1, 1, 1, 0.5]);
+  const opacity = useTransform(
+    x,
+    [-300, -100, 0, 100, 300],
+    [0.5, 1, 1, 1, 0.5],
+  );
 
   const likeOpacity = useTransform(x, [0, 100], [0, 1]);
   const nopeOpacity = useTransform(x, [-100, 0], [1, 0]);
@@ -117,7 +125,10 @@ export function DiscoverIdeaCard({
           <ArrowLeft className="h-5 w-5" />
         </motion.div>
 
-        <div className="flex-1 p-6 overflow-auto overscroll-contain" style={{ touchAction: "pan-y" }}>
+        <div
+          className="flex-1 p-6 overflow-auto overscroll-contain"
+          style={{ touchAction: "pan-y" }}
+        >
           <div className="flex items-start justify-between gap-2 mb-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold leading-tight mb-1">
@@ -143,8 +154,13 @@ export function DiscoverIdeaCard({
                   Trending
                 </Badge>
               )}
-              <Badge className={STATUS_COLORS[idea.status as keyof typeof STATUS_COLORS] ?? ""}>
-                {STATUS_LABELS[idea.status as keyof typeof STATUS_LABELS] ?? idea.status}
+              <Badge
+                className={
+                  STATUS_COLORS[idea.status as keyof typeof STATUS_COLORS] ?? ""
+                }
+              >
+                {STATUS_LABELS[idea.status as keyof typeof STATUS_LABELS] ??
+                  idea.status}
               </Badge>
             </div>
           </div>
@@ -199,11 +215,7 @@ export function DiscoverIdeaCard({
                       <Badge
                         key={role}
                         variant={isMatch ? "default" : "outline"}
-                        className={
-                          isMatch
-                            ? "bg-green-600 text-white"
-                            : ""
-                        }
+                        className={isMatch ? "bg-green-600 text-white" : ""}
                       >
                         {isMatch && "You match! "}
                         {role}

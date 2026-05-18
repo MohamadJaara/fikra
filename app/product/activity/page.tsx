@@ -6,11 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IdeaListSkeleton } from "@/components/Skeleton";
-import {
-  STATUS_COLORS,
-  STATUS_LABELS,
-  type Status,
-} from "@/lib/constants";
+import { STATUS_COLORS, STATUS_LABELS, type Status } from "@/lib/constants";
 import type { UnresolvedResource } from "@/lib/types";
 import { Users, Lightbulb, Heart, Package } from "lucide-react";
 import Link from "next/link";
@@ -145,7 +141,9 @@ export default function ActivityPage() {
                         </Badge>
                         <div className="min-w-0 space-y-1">
                           <div>
-                            <p className="text-sm font-medium">{req.ideaTitle}</p>
+                            <p className="text-sm font-medium">
+                              {req.ideaTitle}
+                            </p>
                             <p className="text-xs text-muted-foreground">
                               by {req.ownerName}
                             </p>

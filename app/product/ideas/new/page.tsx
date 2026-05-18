@@ -77,8 +77,7 @@ export default function CreateIdeaPage() {
           <span className="font-medium text-foreground">
             {selectedCategory.name}
           </span>
-          {selectedCategory.description &&
-            ` — ${selectedCategory.description}`}
+          {selectedCategory.description && ` — ${selectedCategory.description}`}
         </p>
       ) : (
         <p className="text-sm text-muted-foreground mb-6">

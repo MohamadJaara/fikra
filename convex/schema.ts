@@ -226,8 +226,7 @@ export default defineSchema({
     type: v.string(),
     active: v.boolean(),
     createdBy: v.id("users"),
-  })
-    .index("by_active", ["active"]),
+  }).index("by_active", ["active"]),
 
   dismissedAnnouncements: defineTable({
     announcementId: v.id("announcements"),

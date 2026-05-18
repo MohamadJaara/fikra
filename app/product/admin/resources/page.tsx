@@ -5,13 +5,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  ArrowLeft,
-  Loader2,
-  Package,
-  PlusCircle,
-  Trash2,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Package, PlusCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
@@ -48,7 +42,9 @@ export default function AdminResourcesPage() {
   };
 
   const handleDelete = async (id: Id<"resources">, name: string) => {
-    if (!confirm(`Delete "${name}"? Existing requests will keep their label.`)) {
+    if (
+      !confirm(`Delete "${name}"? Existing requests will keep their label.`)
+    ) {
       return;
     }
 
@@ -115,29 +111,29 @@ export default function AdminResourcesPage() {
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <div className="divide-y">
-              {resources.map((resource) => (
-                <div
-                  key={resource._id}
-                  className="flex items-center justify-between px-4 py-3"
+            {resources.map((resource) => (
+              <div
+                key={resource._id}
+                className="flex items-center justify-between px-4 py-3"
+              >
+                <span className="font-medium text-sm">{resource.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-destructive hover:text-destructive"
+                  disabled={deletingId === resource._id}
+                  onClick={() => handleDelete(resource._id, resource.name)}
                 >
-                  <span className="font-medium text-sm">{resource.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-destructive hover:text-destructive"
-                    disabled={deletingId === resource._id}
-                    onClick={() => handleDelete(resource._id, resource.name)}
-                  >
-                    {deletingId === resource._id ? (
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3 w-3 mr-1" />
-                    )}
-                    Delete
-                  </Button>
-                </div>
-              ))}
-            </div>
+                  {deletingId === resource._id ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3 w-3 mr-1" />
+                  )}
+                  Delete
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

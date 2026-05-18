@@ -59,7 +59,7 @@ const steps = [
     icon: Sparkles,
     title: "Two Modes",
     description:
-      "Browse all ideas or switch to \"Find a Team\" to see ideas that need your specific skills.",
+      'Browse all ideas or switch to "Find a Team" to see ideas that need your specific skills.',
     visual: "modes",
   },
 ];
@@ -239,7 +239,14 @@ function CompassVisual() {
         <motion.div
           key={i}
           className="absolute h-3 w-3 rounded-full bg-stone-400 dark:bg-stone-500"
-          style={{ top: pos.top, left: pos.left, right: pos.right, bottom: pos.bottom, x: "-50%", y: "-50%" }}
+          style={{
+            top: pos.top,
+            left: pos.left,
+            right: pos.right,
+            bottom: pos.bottom,
+            x: "-50%",
+            y: "-50%",
+          }}
           animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0.8, 0.4] }}
           transition={{
             duration: 2,
@@ -268,7 +275,12 @@ function SwipeRightVisual() {
       <motion.div
         className="absolute"
         animate={{ x: ["0%", "120%", "0%"] }}
-        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+        transition={{
+          duration: 2.5,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 0.3,
+        }}
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500 shadow-lg shadow-green-500/30">
           <Heart className="h-5 w-5 text-white" fill="white" />
@@ -306,7 +318,12 @@ function SwipeLeftVisual() {
       <motion.div
         className="absolute"
         animate={{ x: ["0%", "-120%", "0%"] }}
-        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+        transition={{
+          duration: 2.5,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 0.3,
+        }}
         style={{ left: "-20px" }}
       >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500 shadow-lg shadow-red-500/30">
@@ -381,7 +398,12 @@ function ModesVisual() {
 
       <motion.div
         animate={{ y: [0, 4, 0] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut",
+          delay: 0.3,
+        }}
         className="flex items-center gap-2 rounded-xl border-2 border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/50 px-4 py-2.5 shadow-sm"
       >
         <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />

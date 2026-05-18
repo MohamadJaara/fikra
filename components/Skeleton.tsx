@@ -21,9 +21,13 @@ export function IdeaListSkeleton() {
   );
 }
 
-export function IdeaExpandedRowSkeleton({ noBorder }: { noBorder?: boolean } = {}) {
+export function IdeaExpandedRowSkeleton({
+  noBorder,
+}: { noBorder?: boolean } = {}) {
   return (
-    <div className={`${noBorder ? "" : "rounded-lg border"} px-5 py-5 space-y-2.5`}>
+    <div
+      className={`${noBorder ? "" : "rounded-lg border"} px-5 py-5 space-y-2.5`}
+    >
       <div className="flex items-center gap-2">
         <Skeleton className="h-5 w-2/5 rounded" />
         <Skeleton className="h-5 w-16 rounded-full" />

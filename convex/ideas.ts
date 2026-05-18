@@ -93,7 +93,12 @@ async function getIdeaListMembershipMaps(ctx: QueryCtx, userId: Id<"users">) {
     reactionsByIdeaId.set(reaction.ideaId, existing);
   }
 
-  return { memberIdeaIds, interestedIdeaIds, bookmarkedIdeaIds, reactionsByIdeaId };
+  return {
+    memberIdeaIds,
+    interestedIdeaIds,
+    bookmarkedIdeaIds,
+    reactionsByIdeaId,
+  };
 }
 
 async function getIdeaListViewerId(ctx: QueryCtx): Promise<Id<"users"> | null> {
@@ -114,8 +119,12 @@ async function buildIdeaListItems(
   userId: Id<"users">,
 ) {
   const resourceNameMap = await getResourceNameMap(ctx);
-  const { memberIdeaIds, interestedIdeaIds, bookmarkedIdeaIds, reactionsByIdeaId } =
-    await getIdeaListMembershipMaps(ctx, userId);
+  const {
+    memberIdeaIds,
+    interestedIdeaIds,
+    bookmarkedIdeaIds,
+    reactionsByIdeaId,
+  } = await getIdeaListMembershipMaps(ctx, userId);
 
   const results = await Promise.all(
     ideas.map(async (idea) => {
@@ -830,7 +839,8 @@ export const acceptOwnershipTransfer = mutation({
       .first();
     if (
       previousOwnerMembership &&
-      (shouldRemovePreviousOwner || previousOwnerMembership.joinedAsOwner !== true)
+      (shouldRemovePreviousOwner ||
+        previousOwnerMembership.joinedAsOwner !== true)
     ) {
       await ctx.db.delete(previousOwnerMembership._id);
     }
@@ -1386,9 +1396,7 @@ export const getBookmarked = query({
       .order("desc")
       .collect();
 
-    const ideas = await Promise.all(
-      bookmarks.map((b) => ctx.db.get(b.ideaId)),
-    );
+    const ideas = await Promise.all(bookmarks.map((b) => ctx.db.get(b.ideaId)));
     const existingIdeas = ideas.filter((i): i is Doc<"ideas"> => i !== null);
 
     return await buildIdeaListItems(ctx, existingIdeas, userId);

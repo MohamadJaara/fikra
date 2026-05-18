@@ -191,9 +191,7 @@ export default function AdminDashboard() {
               href={item.href}
               className="flex items-center gap-3 px-4 py-3.5 bg-background hover:bg-muted/50 transition-colors"
             >
-              <div className={`p-2 rounded-lg ${item.bg}`}>
-                {item.icon}
-              </div>
+              <div className={`p-2 rounded-lg ${item.bg}`}>{item.icon}</div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{item.title}</p>
                 <p className="text-xs text-muted-foreground truncate">

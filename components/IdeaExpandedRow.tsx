@@ -82,10 +82,7 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
               </Badge>
             )}
             {idea.isInterested && !idea.isMember && (
-              <Badge
-                variant="secondary"
-                className="text-[10px] px-1.5 py-0"
-              >
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                 Interested
               </Badge>
             )}
@@ -137,7 +134,9 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
                 </Badge>
               ))}
               {idea.missingRoles.length > 5 && (
-                <span className="text-[10px]">+{idea.missingRoles.length - 5}</span>
+                <span className="text-[10px]">
+                  +{idea.missingRoles.length - 5}
+                </span>
               )}
             </span>
           )}
@@ -179,7 +178,10 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
                 </span>
               );
             })}
-            <BookmarkButton ideaId={idea._id} isBookmarked={idea.isBookmarked} />
+            <BookmarkButton
+              ideaId={idea._id}
+              isBookmarked={idea.isBookmarked}
+            />
             <button
               onClick={handleToggleInterest}
               disabled={isToggling || idea.isMember}
@@ -188,14 +190,20 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
                   ? "text-rose-500 font-medium"
                   : "text-muted-foreground hover:text-rose-400"
               } ${idea.isMember ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-muted"}`}
-              aria-label={idea.isInterested ? "Remove interest" : "Express interest"}
+              aria-label={
+                idea.isInterested ? "Remove interest" : "Express interest"
+              }
             >
               {isToggling ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Heart className={`h-4 w-4 ${idea.isInterested ? "fill-current" : ""}`} />
+                <Heart
+                  className={`h-4 w-4 ${idea.isInterested ? "fill-current" : ""}`}
+                />
               )}
-              {idea.interestCount > 0 && <span className="text-xs">{idea.interestCount}</span>}
+              {idea.interestCount > 0 && (
+                <span className="text-xs">{idea.interestCount}</span>
+              )}
             </button>
           </span>
         </div>

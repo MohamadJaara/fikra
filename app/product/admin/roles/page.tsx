@@ -106,29 +106,29 @@ export default function AdminRolesPage() {
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <div className="divide-y">
-              {roles.map((role) => (
-                <div
-                  key={role._id}
-                  className="flex items-center justify-between px-4 py-3"
+            {roles.map((role) => (
+              <div
+                key={role._id}
+                className="flex items-center justify-between px-4 py-3"
+              >
+                <span className="font-medium text-sm">{role.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-destructive hover:text-destructive"
+                  disabled={deletingId === role._id}
+                  onClick={() => handleDelete(role._id, role.name)}
                 >
-                  <span className="font-medium text-sm">{role.name}</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-destructive hover:text-destructive"
-                    disabled={deletingId === role._id}
-                    onClick={() => handleDelete(role._id, role.name)}
-                  >
-                    {deletingId === role._id ? (
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-3 w-3 mr-1" />
-                    )}
-                    Delete
-                  </Button>
-                </div>
-              ))}
-            </div>
+                  {deletingId === role._id ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-3 w-3 mr-1" />
+                  )}
+                  Delete
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -50,9 +50,7 @@ async function enrichDiscoverIdea(
   interestedIdeaIds: Set<Id<"ideas">>,
 ): Promise<DiscoverIdea> {
   const owner = await ctx.db.get(idea.ownerId);
-  const category = idea.categoryId
-    ? await ctx.db.get(idea.categoryId)
-    : null;
+  const category = idea.categoryId ? await ctx.db.get(idea.categoryId) : null;
 
   const filledRoles = new Set(idea.filledRoles ?? []);
   const missingRoles = idea.lookingForRoles.filter(
@@ -88,9 +86,7 @@ async function enrichDiscoverIdea(
 
 export const getDiscoverFeed = query({
   args: {
-    mode: v.optional(
-      v.union(v.literal("browse"), v.literal("findTeam")),
-    ),
+    mode: v.optional(v.union(v.literal("browse"), v.literal("findTeam"))),
   },
   handler: async (ctx, args) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
@@ -136,8 +132,7 @@ export const getDiscoverFeed = query({
         .take(200);
 
       candidates = teamCandidates.filter(
-        (idea) =>
-          idea.status === "exploring" || idea.status === "forming_team",
+        (idea) => idea.status === "exploring" || idea.status === "forming_team",
       );
     } else {
       candidates = await ctx.db.query("ideas").take(200);
@@ -163,13 +158,12 @@ export const getDiscoverFeed = query({
       ).length;
       score += roleMatches * 100;
 
-      score += (idea.trendingScore ?? 0);
+      score += idea.trendingScore ?? 0;
 
       score += (idea.interestCount ?? 0) * 2;
       score += (idea.memberCount ?? 0) * 5;
 
-      const ageHours =
-        (Date.now() - idea._creationTime) / (1000 * 60 * 60);
+      const ageHours = (Date.now() - idea._creationTime) / (1000 * 60 * 60);
       if (ageHours < 1) score += 50;
       else if (ageHours < 6) score += 30;
       else if (ageHours < 24) score += 15;
@@ -179,9 +173,7 @@ export const getDiscoverFeed = query({
 
     scored.sort((a, b) => b.score - a.score);
 
-    const topIdeas = scored
-      .slice(0, MAX_DISCOVER_IDEAS)
-      .map((s) => s.idea);
+    const topIdeas = scored.slice(0, MAX_DISCOVER_IDEAS).map((s) => s.idea);
 
     return await Promise.all(
       topIdeas.map((idea) =>
@@ -253,14 +245,8 @@ export const getActivityTicker = query({
     const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
 
     const [recentMembers, recentIdeas] = await Promise.all([
-      ctx.db
-        .query("ideaMembers")
-        .order("desc")
-        .take(20),
-      ctx.db
-        .query("ideas")
-        .order("desc")
-        .take(10),
+      ctx.db.query("ideaMembers").order("desc").take(20),
+      ctx.db.query("ideas").order("desc").take(10),
     ]);
 
     const recentMemberActivity = recentMembers

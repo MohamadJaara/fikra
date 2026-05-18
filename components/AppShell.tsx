@@ -215,7 +215,14 @@ function SidebarContent({
         >
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium">
             {viewer?.image ? (
-              <Image src={viewer.image} alt="" width={32} height={32} className="h-8 w-8 rounded-full" unoptimized />
+              <Image
+                src={viewer.image}
+                alt=""
+                width={32}
+                height={32}
+                className="h-8 w-8 rounded-full"
+                unoptimized
+              />
             ) : (
               <User className="h-4 w-4" />
             )}

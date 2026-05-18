@@ -27,8 +27,12 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
 
   const hasReactions = Object.values(idea.reactionCounts).some((c) => c > 0);
   const hasRoles = idea.missingRoles.length > 0;
-  const hasResources = idea.resourceRequests.filter((r) => !r.resolved).length > 0;
-  const density = idea.memberCount + idea.interestCount + Object.values(idea.reactionCounts).reduce((a, b) => a + b, 0);
+  const hasResources =
+    idea.resourceRequests.filter((r) => !r.resolved).length > 0;
+  const density =
+    idea.memberCount +
+    idea.interestCount +
+    Object.values(idea.reactionCounts).reduce((a, b) => a + b, 0);
   const showFullMeta = density >= 4;
   const pitchLines = showFullMeta ? "line-clamp-3" : "line-clamp-2";
 
@@ -62,9 +66,7 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
 
       <div className="relative z-10 pointer-events-none space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-sm leading-snug">
-            {idea.title}
-          </h3>
+          <h3 className="font-semibold text-sm leading-snug">{idea.title}</h3>
           <span
             className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded ${
               STATUS_LABELS[idea.status as Status]
@@ -76,7 +78,9 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
           </span>
         </div>
 
-        <p className={`text-xs text-muted-foreground leading-relaxed ${pitchLines}`}>
+        <p
+          className={`text-xs text-muted-foreground leading-relaxed ${pitchLines}`}
+        >
           {idea.pitch}
         </p>
 
@@ -96,7 +100,10 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
           </span>
 
           {idea.categoryName && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+            <Badge
+              variant="outline"
+              className="text-[10px] px-1.5 py-0 h-4 font-normal"
+            >
               {idea.categoryName}
             </Badge>
           )}
@@ -114,7 +121,9 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
             <span className="text-[10px] font-medium text-primary">Joined</span>
           )}
           {idea.isOwner && (
-            <span className="text-[10px] font-medium text-muted-foreground">Owner</span>
+            <span className="text-[10px] font-medium text-muted-foreground">
+              Owner
+            </span>
           )}
         </div>
 
@@ -170,7 +179,10 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
           )}
 
           <span className="flex items-center gap-1">
-            <BookmarkButton ideaId={idea._id} isBookmarked={idea.isBookmarked} />
+            <BookmarkButton
+              ideaId={idea._id}
+              isBookmarked={idea.isBookmarked}
+            />
             <button
               onClick={handleToggleInterest}
               disabled={isToggling || idea.isMember}
@@ -183,7 +195,9 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
                   ? "opacity-40 cursor-not-allowed"
                   : "cursor-pointer hover:bg-muted/60"
               }`}
-              aria-label={idea.isInterested ? "Remove interest" : "Express interest"}
+              aria-label={
+                idea.isInterested ? "Remove interest" : "Express interest"
+              }
             >
               {isToggling ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />

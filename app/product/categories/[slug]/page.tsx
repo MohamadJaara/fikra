@@ -2,7 +2,10 @@
 
 import { IdeaMasonryItem } from "@/components/IdeaMasonryItem";
 import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
-import { IdeaMasonryItemSkeleton, IdeaExpandedRowSkeleton } from "@/components/Skeleton";
+import {
+  IdeaMasonryItemSkeleton,
+  IdeaExpandedRowSkeleton,
+} from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/convex/_generated/api";
@@ -80,8 +83,7 @@ export default function CategoryDetailPage() {
     );
   }
 
-  const gradientIndex =
-    category.name.charCodeAt(0) % GRADIENTS.length;
+  const gradientIndex = category.name.charCodeAt(0) % GRADIENTS.length;
   const gradient = GRADIENTS[gradientIndex];
 
   return (
@@ -177,7 +179,10 @@ export default function CategoryDetailPage() {
         viewMode === "masonry" ? (
           <div className="columns-1 md:columns-2 lg:columns-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}>
+              <div
+                key={i}
+                className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
+              >
                 <IdeaMasonryItemSkeleton />
               </div>
             ))}
@@ -192,15 +197,11 @@ export default function CategoryDetailPage() {
       ) : ideas.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4">💡</div>
-          <p className="text-lg font-medium mb-2">
-            No ideas yet in this theme
-          </p>
+          <p className="text-lg font-medium mb-2">No ideas yet in this theme</p>
           <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            This is a blank canvas. Share a problem you want to solve or an
-            idea you&apos;ve been thinking about in{" "}
-            <span className="font-medium text-foreground">
-              {category.name}
-            </span>
+            This is a blank canvas. Share a problem you want to solve or an idea
+            you&apos;ve been thinking about in{" "}
+            <span className="font-medium text-foreground">{category.name}</span>
             .
           </p>
           <Link href={`/product/ideas/new?categoryId=${category._id}`}>

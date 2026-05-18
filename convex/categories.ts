@@ -22,7 +22,9 @@ export const list = query({
   handler: async (ctx) => {
     await getAuthenticatedUser(ctx);
     const categories = await ctx.db.query("categories").order("asc").collect();
-    return categories.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+    return categories.sort(
+      (a, b) => (a.order ?? Infinity) - (b.order ?? Infinity),
+    );
   },
 });
 
@@ -31,7 +33,9 @@ export const listWithDetails = query({
   handler: async (ctx) => {
     await getAuthenticatedUser(ctx);
     const categories = await ctx.db.query("categories").order("asc").collect();
-    const sorted = categories.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+    const sorted = categories.sort(
+      (a, b) => (a.order ?? Infinity) - (b.order ?? Infinity),
+    );
     const ideas = await ctx.db.query("ideas").collect();
 
     const countByCategory: Record<string, number> = {};

@@ -6,9 +6,7 @@ type ContentDisclaimerProps = {
   className?: string;
 };
 
-export function ContentDisclaimer({
-  className,
-}: ContentDisclaimerProps) {
+export function ContentDisclaimer({ className }: ContentDisclaimerProps) {
   return (
     <div
       className={cn(

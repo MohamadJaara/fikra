@@ -85,71 +85,71 @@ export default function AdminCommentsPage() {
 
       <div className="border rounded-lg overflow-hidden">
         <Table>
-            <TableHeader>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Comment</TableHead>
+              <TableHead>Author</TableHead>
+              <TableHead>Idea</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
               <TableRow>
-                <TableHead>Comment</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead>Idea</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableCell
+                  colSpan={5}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  {search
+                    ? "No comments match your search"
+                    : "No comments found"}
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    {search
-                      ? "No comments match your search"
-                      : "No comments found"}
+            ) : (
+              filtered.map((comment: any) => (
+                <TableRow key={comment._id}>
+                  <TableCell className="max-w-xs">
+                    <p className="text-sm line-clamp-2">{comment.content}</p>
+                    {comment.parentId && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Reply
+                      </p>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm">{comment.authorName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {comment.authorEmail}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <Link
+                      href={`/product/ideas/${comment.ideaId}`}
+                      className="text-sm text-primary hover:underline line-clamp-1"
+                    >
+                      {comment.ideaTitle}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {new Date(comment._creationTime).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(comment._id)}
+                      className="text-xs"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filtered.map((comment: any) => (
-                  <TableRow key={comment._id}>
-                    <TableCell className="max-w-xs">
-                      <p className="text-sm line-clamp-2">{comment.content}</p>
-                      {comment.parentId && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Reply
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{comment.authorName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {comment.authorEmail}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/product/ideas/${comment.ideaId}`}
-                        className="text-sm text-primary hover:underline line-clamp-1"
-                      >
-                        {comment.ideaTitle}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(comment._creationTime).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(comment._id)}
-                        className="text-xs"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <Toaster />

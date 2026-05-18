@@ -50,7 +50,8 @@ export function AnnouncementBanner() {
   if (visible.length === 0) return null;
 
   const announcement = visible[0];
-  const config = TYPE_CONFIG[announcement.type as AnnouncementType] ?? TYPE_CONFIG.info;
+  const config =
+    TYPE_CONFIG[announcement.type as AnnouncementType] ?? TYPE_CONFIG.info;
   const Icon = config.icon;
 
   const handleDismiss = (event: MouseEvent<HTMLButtonElement>) => {

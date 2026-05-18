@@ -117,7 +117,8 @@ export function OwnerWelcomeBanner({
             ))}
           </div>
           <p className="text-xs text-purple-700/70 dark:text-purple-200/60">
-            Use the <strong>Edit</strong> and <strong>More</strong> buttons above to access these features.
+            Use the <strong>Edit</strong> and <strong>More</strong> buttons
+            above to access these features.
           </p>
         </div>
       </div>

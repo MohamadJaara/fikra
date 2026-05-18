@@ -65,8 +65,7 @@ const TYPE_META: Record<
   celebration: {
     label: "Celebration",
     icon: PartyPopper,
-    color:
-      "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
+    color: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
     previewGradient:
       "from-amber-500 via-yellow-500 to-emerald-500 dark:from-amber-400 dark:via-yellow-400 dark:to-emerald-400",
   },
@@ -106,7 +105,9 @@ export default function AdminAnnouncementsPage() {
   ) => {
     try {
       await updateAnnouncement({ announcementId: id, active: !active });
-      toast.success(!active ? "Announcement activated" : "Announcement deactivated");
+      toast.success(
+        !active ? "Announcement activated" : "Announcement deactivated",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update");
     }
@@ -158,26 +159,24 @@ export default function AdminAnnouncementsPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium">Type</label>
                 <div className="flex flex-wrap gap-2">
-                  {ANNOUNCEMENT_TYPE_KEYS.map(
-                    (t) => {
-                      const meta = TYPE_META[t];
-                      const Icon = meta.icon;
-                      return (
-                        <button
-                          key={t}
-                          onClick={() => setType(t)}
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
-                            type === t
-                              ? "border-primary bg-primary/5"
-                              : "border-transparent bg-muted/50 hover:bg-muted"
-                          }`}
-                        >
-                          <Icon className="h-4 w-4" />
-                          {meta.label}
-                        </button>
-                      );
-                    },
-                  )}
+                  {ANNOUNCEMENT_TYPE_KEYS.map((t) => {
+                    const meta = TYPE_META[t];
+                    const Icon = meta.icon;
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setType(t)}
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border-2 transition-all ${
+                          type === t
+                            ? "border-primary bg-primary/5"
+                            : "border-transparent bg-muted/50 hover:bg-muted"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {meta.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -267,9 +266,7 @@ export default function AdminAnnouncementsPage() {
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ delay: i * 0.05 }}
                   className={`relative rounded-xl border overflow-hidden transition-opacity ${
-                    announcement.active
-                      ? "opacity-100"
-                      : "opacity-60"
+                    announcement.active ? "opacity-100" : "opacity-60"
                   }`}
                 >
                   {!announcement.active && (
@@ -281,9 +278,7 @@ export default function AdminAnnouncementsPage() {
                   )}
 
                   <div className="flex items-start gap-4 p-4">
-                    <div
-                      className={`shrink-0 p-2.5 rounded-lg ${meta.color}`}
-                    >
+                    <div className={`shrink-0 p-2.5 rounded-lg ${meta.color}`}>
                       <Icon className="h-5 w-5" />
                     </div>
 
@@ -329,11 +324,7 @@ export default function AdminAnnouncementsPage() {
                             announcement.active,
                           )
                         }
-                        title={
-                          announcement.active
-                            ? "Deactivate"
-                            : "Activate"
-                        }
+                        title={announcement.active ? "Deactivate" : "Activate"}
                       >
                         {announcement.active ? (
                           <ToggleRight className="h-4 w-4 text-emerald-600" />

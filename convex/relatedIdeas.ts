@@ -11,10 +11,7 @@ import {
 import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
-import {
-  refreshIdeaInterestStats,
-  refreshIdeaMemberStats,
-} from "./ideaStats";
+import { refreshIdeaInterestStats, refreshIdeaMemberStats } from "./ideaStats";
 
 const RELATION_TYPES = ["related", "duplicate"] as const;
 type RelationType = (typeof RELATION_TYPES)[number];
@@ -235,7 +232,9 @@ export const acceptMerge = mutation({
       const mergedRoles = mergeUniqueStringArrays(existingRoles, sourceRoles);
       const rolesChanged =
         (existingRoles ?? []).length !== (mergedRoles ?? []).length ||
-        (existingRoles ?? []).some((role, index) => mergedRoles?.[index] !== role);
+        (existingRoles ?? []).some(
+          (role, index) => mergedRoles?.[index] !== role,
+        );
       const joinedAsOwnerChanged =
         member.userId === targetDoc.ownerId && existing.joinedAsOwner !== true;
 

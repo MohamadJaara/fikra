@@ -81,7 +81,10 @@ export default function AdminCategoriesPage() {
     const newIndex = direction === "up" ? index - 1 : index + 1;
     if (newIndex < 0 || newIndex >= categories.length) return;
     const orderedIds = categories.map((c) => c._id);
-    [orderedIds[index], orderedIds[newIndex]] = [orderedIds[newIndex], orderedIds[index]];
+    [orderedIds[index], orderedIds[newIndex]] = [
+      orderedIds[newIndex],
+      orderedIds[index],
+    ];
     try {
       await reorderMutation({ orderedIds });
     } catch (error) {
@@ -90,11 +93,7 @@ export default function AdminCategoriesPage() {
   };
 
   const handleDelete = async (id: Id<"categories">, name: string) => {
-    if (
-      !confirm(
-        `Delete "${name}"? Ideas using it will become uncategorized.`,
-      )
-    )
+    if (!confirm(`Delete "${name}"? Ideas using it will become uncategorized.`))
       return;
     setDeletingId(id);
     try {
@@ -107,9 +106,12 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  const startEditing = (
-    cat: { _id: Id<"categories">; name: string; description?: string; imageId?: Id<"_storage"> },
-  ) => {
+  const startEditing = (cat: {
+    _id: Id<"categories">;
+    name: string;
+    description?: string;
+    imageId?: Id<"_storage">;
+  }) => {
     clearSelectedImage();
     setEditingId(cat._id);
     setEditName(cat.name);
@@ -233,174 +235,170 @@ export default function AdminCategoriesPage() {
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <div className="divide-y">
-              {categories.map((cat, index) =>
-                editingId === cat._id ? (
-                  <div key={cat._id} className="p-4 space-y-3 bg-muted/20">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Edit Category</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingId(null)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Name</Label>
-                      <Input
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        placeholder="Category name"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea
-                        value={editDescription}
-                        onChange={(e) => setEditDescription(e.target.value)}
-                        placeholder="What problem domain does this theme cover?"
-                        rows={2}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Image</Label>
-                      <div className="flex items-center gap-3">
-                        {editImageUrl && (
-                          <div className="h-16 w-24 rounded bg-muted overflow-hidden">
-                            <Image
-                              src={editImageUrl}
-                              alt=""
-                              width={96}
-                              height={64}
-                              className="h-full w-full object-cover"
-                              unoptimized
-                            />
-                          </div>
-                        )}
-                        <div>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleImageSelection(file);
-                            }}
+            {categories.map((cat, index) =>
+              editingId === cat._id ? (
+                <div key={cat._id} className="p-4 space-y-3 bg-muted/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Edit Category</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingId(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Name</Label>
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Category name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Description</Label>
+                    <Textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      placeholder="What problem domain does this theme cover?"
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Image</Label>
+                    <div className="flex items-center gap-3">
+                      {editImageUrl && (
+                        <div className="h-16 w-24 rounded bg-muted overflow-hidden">
+                          <Image
+                            src={editImageUrl}
+                            alt=""
+                            width={96}
+                            height={64}
+                            className="h-full w-full object-cover"
+                            unoptimized
                           />
+                        </div>
+                      )}
+                      <div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleImageSelection(file);
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <ImageIcon className="h-3 w-3 mr-1" />
+                          {editImageId || cat.imageId
+                            ? "Change Image"
+                            : "Upload Image"}
+                        </Button>
+                        {(editImageId || cat.imageId) && (
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            onClick={() => fileInputRef.current?.click()}
+                            className="ml-2 text-xs text-destructive"
+                            onClick={() => {
+                              clearSelectedImage();
+                              setEditImageId(null);
+                            }}
                           >
-                            <ImageIcon className="h-3 w-3 mr-1" />
-                            {editImageId || cat.imageId
-                              ? "Change Image"
-                              : "Upload Image"}
+                            Remove
                           </Button>
-                          {(editImageId || cat.imageId) && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="ml-2 text-xs text-destructive"
-                              onClick={() => {
-                                clearSelectedImage();
-                                setEditImageId(null);
-                              }}
-                            >
-                              Remove
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        onClick={handleSaveEdit}
-                        disabled={isSaving || !editName.trim()}
-                      >
-                        {isSaving && (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                         )}
-                        Save
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={stopEditing}
-                      >
-                        Cancel
-                      </Button>
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  <div
-                    key={cat._id}
-                    className="flex items-center justify-between px-4 py-3"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="flex flex-col shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-5 w-5 p-0"
-                          disabled={index === 0}
-                          onClick={() => handleMove(index, "up")}
-                        >
-                          <ArrowUp className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-5 w-5 p-0"
-                          disabled={index === (categories?.length ?? 0) - 1}
-                          onClick={() => handleMove(index, "down")}
-                        >
-                          <ArrowDown className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <div className="min-w-0">
-                        <span className="font-medium text-sm">{cat.name}</span>
-                        {cat.description && (
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            {cat.description}
-                          </p>
-                        )}
-                      </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      onClick={handleSaveEdit}
+                      disabled={isSaving || !editName.trim()}
+                    >
+                      {isSaving && (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      )}
+                      Save
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={stopEditing}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  key={cat._id}
+                  className="flex items-center justify-between px-4 py-3"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex flex-col shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        disabled={index === 0}
+                        onClick={() => handleMove(index, "up")}
+                      >
+                        <ArrowUp className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        disabled={index === (categories?.length ?? 0) - 1}
+                        onClick={() => handleMove(index, "down")}
+                      >
+                        <ArrowDown className="h-3 w-3" />
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => startEditing(cat)}
-                      >
-                        <Pencil className="h-3 w-3 mr-1" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs text-destructive hover:text-destructive"
-                        disabled={deletingId === cat._id}
-                        onClick={() => handleDelete(cat._id, cat.name)}
-                      >
-                        {deletingId === cat._id ? (
-                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3 w-3 mr-1" />
-                        )}
-                        Delete
-                      </Button>
+                    <div className="min-w-0">
+                      <span className="font-medium text-sm">{cat.name}</span>
+                      {cat.description && (
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {cat.description}
+                        </p>
+                      )}
                     </div>
                   </div>
-                ),
-              )}
-            </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs"
+                      onClick={() => startEditing(cat)}
+                    >
+                      <Pencil className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-destructive hover:text-destructive"
+                      disabled={deletingId === cat._id}
+                      onClick={() => handleDelete(cat._id, cat.name)}
+                    >
+                      {deletingId === cat._id ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3 mr-1" />
+                      )}
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ),
+            )}
+          </div>
         </div>
       )}
 

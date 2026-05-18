@@ -89,7 +89,8 @@ export const listUsers = query({
           await Promise.all(
             memberships.map(async (membership) => {
               const idea = await ctx.db.get(membership.ideaId);
-              if (!idea || !isEffectiveIdeaMember(membership, idea)) return null;
+              if (!idea || !isEffectiveIdeaMember(membership, idea))
+                return null;
               return membership;
             }),
           )

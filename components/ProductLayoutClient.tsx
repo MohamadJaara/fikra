@@ -6,12 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useQuery } from "convex/react";
 import { Lightbulb } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-} from "react";
+import { createContext, ReactNode, useContext, useEffect } from "react";
 
 type ProductViewer = NonNullable<
   FunctionReturnType<typeof api.users.viewerOrNull>

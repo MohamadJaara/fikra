@@ -65,9 +65,7 @@ export function FeatureTip({ tipKey, children, className }: FeatureTipProps) {
     >
       <div className="flex items-start gap-2.5">
         <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-blue-600 dark:text-blue-300" />
-        <div className="flex-1 min-w-0 text-sm leading-relaxed">
-          {children}
-        </div>
+        <div className="flex-1 min-w-0 text-sm leading-relaxed">{children}</div>
         <Button
           variant="ghost"
           size="icon"

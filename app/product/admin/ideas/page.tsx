@@ -148,132 +148,130 @@ export default function AdminIdeasPage() {
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
-            <TableBody>
-              {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={10}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    {search ? "No ideas match your search" : "No ideas found"}
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={10}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  {search ? "No ideas match your search" : "No ideas found"}
+                </TableCell>
+              </TableRow>
+            ) : (
+              filtered.map((idea: any) => (
+                <TableRow key={idea._id}>
+                  <TableCell>
+                    <Link
+                      href={`/product/ideas/${idea._id}`}
+                      className="font-medium text-sm hover:underline"
+                    >
+                      {idea.title}
+                    </Link>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(idea._creationTime).toLocaleDateString()}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm">{idea.ownerName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {idea.ownerEmail}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={idea.status}
+                      onValueChange={(v) =>
+                        handleStatusChange(idea._id, v as Status)
+                      }
+                    >
+                      <SelectTrigger className="w-[140px] h-8">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            <Badge
+                              variant="outline"
+                              className={STATUS_COLORS[s]}
+                            >
+                              {STATUS_LABELS[s]}
+                            </Badge>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {idea.memberCount}{" "}
+                    {idea.memberCount === 1 ? "member" : "members"} ·{" "}
+                    {TEAM_SIZE_LABELS[idea.teamSize as TeamSize]}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {idea.reactionCount}
+                  </TableCell>
+                  <TableCell className="text-sm">{idea.commentCount}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {idea.lookingForRoles.map((role: string) => (
+                        <Badge
+                          key={role}
+                          variant="secondary"
+                          className="text-xs"
+                        >
+                          {roleLabels[role] || role}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {idea.roomName ? (
+                      <span className="text-sm flex items-center gap-1">
+                        <DoorOpen className="h-3 w-3" />
+                        {idea.roomName}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={idea.onsiteOnly ?? false}
+                        onChange={(e) =>
+                          handleOnsiteOnlyChange(idea._id, e.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-border accent-primary"
+                      />
+                      <span className="text-xs">
+                        {idea.onsiteOnly ? (
+                          <span className="flex items-center gap-1 text-blue-700 dark:text-blue-300">
+                            <MapPin className="h-3 w-3" />
+                            On-site
+                          </span>
+                        ) : (
+                          "Open to all"
+                        )}
+                      </span>
+                    </label>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(idea._id, idea.title)}
+                      className="text-xs"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Delete
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filtered.map((idea: any) => (
-                  <TableRow key={idea._id}>
-                    <TableCell>
-                      <Link
-                        href={`/product/ideas/${idea._id}`}
-                        className="font-medium text-sm hover:underline"
-                      >
-                        {idea.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(idea._creationTime).toLocaleDateString()}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{idea.ownerName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {idea.ownerEmail}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={idea.status}
-                        onValueChange={(v) =>
-                          handleStatusChange(idea._id, v as Status)
-                        }
-                      >
-                        <SelectTrigger className="w-[140px] h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUSES.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              <Badge
-                                variant="outline"
-                                className={STATUS_COLORS[s]}
-                              >
-                                {STATUS_LABELS[s]}
-                              </Badge>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {idea.memberCount}{" "}
-                      {idea.memberCount === 1 ? "member" : "members"} ·{" "}
-                      {TEAM_SIZE_LABELS[idea.teamSize as TeamSize]}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {idea.reactionCount}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {idea.commentCount}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {idea.lookingForRoles.map((role: string) => (
-                          <Badge
-                            key={role}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {roleLabels[role] || role}
-                          </Badge>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {idea.roomName ? (
-                        <span className="text-sm flex items-center gap-1">
-                          <DoorOpen className="h-3 w-3" />
-                          {idea.roomName}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={idea.onsiteOnly ?? false}
-                          onChange={(e) =>
-                            handleOnsiteOnlyChange(idea._id, e.target.checked)
-                          }
-                          className="h-4 w-4 rounded border-border accent-primary"
-                        />
-                        <span className="text-xs">
-                          {idea.onsiteOnly ? (
-                            <span className="flex items-center gap-1 text-blue-700 dark:text-blue-300">
-                              <MapPin className="h-3 w-3" />
-                              On-site
-                            </span>
-                          ) : (
-                            "Open to all"
-                          )}
-                        </span>
-                      </label>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(idea._id, idea.title)}
-                        className="text-xs"
-                      >
-                        <Trash2 className="h-3 w-3 mr-1" />
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <Toaster />

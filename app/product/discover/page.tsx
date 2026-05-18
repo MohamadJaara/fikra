@@ -4,13 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-  X,
-  Heart,
-  RotateCcw,
-  Sparkles,
-  Users,
-} from "lucide-react";
+import { X, Heart, RotateCcw, Sparkles, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActivityTicker } from "./activity-ticker";
 import { DiscoverIdeaCard } from "./idea-card";
@@ -65,14 +59,11 @@ export default function DiscoverPage() {
       const ideaId = currentIdea._id as Id<"ideas">;
 
       if (dir === "right") {
-        toast.promise(
-          expressInterest({ ideaId }),
-          {
-            loading: "Showing interest...",
-            success: `Interested in "${currentIdea.title}"`,
-            error: "Failed to express interest",
-          },
-        );
+        toast.promise(expressInterest({ ideaId }), {
+          loading: "Showing interest...",
+          success: `Interested in "${currentIdea.title}"`,
+          error: "Failed to express interest",
+        });
       } else {
         void dismiss({ ideaId });
       }
@@ -167,7 +158,8 @@ export default function DiscoverPage() {
 
         {mode === "findTeam" && (
           <p className="text-sm text-muted-foreground mb-2">
-            Swipe right on ideas where you&apos;d like to join the team. Ideas are sorted by role match.
+            Swipe right on ideas where you&apos;d like to join the team. Ideas
+            are sorted by role match.
           </p>
         )}
 
@@ -183,7 +175,11 @@ export default function DiscoverPage() {
             </div>
           </div>
         ) : !currentIdea ? (
-          <EmptyDiscoverState mode={mode} onStartOver={handleStartOver} isResetting={isResetting} />
+          <EmptyDiscoverState
+            mode={mode}
+            onStartOver={handleStartOver}
+            isResetting={isResetting}
+          />
         ) : (
           <div className="h-full relative max-w-lg mx-auto">
             <AnimatePresence mode="popLayout">
@@ -201,9 +197,19 @@ export default function DiscoverPage() {
                 <motion.div
                   key={currentIdea._id}
                   exit={{
-                    x: direction === "right" ? 300 : direction === "left" ? -300 : 0,
+                    x:
+                      direction === "right"
+                        ? 300
+                        : direction === "left"
+                          ? -300
+                          : 0,
                     opacity: 0,
-                    rotate: direction === "right" ? 15 : direction === "left" ? -15 : 0,
+                    rotate:
+                      direction === "right"
+                        ? 15
+                        : direction === "left"
+                          ? -15
+                          : 0,
                   }}
                   transition={{ duration: 0.2 }}
                   className="absolute inset-0"
