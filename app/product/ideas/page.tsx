@@ -20,8 +20,9 @@ import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { usePaginatedQuery, useQuery } from "convex/react";
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   PlusCircle,
   Search,
@@ -58,21 +59,91 @@ type FilterState = {
 };
 
 export default function BrowseIdeasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-4 md:p-6 max-w-7xl mx-auto">
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold">All Ideas</h1>
+                <p className="text-sm text-muted-foreground">Loading...</p>
+              </div>
+            </div>
+          </div>
+          <div className="divide-y">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="animate-fade-in">
+                <IdeaExpandedRowSkeleton noBorder />
+              </div>
+            ))}
+          </div>
+        </div>
+      }
+    >
+      <BrowseIdeasContent />
+    </Suspense>
+  );
+}
+
+function BrowseIdeasContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const categoryList = useQuery(api.categories.list);
   const rolesList = useRolesList();
   const resourcesList = useResourcesList();
   const [filters, setFilters] = useState<FilterState>({
-    search: "",
-    statuses: [],
-    roles: [],
-    resourceTags: [],
-    categories: [],
-    needsTeammates: false,
-    needsResources: false,
+    search: searchParams.get("search") || "",
+    statuses: searchParams.get("statuses")?.split(",").filter(Boolean) ?? [],
+    roles: searchParams.get("roles")?.split(",").filter(Boolean) ?? [],
+    resourceTags:
+      searchParams.get("resourceTags")?.split(",").filter(Boolean) ?? [],
+    categories:
+      (searchParams
+        .get("categories")
+        ?.split(",")
+        .filter(Boolean) as Array<Id<"categories"> | "__none__">) ?? [],
+    needsTeammates: searchParams.get("needsTeammates") === "1",
+    needsResources: searchParams.get("needsResources") === "1",
   });
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
-  const [viewMode, setViewMode] = useState<"list" | "masonry">("list");
+  const [showFilters, setShowFilters] = useState(
+    searchParams.has("statuses") ||
+      searchParams.has("roles") ||
+      searchParams.has("resourceTags") ||
+      searchParams.has("categories") ||
+      searchParams.has("needsTeammates") ||
+      searchParams.has("needsResources"),
+  );
+  const [sortBy, setSortBy] = useState<SortOption>(
+    (searchParams.get("sort") as SortOption) || "most_interest",
+  );
+  const [viewMode, setViewMode] = useState<"list" | "masonry">(
+    (searchParams.get("view") as "list" | "masonry") || "list",
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (sortBy !== "most_interest") params.set("sort", sortBy);
+    if (viewMode !== "list") params.set("view", viewMode);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.statuses.length)
+      params.set("statuses", filters.statuses.join(","));
+    if (filters.roles.length) params.set("roles", filters.roles.join(","));
+    if (filters.resourceTags.length)
+      params.set("resourceTags", filters.resourceTags.join(","));
+    if (filters.categories.length)
+      params.set("categories", filters.categories.join(","));
+    if (filters.needsTeammates) params.set("needsTeammates", "1");
+    if (filters.needsResources) params.set("needsResources", "1");
+    const qs = params.toString();
+    const current = searchParams.toString();
+    if (qs !== current) {
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
+  }, [filters, sortBy, viewMode]);
   const {
     results: ideas,
     status,

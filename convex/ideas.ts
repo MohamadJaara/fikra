@@ -979,7 +979,7 @@ export const list = query({
       return { page: [], isDone: true, continueCursor: "" };
     }
 
-    const sortBy = args.sortBy ?? "newest";
+    const sortBy = args.sortBy ?? "most_interest";
     const filters = args.filters;
     const hasFilters = hasActiveIdeaListFilters(filters);
     const isTimeSort = sortBy === "newest" || sortBy === "oldest";
