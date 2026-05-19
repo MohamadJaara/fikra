@@ -12,6 +12,8 @@ import {
   Check,
   MapPin,
   Wifi,
+  Flame,
+  Circle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -374,7 +376,7 @@ export function TeamSection({
                         <Badge
                           key={role.slug}
                           variant="outline"
-                          className="border-orange-300 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300"
+                          className="border-dashed border-orange-300/70 bg-transparent text-orange-600 dark:border-orange-700/40 dark:text-orange-400"
                         >
                           {role.name}
                         </Badge>
@@ -435,7 +437,8 @@ export function TeamSection({
                               <p className="text-sm font-medium text-foreground">
                                 Requested by owner
                               </p>
-                              <span className="text-xs text-orange-700 dark:text-orange-300">
+                              <span className="inline-flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400">
+                                <Flame className="h-3 w-3" />
                                 Best place to start
                               </span>
                             </div>
@@ -448,24 +451,24 @@ export function TeamSection({
                                     type="button"
                                     onClick={() => toggleRole(role.slug)}
                                     className={cn(
-                                      "inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                                      "inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all duration-150",
                                       isSelected
-                                        ? "border-primary bg-primary text-primary-foreground"
-                                        : "border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200",
+                                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                                        : "border-dashed border-orange-300/80 bg-transparent text-orange-700 hover:border-orange-400 hover:bg-orange-50/50 dark:border-orange-700/50 dark:text-orange-300 dark:hover:border-orange-600 dark:hover:bg-orange-950/40",
                                     )}
                                   >
                                     <span
                                       className={cn(
-                                        "inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px]",
+                                        "inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] transition-colors",
                                         isSelected
                                           ? "border-primary-foreground/40"
-                                          : "border-orange-400/70 text-orange-600 dark:border-orange-700 dark:text-orange-300",
+                                          : "border-orange-300/60 text-orange-500 dark:border-orange-700/40 dark:text-orange-500",
                                       )}
                                     >
                                       {isSelected ? (
                                         <Check className="h-3 w-3" />
                                       ) : (
-                                        "1"
+                                        <Circle className="h-2.5 w-2.5" />
                                       )}
                                     </span>
                                     {role.name}
