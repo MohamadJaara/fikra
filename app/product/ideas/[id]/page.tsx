@@ -1318,87 +1318,66 @@ function InterestSection({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-3">
-        Interested ({idea.interestCount})
-      </h2>
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Interested ({idea.interestCount})
+        </h2>
         <Button
           variant={idea.isInterested ? "default" : "outline"}
           size="sm"
           onClick={handleToggle}
           disabled={isToggling}
+          className={
+            idea.isInterested
+              ? "bg-rose-500 hover:bg-rose-600 text-white border-rose-500"
+              : "hover:border-rose-300 hover:text-rose-600 dark:hover:border-rose-700 dark:hover:text-rose-400"
+          }
         >
           {isToggling ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : null}
+            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+          ) : (
+            <Heart
+              className={`h-3.5 w-3.5 mr-1.5 ${idea.isInterested ? "fill-current" : ""}`}
+            />
+          )}
           {idea.isInterested ? "Interested" : "I'm Interested"}
         </Button>
       </div>
+
       {sortedUsers.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {sortedUsers.map((user) => (
-            <div
-              key={user._id}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground"
-            >
-              <UserAvatar
-                handle={user.handle}
-                image={user.image}
-                name={user.name}
-              />
-              <UserLink handle={user.handle} name={user.name} />
-              {[...(user.roles ?? [])]
-                .sort((a, b) => {
-                  const aM = neededRoles.has(a) ? 0 : 1;
-                  const bM = neededRoles.has(b) ? 0 : 1;
-                  if (aM !== bM) return aM - bM;
-                  return (roleLabels[a] || a).localeCompare(roleLabels[b] || b);
-                })
-                .map((r) => {
-                  const isMatch = neededRoles.has(r);
-                  return (
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+          {sortedUsers.map((user) => {
+            return (
+              <div key={user._id} className="flex items-center gap-1.5">
+                <UserAvatar
+                  handle={user.handle}
+                  image={user.image}
+                  name={user.name}
+                />
+                <UserLink
+                  handle={user.handle}
+                  name={user.name}
+                  className="text-sm"
+                />
+                {[...(user.roles ?? [])]
+                  .filter((r) => neededRoles.has(r))
+                  .map((r) => (
                     <Badge
                       key={r}
                       variant="secondary"
-                      className={
-                        isMatch
-                          ? "text-[10px] px-1.5 py-0 text-emerald-700 border-emerald-400 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-700 dark:bg-emerald-950"
-                          : "text-[10px] px-1.5 py-0"
-                      }
+                      className="text-[9px] px-1 py-0 font-medium text-emerald-700 border border-emerald-300 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-700 dark:bg-emerald-950"
                     >
                       {roleLabels[r] || r}
                     </Badge>
-                  );
-                })}
-              {user.participationMode &&
-              PARTICIPATION_MODE_LABELS[
-                user.participationMode as ParticipationMode
-              ] ? (
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] px-1.5 py-0 ${PARTICIPATION_MODE_COLORS[user.participationMode as ParticipationMode]}`}
-                >
-                  {user.participationMode === "onsite" ? (
-                    <MapPin className="h-2.5 w-2.5 mr-0.5" />
-                  ) : (
-                    <Wifi className="h-2.5 w-2.5 mr-0.5" />
-                  )}
-                  {
-                    PARTICIPATION_MODE_LABELS[
-                      user.participationMode as ParticipationMode
-                    ]
-                  }
-                </Badge>
-              ) : (
-                <Badge
-                  variant="secondary"
-                  className="text-[10px] px-1.5 py-0 text-muted-foreground"
-                >
-                  Mode not set
-                </Badge>
-              )}
-            </div>
-          ))}
+                  ))}
+                {user.participationMode === "onsite" ? (
+                  <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
+                ) : user.participationMode === "remote" ? (
+                  <Wifi className="h-3 w-3 text-purple-500 shrink-0" />
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
