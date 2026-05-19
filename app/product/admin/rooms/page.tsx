@@ -35,7 +35,6 @@ import {
   MapPin,
   Navigation,
   ExternalLink,
-  ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -56,10 +55,6 @@ export default function AdminRoomsPage() {
 
   const [name, setName] = useState("");
   const [type, setType] = useState<string>("team");
-  const [address, setAddress] = useState("");
-  const [directions, setDirections] = useState("");
-  const [mapsLink, setMapsLink] = useState("");
-  const [showLocationFields, setShowLocationFields] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<Id<"rooms"> | null>(null);
   const [editRoomId, setEditRoomId] = useState<Id<"rooms"> | null>(null);
@@ -83,19 +78,9 @@ export default function AdminRoomsPage() {
     if (!name.trim()) return;
     setIsCreating(true);
     try {
-      await createMutation({
-        name,
-        type,
-        address: address || undefined,
-        directions: directions || undefined,
-        mapsLink: mapsLink || undefined,
-      });
+      await createMutation({ name, type });
       toast.success(`Room "${name}" created`);
       setName("");
-      setAddress("");
-      setDirections("");
-      setMapsLink("");
-      setShowLocationFields(false);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to create room",
@@ -199,7 +184,7 @@ export default function AdminRoomsPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Link
           href="/product/admin"
@@ -218,68 +203,33 @@ export default function AdminRoomsPage() {
         </div>
       </div>
 
-      <form onSubmit={handleCreate} className="space-y-3">
-        <div className="flex gap-2">
-          <Input
-            placeholder="Room name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="flex-1 max-w-xs"
-          />
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ROOM_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {ROOM_TYPE_LABELS[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button type="submit" disabled={isCreating || !name.trim()}>
-            {isCreating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <PlusCircle className="h-4 w-4 mr-2" />
-            )}
-            Add Room
-          </Button>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowLocationFields(!showLocationFields)}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronDown
-            className={`h-3 w-3 transition-transform ${showLocationFields ? "rotate-180" : ""}`}
-          />
-          Location details (optional)
-        </button>
-        {showLocationFields && (
-          <div className="space-y-2 pl-1 animate-fade-in">
-            <Input
-              placeholder="Address — building, floor, room number"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              className="max-w-md"
-            />
-            <Textarea
-              placeholder="Directions — how to find the room"
-              value={directions}
-              onChange={(e) => setDirections(e.target.value)}
-              className="max-w-md"
-              rows={2}
-            />
-            <Input
-              placeholder="Maps link — https://maps.google.com/..."
-              value={mapsLink}
-              onChange={(e) => setMapsLink(e.target.value)}
-              className="max-w-md"
-            />
-          </div>
-        )}
+      <form onSubmit={handleCreate} className="flex gap-2">
+        <Input
+          placeholder="Room name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="flex-1"
+        />
+        <Select value={type} onValueChange={setType}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ROOM_TYPES.map((t) => (
+              <SelectItem key={t} value={t}>
+                {ROOM_TYPE_LABELS[t]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button type="submit" disabled={isCreating || !name.trim()}>
+          {isCreating ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <PlusCircle className="h-4 w-4 mr-2" />
+          )}
+          Add Room
+        </Button>
       </form>
 
       {rooms.length === 0 ? (
@@ -287,34 +237,41 @@ export default function AdminRoomsPage() {
           No rooms yet. Add one above.
         </div>
       ) : (
-        <div className="space-y-3">
-          {rooms.map((room) => {
-            const isTeamRoomFull =
-              room.type === "team" && room.assignedIdeaIds.length > 0;
-            const hasLocationInfo =
-              room.address || room.directions || room.mapsLink;
+        <div className="border rounded-lg overflow-hidden">
+          <div className="divide-y">
+            {rooms.map((room) => {
+              const isTeamRoomFull =
+                room.type === "team" && room.assignedIdeaIds.length > 0;
+              const hasLocationInfo =
+                room.address || room.directions || room.mapsLink;
+              const hasDetails = hasLocationInfo || room.assignedIdeaIds.length > 0;
 
-            return (
-              <div
-                key={room._id}
-                className="border rounded-lg overflow-hidden"
-              >
-                <div className="px-4 py-3.5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">
+              return (
+                <div key={room._id} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium text-sm truncate">
                         {room.name}
                       </span>
                       <Badge
                         variant={
                           room.type === "shared" ? "default" : "secondary"
                         }
-                        className="text-[10px]"
+                        className="text-[10px] shrink-0"
                       >
                         {ROOM_TYPE_LABELS[room.type as RoomType] || room.type}
                       </Badge>
+                      {room.assignedIdeaIds.length > 0 && (
+                        <span className="text-[11px] text-muted-foreground shrink-0">
+                          {room.assignedIdeaIds.length}{" "}
+                          {room.assignedIdeaIds.length === 1
+                            ? "idea"
+                            : "ideas"}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5">
+
+                    <div className="flex items-center gap-1 shrink-0">
                       <Dialog
                         open={assignDialogRoomId === room._id}
                         onOpenChange={(open) => {
@@ -326,14 +283,15 @@ export default function AdminRoomsPage() {
                       >
                         <DialogTrigger asChild>
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
+                            className="h-7 text-xs gap-1"
                             onClick={() => setAssignDialogRoomId(room._id)}
                             disabled={
                               unassignedIdeas.length === 0 || isTeamRoomFull
                             }
                           >
-                            <Link2 className="h-3 w-3 mr-1" />
+                            <Link2 className="h-3 w-3" />
                             Assign
                           </Button>
                         </DialogTrigger>
@@ -416,6 +374,7 @@ export default function AdminRoomsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="h-7 w-7 p-0"
                             onClick={() => openEditDialog(room)}
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -425,7 +384,7 @@ export default function AdminRoomsPage() {
                           <DialogHeader>
                             <DialogTitle>Edit Room</DialogTitle>
                             <DialogDescription>
-                              Update room details, address, and directions.
+                              Update room name, type, and location details.
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-3">
@@ -508,7 +467,7 @@ export default function AdminRoomsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-destructive hover:text-destructive"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                         disabled={deletingId === room._id}
                         onClick={() => handleDelete(room._id, room.name)}
                       >
@@ -521,76 +480,73 @@ export default function AdminRoomsPage() {
                     </div>
                   </div>
 
-                  {hasLocationInfo && (
-                    <div className="rounded-md bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground space-y-1.5">
-                      {room.address && (
-                        <div className="flex items-center gap-1.5">
-                          <MapPin className="h-3 w-3 shrink-0 text-muted-foreground/60" />
-                          <span>{room.address}</span>
+                  {hasDetails && (
+                    <div className="mt-2.5 pl-0 space-y-2">
+                      {hasLocationInfo && (
+                        <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground space-y-1">
+                          {room.address && (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="h-3 w-3 shrink-0 opacity-60" />
+                              <span>{room.address}</span>
+                            </div>
+                          )}
+                          {room.directions && (
+                            <div className="flex items-start gap-1.5">
+                              <Navigation className="h-3 w-3 mt-0.5 shrink-0 opacity-60" />
+                              <span className="leading-relaxed">
+                                {room.directions}
+                              </span>
+                            </div>
+                          )}
+                          {room.mapsLink && (
+                            <a
+                              href={room.mapsLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              Open in Maps
+                            </a>
+                          )}
                         </div>
                       )}
-                      {room.directions && (
-                        <div className="flex items-start gap-1.5">
-                          <Navigation className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground/60" />
-                          <span className="leading-relaxed">
-                            {room.directions}
-                          </span>
-                        </div>
-                      )}
-                      {room.mapsLink && (
-                        <a
-                          href={room.mapsLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-primary hover:underline font-medium"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Open in Maps
-                        </a>
-                      )}
-                    </div>
-                  )}
 
-                  {room.assignedIdeaIds.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-muted-foreground">
-                        Assigned ideas · {room.assignedIdeaIds.length}
-                      </p>
-                      <div className="space-y-1">
-                        {room.assignedIdeaIds.map((ideaId, idx) => (
-                          <div
-                            key={ideaId}
-                            className="flex items-center justify-between gap-2 rounded-md border border-border/50 px-3 py-1.5 text-sm"
-                          >
-                            <Link
-                              href={`/product/ideas/${ideaId}`}
-                              className="font-medium hover:underline truncate"
+                      {room.assignedIdeaIds.length > 0 && (
+                        <div className="space-y-0.5">
+                          {room.assignedIdeaIds.map((ideaId, idx) => (
+                            <div
+                              key={ideaId}
+                              className="flex items-center justify-between gap-2 text-xs"
                             >
-                              {room.assignedIdeaTitles[idx]}
-                            </Link>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-xs text-muted-foreground shrink-0"
-                              disabled={unassigningIdeaId === ideaId}
-                              onClick={() => handleUnassign(ideaId)}
-                            >
-                              {unassigningIdeaId === ideaId ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Unlink className="h-3 w-3 mr-1" />
-                              )}
-                              Unassign
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
+                              <Link
+                                href={`/product/ideas/${ideaId}`}
+                                className="text-muted-foreground hover:text-foreground hover:underline truncate"
+                              >
+                                {room.assignedIdeaTitles[idx]}
+                              </Link>
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 disabled:opacity-50"
+                                disabled={unassigningIdeaId === ideaId}
+                                onClick={() => handleUnassign(ideaId)}
+                              >
+                                {unassigningIdeaId === ideaId ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <Unlink className="h-3 w-3" />
+                                )}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
 
