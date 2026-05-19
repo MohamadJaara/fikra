@@ -139,7 +139,7 @@ export default function SavedIdeasPage() {
             {/* eslint-disable @eslint-react/no-array-index-key */}
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
-                <IdeaExpandedRowSkeleton noBorder />
+                <IdeaExpandedRowSkeleton />
               </div>
             ))}
             {/* eslint-enable @eslint-react/no-array-index-key */}

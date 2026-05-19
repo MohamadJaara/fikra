@@ -36,6 +36,13 @@ export const STATUS_COLORS: Record<Status, string> = {
   building: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
 };
 
+export const STATUS_DOT_COLORS: Record<Status, string> = {
+  exploring: "bg-blue-500",
+  forming_team: "bg-amber-500",
+  full: "bg-zinc-400 dark:bg-zinc-500",
+  building: "bg-emerald-500",
+};
+
 export const STATUS_BORDER_COLORS: Record<Status, string> = {
   exploring: "border-l-blue-400 dark:border-l-blue-500",
   forming_team: "border-l-amber-400 dark:border-l-amber-500",

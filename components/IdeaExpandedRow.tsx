@@ -1,10 +1,9 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import {
   REACTION_EMOJI,
   REACTION_TYPES,
-  STATUS_COLORS,
+  STATUS_DOT_COLORS,
   STATUS_LABELS,
   TEAM_SIZE_LABELS,
   type Status,
@@ -42,142 +41,44 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
     }
   };
 
+  const hasReactions = Object.values(idea.reactionCounts).some((c) => c > 0);
+
   return (
-    <div className="relative group">
+    <div className="relative group py-5 first:pt-0">
       <Link
         href={ideaHref}
         aria-label={`View idea: ${idea.title}`}
         className="absolute inset-0 z-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset rounded-sm"
       />
 
-      <div className="relative z-10 pointer-events-none py-5 space-y-2.5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="font-semibold text-base leading-tight">
-              {idea.title}
-            </h3>
-            {idea.categoryName && (
-              <Badge variant="outline" className="text-[11px]">
-                {idea.categoryName}
-              </Badge>
-            )}
-            <Badge
-              variant="secondary"
-              className={STATUS_COLORS[idea.status as Status] || "bg-muted"}
-            >
-              {STATUS_LABELS[idea.status as Status] || idea.status}
-            </Badge>
-            {idea.onsiteOnly && (
-              <Badge
-                variant="outline"
-                className="text-[11px] text-blue-700 border-blue-400 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950"
-              >
-                <MapPin className="h-3 w-3 mr-0.5" />
-                On-site
-              </Badge>
-            )}
-            {idea.isMember && (
-              <Badge variant="default" className="text-[10px] px-1.5 py-0">
-                Joined
-              </Badge>
-            )}
-            {idea.isInterested && !idea.isMember && (
-              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                Interested
-              </Badge>
-            )}
-            {idea.isOwner && (
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                Owner
-              </Badge>
-            )}
+      <div className="relative z-10 pointer-events-none">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3 min-w-0">
+            <span
+              className={`mt-2 h-2 w-2 rounded-full shrink-0 ${STATUS_DOT_COLORS[idea.status as Status] || "bg-zinc-400"}`}
+            />
+            <div className="min-w-0">
+              <h3 className="font-semibold text-base leading-snug group-hover:text-foreground/80 transition-colors">
+                {idea.title}
+              </h3>
+            </div>
           </div>
-        </div>
 
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          {idea.pitch}
-        </p>
-
-        <div className="flex items-center flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground pt-0.5">
-          <span
-            className={`flex items-center gap-1.5 ${idea.ownerHandle ? "pointer-events-auto" : ""}`}
-          >
-            <UserAvatar
-              handle={idea.ownerHandle}
-              image={idea.ownerImage}
-              name={idea.ownerName}
-            />
-            <UserLink
-              handle={idea.ownerHandle}
-              name={idea.ownerName}
-              className={idea.ownerHandle ? "pointer-events-auto" : ""}
-            />
-          </span>
-
-          <span className="flex items-center gap-1">
-            <Users className="h-3 w-3" />
-            {idea.memberCount} {idea.memberCount === 1 ? "member" : "members"}
-            <span className="text-muted-foreground/60">
-              ({TEAM_SIZE_LABELS[idea.teamSize]})
-            </span>
-          </span>
-
-          {idea.missingRoles.length > 0 && (
-            <span className="flex items-center gap-1 flex-wrap">
-              {idea.missingRoles.slice(0, 5).map((role) => (
-                <Badge
-                  key={role}
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0 text-orange-600 border-orange-300 bg-orange-50 dark:text-orange-400 dark:border-orange-800 dark:bg-orange-950"
-                >
-                  {roleLabels[role] || role}
-                </Badge>
-              ))}
-              {idea.missingRoles.length > 5 && (
-                <span className="text-[10px]">
-                  +{idea.missingRoles.length - 5}
-                </span>
-              )}
-            </span>
-          )}
-
-          {idea.resourceRequests.filter((r) => !r.resolved).length > 0 && (
-            <span className="flex items-center gap-1 flex-wrap">
-              {idea.resourceRequests
-                .filter((r) => !r.resolved)
-                .slice(0, 3)
-                .map((r) => (
-                  <Badge
-                    key={r.tag}
-                    variant="outline"
-                    className="text-[10px] px-1.5 py-0 text-blue-600 border-blue-300 bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950"
-                  >
-                    <Package className="h-2.5 w-2.5 mr-0.5" />
-                    {r.resourceName}
-                  </Badge>
-                ))}
-              {idea.resourceRequests.filter((r) => !r.resolved).length > 3 && (
-                <span className="text-[10px]">
-                  +{idea.resourceRequests.filter((r) => !r.resolved).length - 3}
-                </span>
-              )}
-            </span>
-          )}
-
-          <span className="flex items-center gap-1.5 ml-auto">
-            {REACTION_TYPES.map((type) => {
-              const count = idea.reactionCounts[type] || 0;
-              if (count === 0) return null;
-              const isActive = idea.userReactions.includes(type);
-              return (
-                <span
-                  key={type}
-                  className={`text-xs ${isActive ? "font-medium" : ""}`}
-                >
-                  {REACTION_EMOJI[type]} {count}
-                </span>
-              );
-            })}
+          <div className="flex items-center gap-2 shrink-0 pt-0.5">
+            {hasReactions && (
+              <span className="flex items-center gap-1.5 mr-1">
+                {REACTION_TYPES.map((type) => {
+                  const count = idea.reactionCounts[type] || 0;
+                  if (count === 0) return null;
+                  return (
+                    <span key={type} className="text-xs text-muted-foreground">
+                      {REACTION_EMOJI[type]}
+                      {count}
+                    </span>
+                  );
+                })}
+              </span>
+            )}
             <BookmarkButton
               ideaId={idea._id}
               isBookmarked={idea.isBookmarked}
@@ -185,27 +86,120 @@ export function IdeaExpandedRow({ idea }: { idea: IdeaListItem }) {
             <button
               onClick={handleToggleInterest}
               disabled={isToggling || idea.isMember}
-              className={`pointer-events-auto inline-flex items-center gap-1 rounded-md px-2 py-1 transition-colors text-sm ${
+              className={`pointer-events-auto inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 transition-colors text-xs ${
                 idea.isInterested
                   ? "text-rose-500 font-medium"
                   : "text-muted-foreground hover:text-rose-400"
-              } ${idea.isMember ? "opacity-50 cursor-not-allowed" : "cursor-pointer hover:bg-muted"}`}
+              } ${idea.isMember ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-muted/60"}`}
               aria-label={
                 idea.isInterested ? "Remove interest" : "Express interest"
               }
             >
               {isToggling ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Heart
-                  className={`h-4 w-4 ${idea.isInterested ? "fill-current" : ""}`}
+                  className={`h-3.5 w-3.5 ${idea.isInterested ? "fill-current" : ""}`}
                 />
               )}
-              {idea.interestCount > 0 && (
-                <span className="text-xs">{idea.interestCount}</span>
-              )}
+              {idea.interestCount > 0 && <span>{idea.interestCount}</span>}
             </button>
+          </div>
+        </div>
+
+        <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed pl-5">
+          {idea.pitch}
+        </p>
+
+        <div className="mt-2.5 flex items-center flex-wrap gap-x-1.5 gap-y-1 pl-5 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <UserAvatar
+              handle={idea.ownerHandle}
+              image={idea.ownerImage}
+              name={idea.ownerName}
+            />
+            <span
+              className={idea.ownerHandle ? "pointer-events-auto" : ""}
+            >
+              <UserLink
+                handle={idea.ownerHandle}
+                name={idea.ownerName}
+                className={idea.ownerHandle ? "pointer-events-auto" : ""}
+              />
+            </span>
           </span>
+          <span className="text-muted-foreground/30">·</span>
+          <span>{STATUS_LABELS[idea.status as Status]}</span>
+          <span className="text-muted-foreground/30">·</span>
+          <span className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            {idea.memberCount}/{TEAM_SIZE_LABELS[idea.teamSize]}
+          </span>
+          {idea.categoryName && (
+            <>
+              <span className="text-muted-foreground/30">·</span>
+              <span>{idea.categoryName}</span>
+            </>
+          )}
+          {idea.onsiteOnly && (
+            <>
+              <span className="text-muted-foreground/30">·</span>
+              <span className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400">
+                <MapPin className="h-3 w-3" />
+                On-site
+              </span>
+            </>
+          )}
+          {idea.isMember && (
+            <>
+              <span className="text-muted-foreground/30">·</span>
+              <span className="font-medium text-foreground/70">Joined</span>
+            </>
+          )}
+          {idea.isOwner && (
+            <>
+              <span className="text-muted-foreground/30">·</span>
+              <span className="font-medium text-foreground/70">Owner</span>
+            </>
+          )}
+          {idea.isInterested && !idea.isMember && (
+            <>
+              <span className="text-muted-foreground/30">·</span>
+              <span className="text-rose-500 font-medium">Interested</span>
+            </>
+          )}
+          {idea.missingRoles.length > 0 && (
+            <>
+              <span className="text-muted-foreground/30">·</span>
+              <span className="flex items-center gap-1 flex-wrap">
+                needs{" "}
+                {idea.missingRoles.slice(0, 4).map((role, i) => (
+                  <span key={role}>
+                    <span className="text-amber-600 dark:text-amber-400 font-medium">
+                      {roleLabels[role] || role}
+                    </span>
+                    {i < Math.min(idea.missingRoles.length, 4) - 1 && (
+                      <span className="text-muted-foreground/30">, </span>
+                    )}
+                  </span>
+                ))}
+                {idea.missingRoles.length > 4 && (
+                  <span className="text-muted-foreground">
+                    {" "}+{idea.missingRoles.length - 4}
+                  </span>
+                )}
+              </span>
+            </>
+          )}
+          {idea.resourceRequests.filter((r) => !r.resolved).length > 0 && (
+            <>
+              <span className="text-muted-foreground/30">·</span>
+              <span className="flex items-center gap-0.5">
+                <Package className="h-3 w-3" />
+                {idea.resourceRequests.filter((r) => !r.resolved).length} resource{idea.resourceRequests.filter((r) => !r.resolved).length !== 1 ? "s" : ""}
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>

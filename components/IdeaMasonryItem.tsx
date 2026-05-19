@@ -1,10 +1,10 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import {
   REACTION_EMOJI,
   REACTION_TYPES,
   STATUS_BORDER_COLORS,
+  STATUS_DOT_COLORS,
   STATUS_LABELS,
   type Status,
 } from "@/lib/constants";
@@ -54,9 +54,9 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
 
   return (
     <div
-      className={`break-inside-avoid mb-4 pl-4 py-3 border-l-[3px] ${
+      className={`break-inside-avoid mb-3 pl-4 py-4 border-l-2 ${
         STATUS_BORDER_COLORS[idea.status as Status] || "border-l-muted"
-      } group relative`}
+      } group relative transition-colors`}
     >
       <Link
         href={ideaHref}
@@ -68,14 +68,8 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-sm leading-snug">{idea.title}</h3>
           <span
-            className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded ${
-              STATUS_LABELS[idea.status as Status]
-                ? "text-muted-foreground bg-muted/60"
-                : ""
-            }`}
-          >
-            {STATUS_LABELS[idea.status as Status] || idea.status}
-          </span>
+            className={`shrink-0 w-1.5 h-1.5 rounded-full mt-1.5 ${STATUS_DOT_COLORS[idea.status as Status] || "bg-zinc-400"}`}
+          />
         </div>
 
         <p
@@ -99,48 +93,35 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
             {idea.memberCount}
           </span>
 
-          {idea.categoryName && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0 h-4 font-normal"
-            >
-              {idea.categoryName}
-            </Badge>
-          )}
+          <span className="text-muted-foreground/50">
+            {STATUS_LABELS[idea.status as Status]}
+          </span>
 
-          {idea.onsiteOnly && (
-            <Badge
-              variant="outline"
-              className="text-[10px] px-1.5 py-0 h-4 font-normal text-blue-600 border-blue-300 dark:text-blue-300 dark:border-blue-700"
-            >
-              On-site
-            </Badge>
+          {idea.categoryName && (
+            <span className="text-muted-foreground/60">{idea.categoryName}</span>
           )}
 
           {idea.isMember && (
-            <span className="text-[10px] font-medium text-primary">Joined</span>
+            <span className="font-medium text-foreground/60">Joined</span>
           )}
           {idea.isOwner && (
-            <span className="text-[10px] font-medium text-muted-foreground">
-              Owner
-            </span>
+            <span className="font-medium text-foreground/60">Owner</span>
           )}
         </div>
 
         {(hasRoles || hasResources) && showFullMeta && (
-          <div className="flex flex-wrap gap-1">
+          <div className="flex flex-wrap gap-1 text-[10px]">
             {hasRoles &&
               idea.missingRoles.slice(0, 3).map((role) => (
-                <Badge
+                <span
                   key={role}
-                  variant="outline"
-                  className="text-[10px] px-1.5 py-0 h-4 text-orange-600 border-orange-300 bg-orange-50/50 dark:text-orange-400 dark:border-orange-800 dark:bg-orange-950/50"
+                  className="text-amber-600 dark:text-amber-400 font-medium"
                 >
                   {roleLabels[role] || role}
-                </Badge>
+                </span>
               ))}
             {hasRoles && idea.missingRoles.length > 3 && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-muted-foreground">
                 +{idea.missingRoles.length - 3}
               </span>
             )}
@@ -149,14 +130,13 @@ export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
                 .filter((r) => !r.resolved)
                 .slice(0, 2)
                 .map((r) => (
-                  <Badge
+                  <span
                     key={r.tag}
-                    variant="outline"
-                    className="text-[10px] px-1.5 py-0 h-4 text-blue-600 border-blue-300 bg-blue-50/50 dark:text-blue-400 dark:border-blue-800 dark:bg-blue-950/50"
+                    className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 font-medium"
                   >
-                    <Package className="h-2.5 w-2.5 mr-0.5" />
+                    <Package className="h-2.5 w-2.5" />
                     {r.resourceName}
-                  </Badge>
+                  </span>
                 ))}
           </div>
         )}
