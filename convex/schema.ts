@@ -60,6 +60,9 @@ export default defineSchema({
   rooms: defineTable({
     name: v.string(),
     type: v.string(),
+    address: v.optional(v.string()),
+    directions: v.optional(v.string()),
+    mapsLink: v.optional(v.string()),
   })
     .index("by_type", ["type"])
     .searchIndex("search_name", { searchField: "name" }),

@@ -149,6 +149,9 @@ export type RoomItem = {
   _creationTime: number;
   name: string;
   type: string;
+  address?: string;
+  directions?: string;
+  mapsLink?: string;
   assignedIdeaIds: Id<"ideas">[];
   assignedIdeaTitles: string[];
 };
@@ -157,6 +160,9 @@ export type IdeaRoomInfo = {
   roomId: Id<"rooms">;
   roomName: string;
   roomType: string;
+  roomAddress?: string;
+  roomDirections?: string;
+  roomMapsLink?: string;
   sharedWithIdeas: { _id: Id<"ideas">; title: string }[];
 };
 

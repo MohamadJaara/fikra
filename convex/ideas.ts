@@ -211,6 +211,9 @@ async function buildIdeaListItems(
             roomId: roomDoc._id,
             roomName: roomDoc.name,
             roomType: roomDoc.type,
+            roomAddress: roomDoc.address,
+            roomDirections: roomDoc.directions,
+            roomMapsLink: roomDoc.mapsLink,
             sharedWithIdeas,
           };
         }
@@ -1338,6 +1341,9 @@ export const get = query({
           roomId: roomDoc._id,
           roomName: roomDoc.name,
           roomType: roomDoc.type,
+          roomAddress: roomDoc.address,
+          roomDirections: roomDoc.directions,
+          roomMapsLink: roomDoc.mapsLink,
           sharedWithIdeas,
         };
       }

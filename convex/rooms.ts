@@ -22,6 +22,9 @@ export const list = query({
           _creationTime: room._creationTime,
           name: room.name,
           type: room.type,
+          address: room.address,
+          directions: room.directions,
+          mapsLink: room.mapsLink,
           assignedIdeaIds: assignedIdeas.map((i) => i._id),
           assignedIdeaTitles: assignedIdeas.map((i) => i.title),
         };
@@ -36,6 +39,9 @@ export const create = mutation({
   args: {
     name: v.string(),
     type: v.string(),
+    address: v.optional(v.string()),
+    directions: v.optional(v.string()),
+    mapsLink: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await getAdminUser(ctx);
@@ -49,7 +55,13 @@ export const create = mutation({
       throw new Error("Invalid room type");
     }
 
-    return await ctx.db.insert("rooms", { name, type: args.type });
+    return await ctx.db.insert("rooms", {
+      name,
+      type: args.type,
+      address: args.address ? sanitizeText(args.address) : undefined,
+      directions: args.directions ? sanitizeText(args.directions) : undefined,
+      mapsLink: args.mapsLink ? sanitizeText(args.mapsLink) : undefined,
+    });
   },
 });
 
@@ -58,6 +70,9 @@ export const update = mutation({
     roomId: v.id("rooms"),
     name: v.string(),
     type: v.string(),
+    address: v.optional(v.string()),
+    directions: v.optional(v.string()),
+    mapsLink: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await getAdminUser(ctx);
@@ -86,7 +101,13 @@ export const update = mutation({
       }
     }
 
-    await ctx.db.patch(args.roomId, { name, type: args.type });
+    await ctx.db.patch(args.roomId, {
+      name,
+      type: args.type,
+      address: args.address ? sanitizeText(args.address) : undefined,
+      directions: args.directions ? sanitizeText(args.directions) : undefined,
+      mapsLink: args.mapsLink ? sanitizeText(args.mapsLink) : undefined,
+    });
   },
 });
 
