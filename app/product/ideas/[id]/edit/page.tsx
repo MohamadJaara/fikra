@@ -61,7 +61,7 @@ export default function EditIdeaPage({
         teamSize: data.teamSize,
         status: data.status,
         lookingForRoles: data.lookingForRoles,
-        categoryId: data.categoryId as any,
+        categoryId: data.categoryId as Id<"categories">,
         onsiteOnly: data.onsiteOnly,
       });
       toast.success("Idea updated!");

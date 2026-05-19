@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
@@ -10,7 +10,7 @@ import {
 import { internal } from "./_generated/api";
 
 async function resolveMentions(
-  ctx: any,
+  ctx: QueryCtx,
   content: string,
 ): Promise<Id<"users">[]> {
   const mentionRegex = /@(\w+)/g;
@@ -22,7 +22,7 @@ async function resolveMentions(
   for (const handle of handles) {
     const user = await ctx.db
       .query("users")
-      .withIndex("handle", (q: any) => q.eq("handle", handle))
+      .withIndex("handle", (q) => q.eq("handle", handle))
       .first();
     if (user?._id) mentionedIds.push(user._id);
   }

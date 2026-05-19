@@ -25,7 +25,7 @@ type SwipeEntry = {
 export default function DiscoverPage() {
   const viewer = useProductViewer();
   const [mode, setMode] = useState<Mode>("browse");
-  const [swipedIds, setSwipedIds] = useState<Set<Id<"ideas">>>(new Set());
+  const [swipedIds, setSwipedIds] = useState<Set<Id<"ideas">>>(() => new Set());
   const [swipeHistory, setSwipeHistory] = useState<SwipeEntry[]>([]);
   const [direction, setDirection] = useState<"left" | "right" | null>(null);
   const swipingRef = useRef(false);
@@ -119,7 +119,7 @@ export default function DiscoverPage() {
     }
   }, [resetDismissed]);
 
-  const userRoles = (viewer as any)?.roles ?? [];
+  const userRoles = viewer.roles ?? [];
 
   const isLoading = ideas === undefined;
 

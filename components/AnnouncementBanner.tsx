@@ -41,7 +41,7 @@ type AnnouncementType = keyof typeof TYPE_CONFIG;
 export function AnnouncementBanner() {
   const announcements = useQuery(api.announcements.getActive);
   const dismiss = useMutation(api.announcements.dismiss);
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
   const [open, setOpen] = useState(false);
 
   if (announcements === undefined || announcements.length === 0) return null;

@@ -125,7 +125,7 @@ export default function AdminRoomsPage() {
     }
   };
 
-  const unassignedIdeas = ideas?.filter((idea: any) => !idea.roomId) ?? [];
+  const unassignedIdeas = ideas?.filter((idea) => !idea.roomId) ?? [];
   const selectedRoom = rooms?.find((r) => r._id === assignDialogRoomId);
 
   if (rooms === undefined || ideas === undefined) {
@@ -255,7 +255,7 @@ export default function AdminRoomsPage() {
                             </p>
                           ) : (
                             <div className="space-y-2 max-h-64 overflow-auto">
-                              {unassignedIdeas.map((idea: any) => (
+                              {unassignedIdeas.map((idea) => (
                                 <button
                                   key={idea._id}
                                   type="button"

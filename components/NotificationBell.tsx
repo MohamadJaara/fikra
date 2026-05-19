@@ -73,6 +73,7 @@ export function NotificationBell() {
         <ScrollArea className="h-80">
           {notifications === undefined ? (
             <div className="p-4 space-y-3">
+              {/* eslint-disable @eslint-react/no-array-index-key */}
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <Skeleton className="h-8 w-8 rounded-full shrink-0" />
@@ -82,6 +83,7 @@ export function NotificationBell() {
                   </div>
                 </div>
               ))}
+              {/* eslint-enable @eslint-react/no-array-index-key */}
             </div>
           ) : notifications.length === 0 ? (
             <div className="p-4 text-center text-sm text-muted-foreground">

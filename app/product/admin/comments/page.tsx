@@ -107,7 +107,7 @@ export default function AdminCommentsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((comment: any) => (
+              filtered.map((comment) => (
                 <TableRow key={comment._id}>
                   <TableCell className="max-w-xs">
                     <p className="text-sm line-clamp-2">{comment.content}</p>

@@ -8,6 +8,7 @@ import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import { ArrowLeft, Lightbulb } from "lucide-react";
 import Link from "next/link";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export default function CreateIdeaPage() {
   const createMutation = useMutation(api.ideas.create);
@@ -35,7 +36,7 @@ export default function CreateIdeaPage() {
         lookingForRoles: data.lookingForRoles,
         resourceTags: data.resourceTags,
         resourceNotes: data.resourceNotes,
-        categoryId: data.categoryId as any,
+        categoryId: data.categoryId as Id<"categories">,
         onsiteOnly: data.onsiteOnly,
       });
       toast.success("Idea created!");

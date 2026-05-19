@@ -57,9 +57,11 @@ export default function CategoryDetailPage() {
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <div className="h-8 w-48 bg-muted/40 rounded animate-pulse mb-6" />
         <div className="columns-1 md:columns-2 lg:columns-3">
+          {/* eslint-disable @eslint-react/no-array-index-key */}
           {Array.from({ length: 6 }).map((_, i) => (
             <IdeaMasonryItemSkeleton key={i} />
           ))}
+          {/* eslint-enable @eslint-react/no-array-index-key */}
         </div>
       </div>
     );
@@ -178,6 +180,7 @@ export default function CategoryDetailPage() {
       {ideasStatus === "LoadingFirstPage" ? (
         viewMode === "masonry" ? (
           <div className="columns-1 md:columns-2 lg:columns-3">
+            {/* eslint-disable @eslint-react/no-array-index-key */}
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -186,12 +189,15 @@ export default function CategoryDetailPage() {
                 <IdeaMasonryItemSkeleton />
               </div>
             ))}
+            {/* eslint-enable @eslint-react/no-array-index-key */}
           </div>
         ) : (
           <div className="divide-y">
+            {/* eslint-disable @eslint-react/no-array-index-key */}
             {Array.from({ length: 3 }).map((_, i) => (
               <IdeaExpandedRowSkeleton key={i} />
             ))}
+            {/* eslint-enable @eslint-react/no-array-index-key */}
           </div>
         )
       ) : ideas.length === 0 ? (

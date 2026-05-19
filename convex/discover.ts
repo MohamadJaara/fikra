@@ -1,4 +1,4 @@
-import { query, mutation } from "./_generated/server";
+import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAuthenticatedUser,
@@ -41,7 +41,7 @@ type DiscoverIdea = {
 };
 
 async function enrichDiscoverIdea(
-  ctx: any,
+  ctx: QueryCtx,
   idea: Doc<"ideas">,
   userId: Id<"users">,
   userRoles: string[],

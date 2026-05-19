@@ -17,7 +17,7 @@ const RELATION_TYPES = ["related", "duplicate"] as const;
 type RelationType = (typeof RELATION_TYPES)[number];
 
 const MERGE_STATUS_PENDING = "pending";
-const MERGE_STATUS_ACCEPTED = "accepted";
+const _MERGE_STATUS_ACCEPTED = "accepted";
 const MERGE_STATUS_DECLINED = "declined";
 
 export { RELATION_TYPES };

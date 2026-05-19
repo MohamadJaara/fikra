@@ -39,7 +39,7 @@ export function MentionTextarea({
   const [mentionStart, setMentionStart] = useState(-1);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const prevUsersLength = useRef(0);
+  const prevUsersLengthRef = useRef(0);
 
   const users = useQuery(
     api.users.search,
@@ -121,8 +121,8 @@ export function MentionTextarea({
   );
 
   const currentLen = users?.length ?? 0;
-  if (currentLen !== prevUsersLength.current) {
-    prevUsersLength.current = currentLen;
+  if (currentLen !== prevUsersLengthRef.current) {
+    prevUsersLengthRef.current = currentLen;
     if (selectedIndex !== 0) setSelectedIndex(0);
   }
 

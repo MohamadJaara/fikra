@@ -128,9 +128,10 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
       el.classList.add("ring-2", "ring-primary/30", "rounded-lg");
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         el.classList.remove("ring-2", "ring-primary/30", "rounded-lg");
       }, 3000);
+      return () => clearTimeout(timeoutId);
     }
   }, [commentId, comments]);
 
@@ -486,11 +487,13 @@ function IdeaContent({ idea }: { idea: IdeaDetail }) {
             Skills Needed
           </h3>
           <div className="flex flex-wrap gap-1.5">
+            {/* eslint-disable @eslint-react/no-array-index-key */}
             {idea.skillsNeeded.map((skill, i) => (
               <Badge key={i} variant="secondary">
                 {skill}
               </Badge>
             ))}
+            {/* eslint-enable @eslint-react/no-array-index-key */}
           </div>
         </div>
       )}
@@ -565,7 +568,7 @@ function TeamSection({
     if (!roles) return [] as { slug: string; name: string }[];
     return roles.map((role) => ({ slug: role.slug, name: role.name }));
   }, [roles]);
-  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(new Set());
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(() => new Set());
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);

@@ -54,7 +54,7 @@ export default function AdminIdeasPage() {
     if (!search.trim()) return ideas;
     const q = search.toLowerCase();
     return ideas.filter(
-      (idea: any) =>
+      (idea) =>
         idea.title.toLowerCase().includes(q) ||
         idea.ownerName.toLowerCase().includes(q) ||
         idea.ownerEmail?.toLowerCase().includes(q),
@@ -159,7 +159,7 @@ export default function AdminIdeasPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((idea: any) => (
+              filtered.map((idea) => (
                 <TableRow key={idea._id}>
                   <TableCell>
                     <Link

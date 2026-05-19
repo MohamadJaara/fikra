@@ -49,7 +49,9 @@ export function FeatureTip({ tipKey, children, className }: FeatureTipProps) {
   const [isSeen, setIsSeen] = useState(true); // Default to hidden to avoid flash
 
   useEffect(() => {
+    /* eslint-disable @eslint-react/set-state-in-effect */
     const check = () => setIsSeen(getSeenTips().has(tipKey));
+    /* eslint-enable @eslint-react/set-state-in-effect */
     check();
     return subscribe(check);
   }, [tipKey]);

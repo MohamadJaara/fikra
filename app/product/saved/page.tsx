@@ -123,6 +123,7 @@ export default function SavedIdeasPage() {
       {bookmarkedIdeas === undefined ? (
         viewMode === "masonry" ? (
           <div className="columns-1 md:columns-2 lg:columns-3">
+            {/* eslint-disable @eslint-react/no-array-index-key */}
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
@@ -131,14 +132,17 @@ export default function SavedIdeasPage() {
                 <IdeaMasonryItemSkeleton />
               </div>
             ))}
+            {/* eslint-enable @eslint-react/no-array-index-key */}
           </div>
         ) : (
           <div className="divide-y">
+            {/* eslint-disable @eslint-react/no-array-index-key */}
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
                 <IdeaExpandedRowSkeleton noBorder />
               </div>
             ))}
+            {/* eslint-enable @eslint-react/no-array-index-key */}
           </div>
         )
       ) : sortedIdeas.length === 0 ? (

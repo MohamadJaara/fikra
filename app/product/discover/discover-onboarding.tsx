@@ -183,6 +183,7 @@ export function DiscoverOnboarding() {
 
         <div className="px-6 pt-4 pb-6 flex items-center justify-between">
           <div className="flex items-center gap-1.5">
+            {/* eslint-disable @eslint-react/no-array-index-key */}
             {steps.map((_, i) => (
               <button
                 key={i}
@@ -194,6 +195,7 @@ export function DiscoverOnboarding() {
                 }`}
               />
             ))}
+            {/* eslint-enable @eslint-react/no-array-index-key */}
           </div>
 
           <div className="flex items-center gap-2">
@@ -235,6 +237,7 @@ function CompassVisual() {
         { bottom: "-12px", left: "50%", delay: 0.5 },
         { top: "50%", left: "-12px", delay: 1 },
         { top: "50%", right: "-12px", delay: 1.5 },
+      {/* eslint-disable @eslint-react/no-array-index-key */}
       ].map((pos, i) => (
         <motion.div
           key={i}
@@ -255,6 +258,7 @@ function CompassVisual() {
           }}
         />
       ))}
+      {/* eslint-enable @eslint-react/no-array-index-key */}
     </div>
   );
 }

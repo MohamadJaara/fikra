@@ -48,11 +48,12 @@ function DiscoverBanner() {
 
   useEffect(() => {
     try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      /* eslint-disable react-hooks/set-state-in-effect, @eslint-react/set-state-in-effect */
       setVisible(localStorage.getItem(STORAGE_KEY) !== "true");
     } catch {
       setVisible(true);
     }
+    /* eslint-enable react-hooks/set-state-in-effect, @eslint-react/set-state-in-effect */
   }, []);
 
   if (visible !== true) return null;
@@ -180,9 +181,11 @@ export default function ThemesPage() {
 
       {categories === undefined ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-foreground/5 mx-4 md:mx-8">
+          {/* eslint-disable @eslint-react/no-array-index-key */}
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="aspect-[16/10] bg-muted/20 animate-pulse" />
           ))}
+          {/* eslint-enable @eslint-react/no-array-index-key */}
         </div>
       ) : categories.length === 0 ? (
         <div className="text-center py-32">

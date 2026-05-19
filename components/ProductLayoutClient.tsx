@@ -6,7 +6,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useQuery } from "convex/react";
 import { Lightbulb } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, ReactNode, useContext, useEffect } from "react";
+import { createContext, ReactNode, use, useEffect } from "react";
 
 type ProductViewer = NonNullable<
   FunctionReturnType<typeof api.users.viewerOrNull>
@@ -15,7 +15,7 @@ type ProductViewer = NonNullable<
 const ProductViewerContext = createContext<ProductViewer | null>(null);
 
 export function useProductViewer() {
-  const viewer = useContext(ProductViewerContext);
+  const viewer = use(ProductViewerContext);
   if (!viewer) {
     throw new Error("useProductViewer must be used within ProductLayoutClient");
   }
@@ -61,8 +61,8 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
   if (viewer.onboardingComplete && onOnboardingPage) return null;
 
   return (
-    <ProductViewerContext.Provider value={viewer}>
+    <ProductViewerContext value={viewer}>
       <AppShell viewer={viewer}>{children}</AppShell>
-    </ProductViewerContext.Provider>
+    </ProductViewerContext>
   );
 }

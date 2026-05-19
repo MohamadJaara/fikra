@@ -5,6 +5,7 @@ export function Skeleton({ className }: { className?: string }) {
 export function IdeaListSkeleton() {
   return (
     <div className="space-y-2">
+      {/* eslint-disable @eslint-react/no-array-index-key */}
       {Array.from({ length: 4 }).map((_, i) => (
         <div
           key={i}
@@ -17,6 +18,7 @@ export function IdeaListSkeleton() {
           </div>
         </div>
       ))}
+      {/* eslint-enable @eslint-react/no-array-index-key */}
     </div>
   );
 }
@@ -66,6 +68,7 @@ export function IdeaMasonryItemSkeleton() {
 export function NotificationSkeleton() {
   return (
     <div className="space-y-1">
+      {/* eslint-disable @eslint-react/no-array-index-key */}
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="flex items-start gap-3 px-4 py-3">
           <Skeleton className="h-8 w-8 rounded-full shrink-0" />
@@ -75,6 +78,7 @@ export function NotificationSkeleton() {
           </div>
         </div>
       ))}
+      {/* eslint-enable @eslint-react/no-array-index-key */}
     </div>
   );
 }
@@ -100,21 +104,25 @@ export function IdeaDetailSkeleton() {
         <Skeleton className="h-6 w-32 rounded" />
         <Skeleton className="h-2 w-full rounded-full" />
         <div className="space-y-2">
+          {/* eslint-disable @eslint-react/no-array-index-key */}
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex items-center gap-2">
               <Skeleton className="h-7 w-7 rounded-full" />
               <Skeleton className="h-4 w-24 rounded" />
             </div>
           ))}
+          {/* eslint-enable @eslint-react/no-array-index-key */}
         </div>
       </div>
       <Skeleton className="h-px w-full" />
       <div className="space-y-3">
         <Skeleton className="h-6 w-24 rounded" />
         <div className="flex gap-2">
+          {/* eslint-disable @eslint-react/no-array-index-key */}
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-8 w-16 rounded-md" />
           ))}
+          {/* eslint-enable @eslint-react/no-array-index-key */}
         </div>
       </div>
       <Skeleton className="h-px w-full" />

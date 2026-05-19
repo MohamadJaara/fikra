@@ -31,7 +31,7 @@ const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
 const TRANSFER_STATUS_DECLINED = "declined";
 const TRANSFER_STATUS_CANCELED = "canceled";
-const IDEA_LIST_SORT_OPTIONS = [
+const _IDEA_LIST_SORT_OPTIONS = [
   "newest",
   "oldest",
   "most_reactions",
@@ -40,7 +40,7 @@ const IDEA_LIST_SORT_OPTIONS = [
 
 const MAX_CANDIDATE_IDEAS = 1000;
 
-type IdeaListSortOption = (typeof IDEA_LIST_SORT_OPTIONS)[number];
+type IdeaListSortOption = (typeof _IDEA_LIST_SORT_OPTIONS)[number];
 type IdeaListFilters = {
   search?: string;
   statuses?: string[];
