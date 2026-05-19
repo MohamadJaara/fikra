@@ -2,12 +2,9 @@
 
 import { api } from "@/convex/_generated/api";
 import { useProductViewer } from "@/components/ProductLayoutClient";
-import type { Id } from "@/convex/_generated/dataModel";
-import { STATUS_COLORS, STATUS_LABELS } from "@/lib/constants";
-import type { Status } from "@/lib/constants";
+import { STATUS_COLORS, STATUS_LABELS, type Status } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
-import type { UserProfile } from "@/lib/types";
-import { use, useState } from "react";
+import { use } from "react";
 import { useQuery } from "convex/react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";

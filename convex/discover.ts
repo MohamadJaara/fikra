@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import {
   getAuthenticatedUser,
   getUserDisplayName,
-  getResourceNameMap,
   isEffectiveIdeaMember,
   resolveTeamSize,
 } from "./lib";
@@ -241,7 +240,7 @@ export const resetDismissedIdeas = mutation({
 export const getActivityTicker = query({
   args: {},
   handler: async (ctx) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId: _userId } = await getAuthenticatedUser(ctx);
     const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
 
     const [recentMembers, recentIdeas] = await Promise.all([

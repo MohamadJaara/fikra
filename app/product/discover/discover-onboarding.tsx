@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 const STORAGE_KEY = "fikra_discover_onboarding_seen";
 
 const subscribers = new Set<() => void>();
-function subscribeToStorage(callback: () => void) {
+function _subscribeToStorage(callback: () => void) {
   subscribers.add(callback);
   return () => subscribers.delete(callback);
 }

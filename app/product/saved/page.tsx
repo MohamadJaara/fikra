@@ -10,11 +10,8 @@ import {
 } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
 import {
-  STATUS_COLORS,
-  STATUS_LABELS,
   SORT_OPTIONS,
   SORT_LABELS,
-  type Status,
   type SortOption,
 } from "@/lib/constants";
 import type { IdeaListItem } from "@/lib/types";
@@ -22,7 +19,6 @@ import {
   Bookmark,
   LayoutGrid,
   List,
-  Loader2,
   ArrowUpDown,
   Sparkles,
 } from "lucide-react";

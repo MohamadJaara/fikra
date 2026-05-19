@@ -1,6 +1,5 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
-import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 

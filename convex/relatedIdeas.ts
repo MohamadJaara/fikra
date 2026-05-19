@@ -133,7 +133,7 @@ export const requestMerge = mutation({
       throw new Error("Only an idea owner can request a merge");
     }
 
-    const sourceId =
+    const _sourceId =
       ideaA.ownerId === userId ? relation.ideaIdA : relation.ideaIdB;
     const targetId =
       ideaA.ownerId === userId ? relation.ideaIdB : relation.ideaIdA;

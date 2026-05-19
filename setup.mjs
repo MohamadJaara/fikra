@@ -25,7 +25,7 @@ if (runOnceWorkflow && config.SETUP_SCRIPT_RAN !== undefined) {
 }
 
 // The fallback should never be used.
-const deploymentName =
+const _deploymentName =
   config.CONVEX_DEPLOYMENT.split(":").slice(-1)[0] ?? "<your deployment name>";
 
 const variables = JSON.stringify({

@@ -5,13 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import {
   Dialog,
   DialogContent,
@@ -30,7 +24,6 @@ import {
   ToggleLeft,
   ToggleRight,
   Eye,
-  Info,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
