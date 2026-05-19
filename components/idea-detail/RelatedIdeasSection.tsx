@@ -192,10 +192,9 @@ export function RelatedIdeasSection({
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Link2 className="h-5 w-5" />
+        <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-muted-foreground">
           Related Ideas
-        </h2>
+        </p>
         {isOwner && (
           <div className="flex gap-2">
             <Dialog open={showDuplicates} onOpenChange={setShowDuplicates}>

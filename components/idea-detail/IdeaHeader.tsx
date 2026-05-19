@@ -1,89 +1,71 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Bookmark, Loader2, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar, UserLink } from "@/components/UserLink";
-import { STATUS_COLORS, STATUS_LABELS, type Status } from "@/lib/constants";
+import {
+  STATUS_COLORS,
+  STATUS_LABELS,
+  TEAM_SIZE_LABELS,
+  type Status,
+} from "@/lib/constants";
 import type { IdeaDetail } from "@/lib/types";
 import { timeAgo } from "./shared";
 
 export function IdeaHeader({ idea }: { idea: IdeaDetail }) {
-  const toggleBookmark = useMutation(api.bookmarks.toggle);
-  const [isTogglingBookmark, setIsTogglingBookmark] = useState(false);
-  const [justBookmarked, setJustBookmarked] = useState(false);
-
-  const handleToggleBookmark = async () => {
-    setIsTogglingBookmark(true);
-    try {
-      const result = await toggleBookmark({ ideaId: idea._id });
-      if (result) {
-        setJustBookmarked(true);
-        setTimeout(() => setJustBookmarked(false), 600);
-      }
-    } catch {
-    } finally {
-      setIsTogglingBookmark(false);
-    }
-  };
-
   return (
-    <div>
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <h1 className="text-2xl font-bold">{idea.title}</h1>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={handleToggleBookmark}
-            disabled={isTogglingBookmark}
-            className={`inline-flex items-center justify-center rounded-md p-1.5 transition-all duration-200 ${
-              idea.isBookmarked
-                ? "text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/50"
-                : "text-muted-foreground hover:text-amber-500 hover:bg-muted"
-            } ${justBookmarked ? "animate-bounce-in" : ""}`}
-            aria-label={idea.isBookmarked ? "Remove bookmark" : "Bookmark idea"}
-          >
-            {isTogglingBookmark ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Bookmark
-                className={`h-5 w-5 ${idea.isBookmarked ? "fill-current" : ""}`}
-              />
-            )}
-          </button>
-          {idea.categoryName && (
-            <Badge variant="outline">{idea.categoryName}</Badge>
-          )}
+    <header className="mb-10">
+      <h1 className="text-3xl md:text-4xl font-bold tracking-tight leading-tight mb-4">
+        {idea.title}
+      </h1>
+
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        {idea.categoryName && (
+          <span className="text-sm text-muted-foreground">
+            {idea.categoryName}
+          </span>
+        )}
+        {idea.categoryName && <span className="text-muted-foreground/40">·</span>}
+        <Badge
+          variant="secondary"
+          className={`text-[11px] font-medium ${STATUS_COLORS[idea.status as Status] || "bg-muted"}`}
+        >
+          {STATUS_LABELS[idea.status as Status] || idea.status}
+        </Badge>
+        {idea.onsiteOnly && (
           <Badge
-            variant="secondary"
-            className={STATUS_COLORS[idea.status as Status] || "bg-muted"}
+            variant="outline"
+            className="text-[11px] text-blue-700 border-blue-300 bg-blue-50/80 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/50"
           >
-            {STATUS_LABELS[idea.status as Status] || idea.status}
+            <MapPin className="h-3 w-3 mr-1" />
+            On-site
           </Badge>
-          {idea.onsiteOnly && (
-            <Badge
-              variant="outline"
-              className="text-blue-700 border-blue-400 bg-blue-50 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950"
-            >
-              <MapPin className="h-3 w-3 mr-1" />
-              On-site only
-            </Badge>
-          )}
-        </div>
+        )}
+        <span className="text-muted-foreground/40">·</span>
+        <span className="text-[11px] text-muted-foreground">
+          {idea.memberCount}/{TEAM_SIZE_LABELS[idea.teamSize]} team
+        </span>
       </div>
-      <p className="text-muted-foreground">{idea.pitch}</p>
-      <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+
+      <p className="text-base md:text-lg text-muted-foreground leading-relaxed max-w-2xl mb-5">
+        {idea.pitch}
+      </p>
+
+      <div className="flex items-center gap-2.5 text-sm">
         <UserAvatar
           handle={idea.ownerHandle}
           image={idea.ownerImage}
           name={idea.ownerName}
           size="md"
         />
-        <UserLink handle={idea.ownerHandle} name={idea.ownerName} />
-        <span>·</span>
-        <span>{timeAgo(idea._creationTime)}</span>
+        <UserLink
+          handle={idea.ownerHandle}
+          name={idea.ownerName}
+          className="font-medium text-foreground"
+        />
+        <span className="text-muted-foreground/50">·</span>
+        <span className="text-muted-foreground">{timeAgo(idea._creationTime)}</span>
       </div>
-    </div>
+    </header>
   );
 }

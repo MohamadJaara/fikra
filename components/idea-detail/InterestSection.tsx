@@ -58,10 +58,10 @@ export function InterestSection({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-muted-foreground">
           Interested ({idea.interestCount})
-        </h2>
+        </p>
         <Button
           variant={idea.isInterested ? "default" : "outline"}
           size="sm"
@@ -85,39 +85,37 @@ export function InterestSection({
       </div>
 
       {sortedUsers.length > 0 && (
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-          {sortedUsers.map((user) => {
-            return (
-              <div key={user._id} className="flex items-center gap-1.5">
-                <UserAvatar
-                  handle={user.handle}
-                  image={user.image}
-                  name={user.name}
-                />
-                <UserLink
-                  handle={user.handle}
-                  name={user.name}
-                  className="text-sm"
-                />
-                {[...(user.roles ?? [])]
-                  .filter((r) => neededRoles.has(r))
-                  .map((r) => (
-                    <Badge
-                      key={r}
-                      variant="secondary"
-                      className="text-[9px] px-1 py-0 font-medium text-emerald-700 border border-emerald-300 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-700 dark:bg-emerald-950"
-                    >
-                      {roleLabels[r] || r}
-                    </Badge>
-                  ))}
-                {user.participationMode === "onsite" ? (
-                  <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
-                ) : user.participationMode === "remote" ? (
-                  <Wifi className="h-3 w-3 text-purple-500 shrink-0" />
-                ) : null}
-              </div>
-            );
-          })}
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {sortedUsers.map((user) => (
+            <div key={user._id} className="flex items-center gap-1.5">
+              <UserAvatar
+                handle={user.handle}
+                image={user.image}
+                name={user.name}
+              />
+              <UserLink
+                handle={user.handle}
+                name={user.name}
+                className="text-sm"
+              />
+              {[...(user.roles ?? [])]
+                .filter((r) => neededRoles.has(r))
+                .map((r) => (
+                  <Badge
+                    key={r}
+                    variant="secondary"
+                    className="text-[9px] px-1 py-0 font-medium text-emerald-700 border border-emerald-300 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-700 dark:bg-emerald-950"
+                  >
+                    {roleLabels[r] || r}
+                  </Badge>
+                ))}
+              {user.participationMode === "onsite" ? (
+                <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
+              ) : user.participationMode === "remote" ? (
+                <Wifi className="h-3 w-3 text-purple-500 shrink-0" />
+              ) : null}
+            </div>
+          ))}
         </div>
       )}
     </div>

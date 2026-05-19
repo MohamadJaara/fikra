@@ -7,7 +7,6 @@ import { useQuery } from "convex/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { OwnerWelcomeBanner } from "@/components/OwnerWelcomeBanner";
 import { IdeaDetailSkeleton } from "@/components/Skeleton";
@@ -23,6 +22,7 @@ import { InterestSection } from "@/components/idea-detail/InterestSection";
 import { RelatedIdeasSection } from "@/components/idea-detail/RelatedIdeasSection";
 import { CommentSection } from "@/components/idea-detail/CommentSection";
 import { OwnerActions } from "@/components/idea-detail/OwnerActions";
+import { STATUS_DOT_COLORS, type Status } from "@/lib/constants";
 
 export default function IdeaDetailPage({
   params,
@@ -74,7 +74,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
   if (idea === null) {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto">
-        <div className="text-center py-12">
+        <div className="text-center py-20">
           <p className="text-lg font-medium mb-2">Idea not found</p>
           <Link
             href="/product"
@@ -87,14 +87,20 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
     );
   }
 
+  const statusColor = STATUS_DOT_COLORS[idea.status as Status] || "bg-muted";
+
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-4">
+    <div className="px-4 md:px-8 max-w-4xl mx-auto pb-16">
+      <div
+        className={`h-1 rounded-full ${statusColor} mb-8 animate-line-grow`}
+      />
+
+      <div className="flex items-center justify-between mb-10 animate-fade-in">
         <Link
           href="/product"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
           Browse
         </Link>
         <div className="flex items-center gap-2">
@@ -109,54 +115,67 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
         </div>
       </div>
 
-      <div className="space-y-6 animate-fade-in">
+      <div className="animate-reveal-up stagger-1">
         <IdeaHeader idea={idea} />
+      </div>
+
+      <div className="animate-reveal-up stagger-2">
         {idea.isOwner && (
           <OwnerWelcomeBanner key={idea._id} ideaId={idea._id} />
         )}
         <OwnershipTransferRequestBanner idea={idea} />
+      </div>
+
+      <div className="animate-reveal-up stagger-3">
         <IdeaContent idea={idea} />
+      </div>
+
+      <div className="animate-reveal-up stagger-4">
         <RoomSection idea={idea} />
-        <Separator />
-        <div className="space-y-8">
-          <section id="team" className="scroll-mt-24">
-            <TeamSection idea={idea} ideaId={ideaId} />
-          </section>
+      </div>
 
-          <Separator />
+      <div className="py-6 my-2 border-t animate-reveal-up stagger-5">
+        <section id="reactions" className="scroll-mt-24">
+          <ReactionSection idea={idea} ideaId={ideaId} />
+        </section>
+      </div>
 
-          <section id="resources" className="scroll-mt-24">
-            <ResourceSection idea={idea} />
-          </section>
+      <div className="space-y-10">
+        <section id="team" className="scroll-mt-24 animate-reveal-up stagger-5">
+          <TeamSection idea={idea} ideaId={ideaId} />
+        </section>
 
-          <Separator />
+        <section
+          id="resources"
+          className="scroll-mt-24 animate-reveal-up stagger-6"
+        >
+          <ResourceSection idea={idea} />
+        </section>
 
-          <section id="reactions" className="scroll-mt-24">
-            <ReactionSection idea={idea} ideaId={ideaId} />
-          </section>
+        <section
+          id="interest"
+          className="scroll-mt-24 animate-reveal-up stagger-6"
+        >
+          <InterestSection idea={idea} ideaId={ideaId} />
+        </section>
 
-          <Separator />
+        <section
+          id="related"
+          className="scroll-mt-24 animate-reveal-up stagger-7"
+        >
+          <RelatedIdeasSection ideaId={ideaId} isOwner={idea.isOwner} />
+        </section>
 
-          <section id="interest" className="scroll-mt-24">
-            <InterestSection idea={idea} ideaId={ideaId} />
-          </section>
-
-          <Separator />
-
-          <section id="related" className="scroll-mt-24">
-            <RelatedIdeasSection ideaId={ideaId} isOwner={idea.isOwner} />
-          </section>
-
-          <Separator />
-
-          <section id="comments" className="scroll-mt-24">
-            <CommentSection
-              comments={comments}
-              ideaId={ideaId}
-              isOwner={idea.isOwner}
-            />
-          </section>
-        </div>
+        <section
+          id="comments"
+          className="scroll-mt-24 animate-reveal-up stagger-8"
+        >
+          <CommentSection
+            comments={comments}
+            ideaId={ideaId}
+            isOwner={idea.isOwner}
+          />
+        </section>
       </div>
 
       <Toaster />

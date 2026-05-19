@@ -5,7 +5,6 @@ import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
-  MessageSquare,
   Edit,
   Trash2,
   Reply,
@@ -80,10 +79,9 @@ export function CommentSection({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold flex items-center gap-2 mb-4">
-        <MessageSquare className="h-5 w-5" />
+      <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-muted-foreground mb-5">
         Discussion ({comments?.length || 0})
-      </h2>
+      </p>
 
       <form onSubmit={handleSubmit} className="mb-6 space-y-2">
         <FeatureTip tipKey="comment-mention">

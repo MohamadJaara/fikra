@@ -70,7 +70,7 @@ export function OwnershipTransferRequestBanner({
   };
 
   return (
-    <div className="rounded-lg border bg-muted/40 px-4 py-3">
+    <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:border-amber-800/50 dark:bg-amber-950/30 px-4 py-3 mb-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium">Ownership transfer request</p>

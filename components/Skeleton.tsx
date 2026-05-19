@@ -83,24 +83,39 @@ export function NotificationSkeleton() {
 
 export function IdeaDetailSkeleton() {
   return (
-    <div className="space-y-6 animate-fade-in">
-      <Skeleton className="h-8 w-3/4 rounded" />
-      <Skeleton className="h-5 w-full rounded" />
-      <Skeleton className="h-5 w-2/3 rounded" />
-      <div className="grid md:grid-cols-2 gap-4">
+    <div className="space-y-8 animate-fade-in">
+      <Skeleton className="h-1 w-full rounded-full" />
+      <Skeleton className="h-9 w-3/5 rounded" />
+      <div className="flex gap-2">
+        <Skeleton className="h-5 w-20 rounded-full" />
+        <Skeleton className="h-5 w-24 rounded-full" />
+      </div>
+      <div className="space-y-2">
+        <Skeleton className="h-5 w-full rounded" />
+        <Skeleton className="h-5 w-3/4 rounded" />
+      </div>
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-7 w-7 rounded-full" />
+        <Skeleton className="h-4 w-24 rounded" />
+        <Skeleton className="h-4 w-12 rounded" />
+      </div>
+      <div className="grid md:grid-cols-2 gap-x-10 gap-y-6">
         <div className="space-y-2">
-          <Skeleton className="h-4 w-20 rounded" />
+          <Skeleton className="h-3 w-16 rounded" />
           <Skeleton className="h-16 w-full rounded" />
         </div>
         <div className="space-y-2">
-          <Skeleton className="h-4 w-28 rounded" />
+          <Skeleton className="h-3 w-28 rounded" />
           <Skeleton className="h-16 w-full rounded" />
         </div>
       </div>
-      <Skeleton className="h-px w-full" />
+      <div className="flex gap-3 py-6 border-t">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-14 rounded-full" />
+        ))}
+      </div>
       <div className="space-y-3">
-        <Skeleton className="h-6 w-32 rounded" />
-        <Skeleton className="h-2 w-full rounded-full" />
+        <Skeleton className="h-3 w-20 rounded" />
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="flex items-center gap-2">
@@ -110,18 +125,8 @@ export function IdeaDetailSkeleton() {
           ))}
         </div>
       </div>
-      <Skeleton className="h-px w-full" />
-      <div className="space-y-3">
-        <Skeleton className="h-6 w-24 rounded" />
-        <div className="flex gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-16 rounded-md" />
-          ))}
-        </div>
-      </div>
-      <Skeleton className="h-px w-full" />
       <div className="space-y-4">
-        <Skeleton className="h-6 w-28 rounded" />
+        <Skeleton className="h-3 w-24 rounded" />
         <Skeleton className="h-20 w-full rounded" />
       </div>
     </div>

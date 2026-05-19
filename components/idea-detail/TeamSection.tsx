@@ -5,7 +5,6 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
-  Users,
   UserPlus,
   UserMinus,
   Loader2,
@@ -180,23 +179,19 @@ export function TeamSection({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Team
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {idea.memberCount} {idea.memberCount === 1 ? "member" : "members"} ·
-            Team size: {TEAM_SIZE_LABELS[idea.teamSize]}
-          </p>
-        </div>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-muted-foreground">
+          Team ({idea.memberCount}/{TEAM_SIZE_LABELS[idea.teamSize]})
+        </p>
       </div>
 
       {sortedMembers.length > 0 && (
-        <div className="space-y-2 mb-3">
+        <div className="space-y-0 mb-4">
           {sortedMembers.map((member) => (
-            <div key={member._id} className="flex items-center gap-2 text-sm">
+            <div
+              key={member._id}
+              className="flex items-center gap-2.5 text-sm py-1.5 border-b border-border/50 last:border-0"
+            >
               <UserAvatar
                 handle={member.handle}
                 image={member.image}
@@ -237,7 +232,7 @@ export function TeamSection({
                     variant="secondary"
                     className="text-[10px] px-1.5 py-0 text-muted-foreground"
                   >
-                    No team role set
+                    No role set
                   </Badge>
                 )}
               {member.userId === idea.ownerId && (
@@ -276,7 +271,7 @@ export function TeamSection({
                 member.participationMode !== "onsite" &&
                 member.userId !== idea.ownerId && (
                   <span className="text-[10px] text-amber-600 dark:text-amber-400">
-                    This team requires on-site participation
+                    Requires on-site
                   </span>
                 )}
             </div>
@@ -285,8 +280,10 @@ export function TeamSection({
       )}
 
       {idea.missingRoles.length > 0 && (
-        <div className="mb-3">
-          <p className="text-xs text-muted-foreground mb-1.5">Missing roles:</p>
+        <div className="mb-4">
+          <p className="text-[11px] text-muted-foreground mb-1.5">
+            Still looking for
+          </p>
           <div className="flex flex-wrap gap-1.5">
             {idea.missingRoles.map((role) => (
               <Badge
@@ -347,11 +344,11 @@ export function TeamSection({
         ) : (
           <>
             {idea.onsiteOnly && viewer?.participationMode !== "onsite" && (
-              <div className="w-full rounded-xl border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950 px-4 py-3">
+              <div className="w-full rounded-lg border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-3">
                 <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
                   This team is limited to on-site participants only
                 </p>
-                <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
+                <p className="mt-1 text-sm text-amber-700/80 dark:text-amber-300/80">
                   {viewer?.participationMode === "remote"
                     ? 'Your participation mode is set to "Remote." Update it to "On-site" in Settings to join.'
                     : 'Set your participation mode to "On-site" in Settings to join this team.'}
@@ -360,16 +357,16 @@ export function TeamSection({
             )}
             {!(idea.onsiteOnly && viewer?.participationMode !== "onsite") ? (
               <>
-                <div className="flex-1 min-w-[260px] rounded-xl border bg-muted/20 px-4 py-3">
+                <div className="flex-1 min-w-[260px] py-2">
                   <p className="text-sm font-medium">
                     {requestedJoinRoles.length > 0
-                      ? "The owner is actively looking for these roles"
+                      ? "Looking for these roles"
                       : "Choose how you want to contribute"}
                   </p>
                   <p className="mt-1 text-sm text-muted-foreground">
                     {requestedJoinRoles.length > 0
-                      ? "Open the join flow, pick one or more roles, then confirm your spot on the team."
-                      : "Open the join flow to choose the role or skills you want to bring."}
+                      ? "Open the join flow, pick one or more roles, then confirm."
+                      : "Open the join flow to choose the role or skills you bring."}
                   </p>
                   {requestedRoleOptions.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-1.5">
@@ -409,8 +406,8 @@ export function TeamSection({
                     <DialogHeader>
                       <DialogTitle>Join {idea.title}</DialogTitle>
                       <DialogDescription>
-                        This flow makes the choice explicit: first pick what you
-                        will help with, then confirm your join request.
+                        Pick what you will help with, then confirm your spot on
+                        the team.
                       </DialogDescription>
                     </DialogHeader>
 
@@ -424,10 +421,10 @@ export function TeamSection({
                             <p className="font-medium">Choose your role</p>
                             <p className="text-sm text-muted-foreground">
                               {areRolesLoading
-                                ? "We're loading the available roles before you join."
+                                ? "Loading available roles..."
                                 : requiresRoleSelection
                                   ? "Pick at least one role so the owner knows how you want to contribute."
-                                  : "No roles have been configured yet, so you can join directly."}
+                                  : "No roles configured yet, you can join directly."}
                             </p>
                           </div>
                         </div>
