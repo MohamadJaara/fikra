@@ -51,46 +51,57 @@ export default function CreateIdeaPage() {
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      {selectedCategory ? (
-        <Link
-          href={`/product/categories/${selectedCategory.slug}`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          {selectedCategory.name}
-        </Link>
-      ) : (
-        <Link
-          href="/product"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Themes
-        </Link>
-      )}
+    <div className="px-4 md:px-8 max-w-3xl mx-auto pb-16">
+      <div className="h-1 rounded-full bg-foreground/20 mb-8 animate-line-grow" />
 
-      <h1 className="text-2xl font-bold mb-1">Create a New Idea</h1>
-      {selectedCategory ? (
-        <p className="text-sm text-muted-foreground mb-6 flex items-center gap-1.5">
-          <Lightbulb className="h-3.5 w-3.5 text-yellow-500" />
-          Under{" "}
-          <span className="font-medium text-foreground">
+      <div className="mb-10 animate-fade-in">
+        {selectedCategory ? (
+          <Link
+            href={`/product/categories/${selectedCategory.slug}`}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
             {selectedCategory.name}
-          </span>
-          {selectedCategory.description && ` — ${selectedCategory.description}`}
-        </p>
-      ) : (
-        <p className="text-sm text-muted-foreground mb-6">
-          Describe your idea and what problem it solves
-        </p>
-      )}
+          </Link>
+        ) : (
+          <Link
+            href="/product"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+            Browse
+          </Link>
+        )}
+      </div>
 
-      <IdeaForm
-        onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
-        initialCategoryId={preselectedCategoryId}
-      />
+      <header className="mb-10 animate-reveal-up stagger-1">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
+          New Idea
+        </h1>
+        {selectedCategory ? (
+          <p className="text-base text-muted-foreground flex items-center gap-1.5">
+            <Lightbulb className="h-4 w-4 text-amber-500" />
+            Under{" "}
+            <span className="text-foreground font-medium">
+              {selectedCategory.name}
+            </span>
+            {selectedCategory.description &&
+              ` — ${selectedCategory.description}`}
+          </p>
+        ) : (
+          <p className="text-base text-muted-foreground">
+            Describe your idea and what problem it solves
+          </p>
+        )}
+      </header>
+
+      <div className="animate-reveal-up stagger-2">
+        <IdeaForm
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          initialCategoryId={preselectedCategoryId}
+        />
+      </div>
 
       <Toaster />
     </div>

@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -47,6 +46,14 @@ type IdeaFormProps = {
   isSubmitting?: boolean;
   initialCategoryId?: string;
 };
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-muted-foreground mb-4 border-b border-border/50 pb-2">
+      {children}
+    </p>
+  );
+}
 
 export function IdeaForm({
   initialData,
@@ -122,151 +129,202 @@ export function IdeaForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-      <div className="space-y-2">
-        <Label htmlFor="title">Title</Label>
-        <Input
-          id="title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Give your idea a short, memorable name"
-          required
-          maxLength={120}
-        />
-        <p className="text-xs text-muted-foreground">{title.length}/120</p>
-      </div>
+    <form onSubmit={handleSubmit} className="space-y-10 max-w-2xl">
+      <section>
+        <SectionLabel>The Basics</SectionLabel>
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="title"
+              className="text-sm font-medium mb-1.5 block"
+            >
+              Title
+            </label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Give your idea a short, memorable name"
+              required
+              maxLength={120}
+              className="text-base"
+            />
+            <p className="text-xs text-muted-foreground/60 mt-1 tabular-nums">
+              {title.length}/120
+            </p>
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="pitch">One-line Pitch</Label>
-        <Input
-          id="pitch"
-          value={pitch}
-          onChange={(e) => setPitch(e.target.value)}
-          placeholder="What's the elevator pitch?"
-          required
-          maxLength={200}
-        />
-        <p className="text-xs text-muted-foreground">{pitch.length}/200</p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="problem">Problem it Solves</Label>
-        <Textarea
-          id="problem"
-          value={problem}
-          onChange={(e) => setProblem(e.target.value)}
-          placeholder="What pain point or opportunity are you addressing?"
-          required
-          maxLength={1000}
-          rows={3}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="audience">Who it&apos;s For</Label>
-        <Textarea
-          id="audience"
-          value={targetAudience}
-          onChange={(e) => setTargetAudience(e.target.value)}
-          placeholder="Who would use this? Who benefits?"
-          required
-          maxLength={500}
-          rows={2}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="skills">Skills Needed</Label>
-        <Input
-          id="skills"
-          value={skillsText}
-          onChange={(e) => setSkillsText(e.target.value)}
-          placeholder="e.g. React, Python, ML, iOS (comma-separated)"
-        />
-        <p className="text-xs text-muted-foreground">
-          Comma-separated list of skills
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="teamSize">Team Size Wanted</Label>
-          <Select
-            value={teamSize}
-            onValueChange={(value) => setTeamSize(value as TeamSize)}
-          >
-            <SelectTrigger id="teamSize">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TEAM_SIZES.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {TEAM_SIZE_LABELS[option]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs italic text-muted-foreground">
-            &ldquo;3 to 5 teammates is usually the sweet spot for building
-            something awesome fast.&rdquo; - ChatGPT
-          </p>
+          <div>
+            <label
+              htmlFor="pitch"
+              className="text-sm font-medium mb-1.5 block"
+            >
+              One-line Pitch
+            </label>
+            <Input
+              id="pitch"
+              value={pitch}
+              onChange={(e) => setPitch(e.target.value)}
+              placeholder="What's the elevator pitch?"
+              required
+              maxLength={200}
+              className="text-base"
+            />
+            <p className="text-xs text-muted-foreground/60 mt-1 tabular-nums">
+              {pitch.length}/200
+            </p>
+          </div>
         </div>
+      </section>
 
-        <div className="space-y-2">
-          <Label>Status</Label>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {STATUS_LABELS[s]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <section>
+        <SectionLabel>The Problem</SectionLabel>
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="problem"
+              className="text-sm font-medium mb-1.5 block"
+            >
+              Problem it Solves
+            </label>
+            <Textarea
+              id="problem"
+              value={problem}
+              onChange={(e) => setProblem(e.target.value)}
+              placeholder="What pain point or opportunity are you addressing?"
+              required
+              maxLength={1000}
+              rows={4}
+              className="text-sm leading-relaxed resize-none"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="audience"
+              className="text-sm font-medium mb-1.5 block"
+            >
+              Who it&apos;s For
+            </label>
+            <Textarea
+              id="audience"
+              value={targetAudience}
+              onChange={(e) => setTargetAudience(e.target.value)}
+              placeholder="Who would use this? Who benefits?"
+              required
+              maxLength={500}
+              rows={3}
+              className="text-sm leading-relaxed resize-none"
+            />
+          </div>
         </div>
-      </div>
+      </section>
 
-      <div className="space-y-2">
-        <Label>
-          Category {!isEditing && <span className="text-destructive">*</span>}
-        </Label>
-        <Select value={categoryId} onValueChange={setCategoryId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select a category" />
-          </SelectTrigger>
-          <SelectContent>
-            {isEditing && <SelectItem value="none">No category</SelectItem>}
-            {categories?.map((cat) => (
-              <SelectItem key={cat._id} value={cat._id}>
-                {cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <section>
+        <SectionLabel>What You Need</SectionLabel>
+        <div className="space-y-5">
+          <div>
+            <label
+              htmlFor="skills"
+              className="text-sm font-medium mb-1.5 block"
+            >
+              Skills Needed
+            </label>
+            <Input
+              id="skills"
+              value={skillsText}
+              onChange={(e) => setSkillsText(e.target.value)}
+              placeholder="e.g. React, Python, ML, iOS (comma-separated)"
+            />
+            <p className="text-xs text-muted-foreground/60 mt-1">
+              Comma-separated list of skills
+            </p>
+          </div>
 
-      <div className="space-y-2">
-        <Label className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={onsiteOnly}
-            onChange={(e) => setOnsiteOnly(e.target.checked)}
-            className="h-4 w-4 rounded border-border accent-primary"
-          />
-          <MapPin className="h-4 w-4" />
-          On-site participants only
-        </Label>
-        <p className="text-xs text-muted-foreground">
-          When enabled, only on-site participants can join this team. Remote
-          participants will not be able to join.
-        </p>
-      </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="teamSize"
+                className="text-sm font-medium mb-1.5 block"
+              >
+                Team Size
+              </label>
+              <Select
+                value={teamSize}
+                onValueChange={(value) => setTeamSize(value as TeamSize)}
+              >
+                <SelectTrigger id="teamSize">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEAM_SIZES.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {TEAM_SIZE_LABELS[option]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground/60 mt-1.5 italic">
+                3–5 is usually the sweet spot
+              </p>
+            </div>
 
-      <div className="space-y-2">
-        <Label>Looking for Roles</Label>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Status</label>
+              <Select value={status} onValueChange={setStatus}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">
+              Category {!isEditing && <span className="text-destructive">*</span>}
+            </label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {isEditing && <SelectItem value="none">No category</SelectItem>}
+                {categories?.map((cat) => (
+                  <SelectItem key={cat._id} value={cat._id}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <label className="flex items-center gap-2.5 py-1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={onsiteOnly}
+              onChange={(e) => setOnsiteOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-border accent-primary"
+            />
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <span className="text-sm font-medium">On-site only</span>
+              <span className="block text-xs text-muted-foreground/70">
+                Only on-site participants can join this team
+              </span>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <section>
+        <SectionLabel>Roles</SectionLabel>
         <div className="flex flex-wrap gap-2">
           {roles.map((role) => (
             <Badge
@@ -280,63 +338,83 @@ export function IdeaForm({
               {role.name}
             </Badge>
           ))}
+          {roles.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              No roles configured yet.
+            </p>
+          )}
         </div>
-      </div>
+      </section>
 
       {!isEditing && (
-        <>
-          <div className="space-y-2">
-            <Label>Resource Requests</Label>
-            <p className="text-xs text-muted-foreground">
-              Select any resources your team will need
-            </p>
+        <section>
+          <SectionLabel>Resources</SectionLabel>
+          <div className="space-y-4">
             {resources.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                No resource options are configured yet. An admin can add them
-                from the admin dashboard.
+                No resource options configured yet. An admin can add them from
+                the dashboard.
               </p>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {resources.map((resource) => (
-                  <Badge
-                    key={resource.slug}
-                    variant={
-                      selectedResourceTags.includes(resource.slug)
-                        ? "default"
-                        : "outline"
-                    }
-                    className="cursor-pointer select-none"
-                    onClick={() => toggleResourceTag(resource.slug)}
-                  >
-                    {resource.name}
-                  </Badge>
-                ))}
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Select any resources your team will need
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {resources.map((resource) => (
+                    <Badge
+                      key={resource.slug}
+                      variant={
+                        selectedResourceTags.includes(resource.slug)
+                          ? "default"
+                          : "outline"
+                      }
+                      className="cursor-pointer select-none"
+                      onClick={() => toggleResourceTag(resource.slug)}
+                    >
+                      {resource.name}
+                    </Badge>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {selectedResourceTags.length > 0 && (
+              <div>
+                <label
+                  htmlFor="resourceNotes"
+                  className="text-sm font-medium mb-1.5 block"
+                >
+                  Resource Notes
+                  <span className="text-muted-foreground font-normal">
+                    {" "}
+                    (optional)
+                  </span>
+                </label>
+                <Input
+                  id="resourceNotes"
+                  value={resourceNotes}
+                  onChange={(e) => setResourceNotes(e.target.value)}
+                  placeholder="Any details about what you need?"
+                  maxLength={500}
+                />
               </div>
             )}
           </div>
-
-          {selectedResourceTags.length > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="resourceNotes">Resource Notes (optional)</Label>
-              <Input
-                id="resourceNotes"
-                value={resourceNotes}
-                onChange={(e) => setResourceNotes(e.target.value)}
-                placeholder="Any details about what you need?"
-                maxLength={500}
-              />
-            </div>
-          )}
-        </>
+        </section>
       )}
 
-      <Button
-        type="submit"
-        disabled={isSubmitting || (!isEditing && !categoryId)}
-      >
-        {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-        {isEditing ? "Save Changes" : "Create Idea"}
-      </Button>
+      <div className="pt-2">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={isSubmitting || (!isEditing && !categoryId)}
+          className="min-w-[160px]"
+        >
+          {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isEditing ? "Save Changes" : "Create Idea"}
+        </Button>
+      </div>
     </form>
   );
 }

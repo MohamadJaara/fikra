@@ -24,8 +24,9 @@ export default function EditIdeaPage({
 
   if (idea === undefined) {
     return (
-      <div className="p-4 md:p-6 max-w-3xl mx-auto">
-        <div className="text-center py-12 text-muted-foreground">
+      <div className="px-4 md:px-8 max-w-3xl mx-auto pb-16">
+        <div className="h-1 rounded-full bg-foreground/20 mb-8" />
+        <div className="text-center py-16 text-muted-foreground animate-pulse">
           Loading...
         </div>
       </div>
@@ -34,12 +35,13 @@ export default function EditIdeaPage({
 
   if (idea === null) {
     return (
-      <div className="p-4 md:p-6 max-w-3xl mx-auto">
-        <div className="text-center py-12">
-          <p className="text-lg font-medium">Idea not found</p>
+      <div className="px-4 md:px-8 max-w-3xl mx-auto pb-16">
+        <div className="h-1 rounded-full bg-foreground/20 mb-8" />
+        <div className="text-center py-16">
+          <p className="text-lg font-medium mb-2">Idea not found</p>
           <Link
             href="/product"
-            className="text-sm text-muted-foreground hover:text-primary mt-2 inline-block"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Back to Browse
           </Link>
@@ -76,34 +78,47 @@ export default function EditIdeaPage({
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
-      <Link
-        href={`/product/ideas/${id}`}
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-4"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Idea
-      </Link>
+    <div className="px-4 md:px-8 max-w-3xl mx-auto pb-16">
+      <div className="h-1 rounded-full bg-foreground/20 mb-8 animate-line-grow" />
 
-      <h1 className="text-2xl font-bold mb-6">Edit Idea</h1>
+      <div className="mb-10 animate-fade-in">
+        <Link
+          href={`/product/ideas/${id}`}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+          Back to Idea
+        </Link>
+      </div>
 
-      <IdeaForm
-        initialData={{
-          title: idea.title,
-          pitch: idea.pitch,
-          problem: idea.problem,
-          targetAudience: idea.targetAudience,
-          skillsNeeded: idea.skillsNeeded,
-          teamSize: idea.teamSize,
-          status: idea.status,
-          lookingForRoles: idea.lookingForRoles,
-          categoryId: idea.categoryId ?? "",
-          onsiteOnly: idea.onsiteOnly,
-        }}
-        onSubmit={handleSubmit}
-        isEditing
-        isSubmitting={isSubmitting}
-      />
+      <header className="mb-10 animate-reveal-up stagger-1">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
+          Edit Idea
+        </h1>
+        <p className="text-base text-muted-foreground">
+          Update the details of your idea
+        </p>
+      </header>
+
+      <div className="animate-reveal-up stagger-2">
+        <IdeaForm
+          initialData={{
+            title: idea.title,
+            pitch: idea.pitch,
+            problem: idea.problem,
+            targetAudience: idea.targetAudience,
+            skillsNeeded: idea.skillsNeeded,
+            teamSize: idea.teamSize,
+            status: idea.status,
+            lookingForRoles: idea.lookingForRoles,
+            categoryId: idea.categoryId ?? "",
+            onsiteOnly: idea.onsiteOnly,
+          }}
+          onSubmit={handleSubmit}
+          isEditing
+          isSubmitting={isSubmitting}
+        />
+      </div>
 
       <Toaster />
     </div>
