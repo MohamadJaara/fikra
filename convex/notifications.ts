@@ -44,6 +44,7 @@ export const NOTIFICATION_TYPES = [
   "merge_accepted",
   "merge_declined",
   "mutual_interest",
+  "room_assigned",
 ] as const;
 
 export const create = internalMutation({

@@ -1,7 +1,8 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAdminUser, sanitizeText } from "./lib";
+import { getAdminUser, isEffectiveIdeaMember, sanitizeText } from "./lib";
 import { ROOM_TYPES } from "../lib/constants";
+import { internal } from "./_generated/api";
 
 export const list = query({
   args: {},
@@ -126,7 +127,15 @@ export const remove = mutation({
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
     for (const idea of assignedIdeas) {
-      await ctx.db.patch(idea._id, { roomId: undefined });
+      await ctx.db.patch(idea._id, {
+        roomId: undefined,
+        roomRequestStatus:
+          idea.teamFormationStatus === "formed" ? "requested" : "none",
+        roomRequestedAt:
+          idea.teamFormationStatus === "formed"
+            ? (idea.roomRequestedAt ?? Date.now())
+            : undefined,
+      });
     }
 
     await ctx.db.delete(args.roomId);
@@ -139,7 +148,7 @@ export const assignToIdea = mutation({
     ideaId: v.id("ideas"),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { userId } = await getAdminUser(ctx);
 
     const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Room not found");
@@ -157,7 +166,33 @@ export const assignToIdea = mutation({
       }
     }
 
-    await ctx.db.patch(args.ideaId, { roomId: args.roomId });
+    await ctx.db.patch(args.ideaId, {
+      roomId: args.roomId,
+      teamFormationStatus: "formed",
+      teamFormationSource: idea.teamFormationSource ?? "auto",
+      teamFormedAt: idea.teamFormedAt ?? Date.now(),
+      roomRequestStatus: "assigned",
+      roomRequestedAt: idea.roomRequestedAt ?? Date.now(),
+    });
+
+    const memberships = await ctx.db
+      .query("ideaMembers")
+      .withIndex("by_idea", (q) => q.eq("ideaId", args.ideaId))
+      .collect();
+    const recipientIds = new Set([
+      idea.ownerId,
+      ...memberships
+        .filter((member) => isEffectiveIdeaMember(member, idea))
+        .map((member) => member.userId),
+    ]);
+    for (const recipientId of recipientIds) {
+      await ctx.runMutation(internal.notifications.create, {
+        recipientId,
+        actorId: userId,
+        ideaId: args.ideaId,
+        type: "room_assigned",
+      });
+    }
   },
 });
 
@@ -171,6 +206,14 @@ export const unassignFromIdea = mutation({
     const idea = await ctx.db.get(args.ideaId);
     if (!idea) throw new Error("Idea not found");
 
-    await ctx.db.patch(args.ideaId, { roomId: undefined });
+    await ctx.db.patch(args.ideaId, {
+      roomId: undefined,
+      roomRequestStatus:
+        idea.teamFormationStatus === "formed" ? "requested" : "none",
+      roomRequestedAt:
+        idea.teamFormationStatus === "formed"
+          ? (idea.roomRequestedAt ?? Date.now())
+          : undefined,
+    });
   },
 });

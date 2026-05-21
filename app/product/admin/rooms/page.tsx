@@ -35,13 +35,24 @@ import {
   MapPin,
   Navigation,
   ExternalLink,
+  ClipboardList,
+  CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import { ROOM_TYPES, ROOM_TYPE_LABELS } from "@/lib/constants";
-import type { RoomType } from "@/lib/constants";
+import {
+  ROOM_REQUEST_LABELS,
+  ROOM_TYPES,
+  ROOM_TYPE_LABELS,
+  TEAM_FORMATION_SOURCE_LABELS,
+} from "@/lib/constants";
+import type {
+  RoomRequestStatus,
+  RoomType,
+  TeamFormationSource,
+} from "@/lib/constants";
 import type { RoomItem } from "@/lib/types";
 
 export default function AdminRoomsPage() {
@@ -173,6 +184,13 @@ export default function AdminRoomsPage() {
   };
 
   const unassignedIdeas = ideas?.filter((idea) => !idea.roomId) ?? [];
+  const roomRequests = unassignedIdeas.filter(
+    (idea) => idea.roomRequestStatus === "requested",
+  );
+  const otherUnassignedIdeas = unassignedIdeas.filter(
+    (idea) => idea.roomRequestStatus !== "requested",
+  );
+  const assignableIdeas = [...roomRequests, ...otherUnassignedIdeas];
   const selectedRoom = rooms?.find((r) => r._id === assignDialogRoomId);
 
   if (rooms === undefined || ideas === undefined) {
@@ -198,9 +216,72 @@ export default function AdminRoomsPage() {
             Rooms
           </h1>
           <p className="text-sm text-muted-foreground">
-            {rooms.length} rooms · manage rooms and assign them to ideas
+            {rooms.length} rooms · {roomRequests.length} team
+            {roomRequests.length === 1 ? "" : "s"} waiting
           </p>
         </div>
+      </div>
+
+      <div className="rounded-lg border bg-muted/15">
+        <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold">Teams needing rooms</h2>
+              <p className="text-xs text-muted-foreground">
+                Auto-detected or owner-marked teams that are ready for a room.
+              </p>
+            </div>
+          </div>
+          <Badge variant={roomRequests.length > 0 ? "default" : "secondary"}>
+            {roomRequests.length}
+          </Badge>
+        </div>
+
+        {roomRequests.length === 0 ? (
+          <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            No room requests waiting.
+          </div>
+        ) : (
+          <div className="divide-y">
+            {roomRequests.map((idea) => (
+              <div
+                key={idea._id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <Link
+                    href={`/product/ideas/${idea._id}`}
+                    className="truncate text-sm font-medium hover:underline"
+                  >
+                    {idea.title}
+                  </Link>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    <span>{idea.memberCount} members</span>
+                    <span>·</span>
+                    <span>by {idea.ownerName}</span>
+                    {idea.teamFormationSource && (
+                      <>
+                        <span>·</span>
+                        <span>
+                          {TEAM_FORMATION_SOURCE_LABELS[
+                            idea.teamFormationSource as TeamFormationSource
+                          ] || idea.teamFormationSource}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <Badge variant="outline" className="shrink-0 text-[10px]">
+                  {ROOM_REQUEST_LABELS[
+                    idea.roomRequestStatus as RoomRequestStatus
+                  ] || "Needs Room"}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleCreate} className="flex gap-2">
@@ -288,7 +369,7 @@ export default function AdminRoomsPage() {
                             className="h-7 text-xs gap-1"
                             onClick={() => setAssignDialogRoomId(room._id)}
                             disabled={
-                              unassignedIdeas.length === 0 || isTeamRoomFull
+                              assignableIdeas.length === 0 || isTeamRoomFull
                             }
                           >
                             <Link2 className="h-3 w-3" />
@@ -303,7 +384,7 @@ export default function AdminRoomsPage() {
                             <DialogDescription>
                               {selectedRoom?.type === "team"
                                 ? "Team rooms can only be assigned to one idea."
-                                : "Shared rooms can be assigned to multiple ideas. Select an idea that doesn&apos;t already have a room assigned."}
+                                : "Shared rooms can be assigned to multiple ideas. Teams with room requests are listed first."}
                             </DialogDescription>
                           </DialogHeader>
                           {isTeamRoomFull ? (
@@ -311,13 +392,13 @@ export default function AdminRoomsPage() {
                               This team room is already assigned. Unassign it
                               first to use it with another idea.
                             </p>
-                          ) : unassignedIdeas.length === 0 ? (
+                          ) : assignableIdeas.length === 0 ? (
                             <p className="text-sm text-muted-foreground py-4 text-center">
                               All ideas already have rooms assigned.
                             </p>
                           ) : (
                             <div className="space-y-2 max-h-64 overflow-auto">
-                              {unassignedIdeas.map((idea) => (
+                              {assignableIdeas.map((idea) => (
                                 <button
                                   key={idea._id}
                                   type="button"
@@ -332,8 +413,17 @@ export default function AdminRoomsPage() {
                                     {idea.title}
                                   </span>
                                   <span className="text-xs text-muted-foreground ml-2">
-                                    by {idea.ownerName}
+                                    {idea.memberCount} members · by{" "}
+                                    {idea.ownerName}
                                   </span>
+                                  {idea.roomRequestStatus === "requested" && (
+                                    <Badge
+                                      variant="outline"
+                                      className="ml-2 text-[10px]"
+                                    >
+                                      Needs room
+                                    </Badge>
+                                  )}
                                 </button>
                               ))}
                             </div>

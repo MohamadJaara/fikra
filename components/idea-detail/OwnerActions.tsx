@@ -15,6 +15,8 @@ import {
   MoreHorizontal,
   Check,
   Loader2,
+  CheckCircle2,
+  MapPin,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -386,7 +388,10 @@ function TransferOwnershipDialog({
 export function OwnerActions({ idea }: { idea: IdeaDetail }) {
   const ideaId = idea._id;
   const deleteMutation = useMutation(api.ideas.remove);
+  const markTeamFormedMutation = useMutation(api.ideas.markTeamFormed);
+  const markTeamFormingMutation = useMutation(api.ideas.markTeamForming);
   const router = useRouter();
+  const [isUpdatingFormation, setIsUpdatingFormation] = useState(false);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this idea?")) return;
@@ -399,8 +404,63 @@ export function OwnerActions({ idea }: { idea: IdeaDetail }) {
     }
   };
 
+  const handleMarkFormed = async () => {
+    setIsUpdatingFormation(true);
+    try {
+      await markTeamFormedMutation({ ideaId });
+      toast.success("Team marked formed. Room request queued.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update team",
+      );
+    } finally {
+      setIsUpdatingFormation(false);
+    }
+  };
+
+  const handleMarkForming = async () => {
+    setIsUpdatingFormation(true);
+    try {
+      await markTeamFormingMutation({ ideaId });
+      toast.success("Team moved back to forming");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update team",
+      );
+    } finally {
+      setIsUpdatingFormation(false);
+    }
+  };
+
   return (
     <div className="flex flex-wrap justify-end gap-2">
+      {idea.teamFormationStatus === "formed" ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
+          disabled
+        >
+          <MapPin className="h-4 w-4 mr-1" />
+          {idea.roomRequestStatus === "assigned"
+            ? "Room assigned"
+            : "Room requested"}
+        </Button>
+      ) : (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void handleMarkFormed()}
+          disabled={isUpdatingFormation}
+        >
+          {isUpdatingFormation ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4 mr-1" />
+          )}
+          Mark formed
+        </Button>
+      )}
       <Link href={`/product/ideas/${ideaId}/edit`}>
         <Button variant="outline" size="sm">
           <Edit className="h-4 w-4 mr-1" />
@@ -439,6 +499,19 @@ export function OwnerActions({ idea }: { idea: IdeaDetail }) {
             <Package className="h-4 w-4 mr-2" />
             Manage resources
           </DropdownMenuItem>
+          {idea.teamFormationStatus === "formed" && !idea.room && (
+            <DropdownMenuItem
+              onClick={() => void handleMarkForming()}
+              disabled={isUpdatingFormation}
+            >
+              {isUpdatingFormation ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Mark team still forming
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"

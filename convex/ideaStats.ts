@@ -1,6 +1,12 @@
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { isEffectiveIdeaMember, mergeUniqueStringArrays } from "./lib";
+import {
+  isEffectiveIdeaMember,
+  mergeUniqueStringArrays,
+  resolveTeamSize,
+} from "./lib";
+
+const MIN_AUTO_FORMED_MEMBERS = 2;
 
 export type ResourceRequestSummary = NonNullable<
   Doc<"ideas">["resourceRequestSummary"]
@@ -60,11 +66,50 @@ export async function refreshIdeaMemberStats(
     !!idea &&
     idea.status !== "full" &&
     idea.lookingForRoles.some((role) => !filledRoles.has(role));
-  await ctx.db.patch(ideaId, {
+  const patch: Partial<Doc<"ideas">> = {
     memberCount: effectiveMembers.length,
     filledRoles: [...filledRoles],
     needsTeammates,
-  });
+  };
+
+  if (idea) {
+    const requiredRolesFilled =
+      idea.lookingForRoles.length > 0 &&
+      idea.lookingForRoles.every((role) => filledRoles.has(role));
+    const soloReady =
+      resolveTeamSize(idea) === "solo" && effectiveMembers.length >= 1;
+    const hasEnoughPeople = effectiveMembers.length >= MIN_AUTO_FORMED_MEMBERS;
+    const autoFormed =
+      soloReady ||
+      hasEnoughPeople ||
+      (effectiveMembers.length > 0 && requiredRolesFilled);
+    const isManuallyFormed =
+      idea.teamFormationStatus === "formed" &&
+      idea.teamFormationSource === "owner";
+    const hasAssignedRoom =
+      idea.roomId !== undefined || idea.roomRequestStatus === "assigned";
+
+    if (isManuallyFormed) {
+      patch.roomRequestStatus = hasAssignedRoom ? "assigned" : "requested";
+      patch.roomRequestedAt = idea.roomRequestedAt ?? Date.now();
+    } else if (autoFormed) {
+      patch.teamFormationStatus = "formed";
+      patch.teamFormationSource = "auto";
+      patch.teamFormedAt = idea.teamFormedAt ?? Date.now();
+      patch.roomRequestStatus = hasAssignedRoom ? "assigned" : "requested";
+      patch.roomRequestedAt = idea.roomRequestedAt ?? Date.now();
+    } else if (idea.teamFormationSource === "auto") {
+      patch.teamFormationStatus = "forming";
+      patch.teamFormationSource = undefined;
+      patch.teamFormedAt = undefined;
+      if (!hasAssignedRoom) {
+        patch.roomRequestStatus = "none";
+        patch.roomRequestedAt = undefined;
+      }
+    }
+  }
+
+  await ctx.db.patch(ideaId, patch);
 }
 
 export async function refreshIdeaInterestStats(

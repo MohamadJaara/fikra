@@ -13,6 +13,83 @@ import {
 } from "./testHelpers.test";
 
 describe("Denormalized idea stats", () => {
+  test("auto-detects formed teams and queues a room request", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `formed-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `formed-owner@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+    });
+
+    const firstMemberId = await insertUser(t, {
+      name: "First Member",
+      email: `formed-first@${DOMAIN}`,
+    });
+    const secondMemberId = await insertUser(t, {
+      name: "Second Member",
+      email: `formed-second@${DOMAIN}`,
+    });
+
+    await asUser(t, firstMemberId, `formed-first@${DOMAIN}`).mutation(
+      api.memberships.join,
+      { ideaId },
+    );
+
+    let idea = await asOwner.query(api.ideas.get, { ideaId });
+    expect(idea?.teamFormationStatus).toBe("forming");
+    expect(idea?.roomRequestStatus).toBe("none");
+
+    await asUser(t, secondMemberId, `formed-second@${DOMAIN}`).mutation(
+      api.memberships.join,
+      { ideaId },
+    );
+
+    idea = await asOwner.query(api.ideas.get, { ideaId });
+    expect(idea?.memberCount).toBe(2);
+    expect(idea?.teamFormationStatus).toBe("formed");
+    expect(idea?.teamFormationSource).toBe("auto");
+    expect(idea?.roomRequestStatus).toBe("requested");
+    expect(idea?.roomRequestedAt).toBeTypeOf("number");
+  });
+
+  test("owners can manually mark a team formed", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `manual-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `manual-owner@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+    });
+
+    const otherId = await insertUser(t, {
+      name: "Other",
+      email: `manual-other@${DOMAIN}`,
+    });
+    const asOther = asUser(t, otherId, `manual-other@${DOMAIN}`);
+
+    await expect(
+      asOther.mutation(api.ideas.markTeamFormed, { ideaId }),
+    ).rejects.toThrow("Only the owner can mark the team formed");
+
+    await asOwner.mutation(api.ideas.markTeamFormed, { ideaId });
+
+    const idea = await asOwner.query(api.ideas.get, { ideaId });
+    expect(idea?.teamFormationStatus).toBe("formed");
+    expect(idea?.teamFormationSource).toBe("owner");
+    expect(idea?.roomRequestStatus).toBe("requested");
+  });
+
   test("keeps list stats in sync with mutations", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);

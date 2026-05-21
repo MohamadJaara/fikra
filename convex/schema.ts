@@ -87,6 +87,21 @@ export default defineSchema({
     ownerId: v.id("users"),
     categoryId: v.optional(v.id("categories")),
     roomId: v.optional(v.id("rooms")),
+    teamFormationStatus: v.optional(
+      v.union(v.literal("forming"), v.literal("formed")),
+    ),
+    teamFormationSource: v.optional(
+      v.union(v.literal("auto"), v.literal("owner")),
+    ),
+    teamFormedAt: v.optional(v.number()),
+    roomRequestStatus: v.optional(
+      v.union(
+        v.literal("none"),
+        v.literal("requested"),
+        v.literal("assigned"),
+      ),
+    ),
+    roomRequestedAt: v.optional(v.number()),
     onsiteOnly: v.optional(v.boolean()),
     memberCount: v.optional(v.number()),
     interestCount: v.optional(v.number()),
@@ -114,6 +129,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_category", ["categoryId"])
     .index("by_room", ["roomId"])
+    .index("by_teamFormationStatus", ["teamFormationStatus"])
+    .index("by_roomRequestStatus", ["roomRequestStatus"])
     .index("by_interestCount", ["interestCount"])
     .index("by_reactionTotal", ["reactionTotal"])
     .index("by_needsTeammates", ["needsTeammates"])

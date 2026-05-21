@@ -1,5 +1,10 @@
 import type { Id } from "../convex/_generated/dataModel";
-import type { TeamSize } from "./constants";
+import type {
+  RoomRequestStatus,
+  TeamFormationSource,
+  TeamFormationStatus,
+  TeamSize,
+} from "./constants";
 
 export type IdeaListItem = {
   _id: Id<"ideas">;
@@ -18,6 +23,11 @@ export type IdeaListItem = {
   ownerName: string;
   ownerImage?: string;
   ownerHandle?: string;
+  teamFormationStatus: TeamFormationStatus;
+  teamFormationSource?: TeamFormationSource;
+  teamFormedAt?: number;
+  roomRequestStatus: RoomRequestStatus;
+  roomRequestedAt?: number;
   memberCount: number;
   interestCount: number;
   reactionCounts: Record<string, number>;
@@ -106,6 +116,11 @@ export type IdeaDetail = {
   ownerImage?: string;
   ownerHandle?: string;
   ownerEmail?: string;
+  teamFormationStatus: TeamFormationStatus;
+  teamFormationSource?: TeamFormationSource;
+  teamFormedAt?: number;
+  roomRequestStatus: RoomRequestStatus;
+  roomRequestedAt?: number;
   members: IdeaMember[];
   memberCount: number;
   interestedUsers: InterestedUser[];

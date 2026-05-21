@@ -176,6 +176,13 @@ export const listIdeas = query({
           roomName: idea.roomId
             ? ((await ctx.db.get(idea.roomId))?.name ?? null)
             : null,
+          teamFormationStatus: idea.teamFormationStatus ?? "forming",
+          teamFormationSource: idea.teamFormationSource,
+          teamFormedAt: idea.teamFormedAt,
+          roomRequestStatus: idea.roomId
+            ? "assigned"
+            : (idea.roomRequestStatus ?? "none"),
+          roomRequestedAt: idea.roomRequestedAt,
           onsiteOnly: idea.onsiteOnly ?? false,
         };
       }),

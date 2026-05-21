@@ -1,18 +1,68 @@
 "use client";
 
 import Link from "next/link";
-import { Link2, MapPin, Navigation, ExternalLink } from "lucide-react";
+import {
+  Link2,
+  Navigation,
+  ExternalLink,
+  Hourglass,
+  CheckCircle2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ROOM_TYPE_LABELS, type RoomType } from "@/lib/constants";
+import {
+  ROOM_REQUEST_LABELS,
+  ROOM_TYPE_LABELS,
+  TEAM_FORMATION_SOURCE_LABELS,
+  type RoomRequestStatus,
+  type RoomType,
+  type TeamFormationSource,
+} from "@/lib/constants";
 import type { IdeaDetail } from "@/lib/types";
 
 export function RoomSection({ idea }: { idea: IdeaDetail }) {
-  if (!idea.room) return null;
+  if (!idea.room && idea.teamFormationStatus !== "formed") return null;
 
   const hasLocationInfo =
-    idea.room.roomAddress ||
-    idea.room.roomDirections ||
-    idea.room.roomMapsLink;
+    idea.room?.roomAddress ||
+    idea.room?.roomDirections ||
+    idea.room?.roomMapsLink;
+
+  if (!idea.room) {
+    return (
+      <div className="mb-8 animate-fade-in">
+        <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-muted-foreground mb-3">
+          Room
+        </p>
+
+        <div className="rounded-lg border border-amber-200 bg-amber-50/60 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/30">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/70 dark:text-amber-200">
+              <Hourglass className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium">
+                  {ROOM_REQUEST_LABELS[
+                    idea.roomRequestStatus as RoomRequestStatus
+                  ] || "Needs Room"}
+                </p>
+                {idea.teamFormationSource && (
+                  <Badge variant="outline" className="text-[10px]">
+                    {TEAM_FORMATION_SOURCE_LABELS[
+                      idea.teamFormationSource as TeamFormationSource
+                    ] || idea.teamFormationSource}
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                This team is formed and waiting for an admin to assign a room.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="mb-8 animate-fade-in">
@@ -22,7 +72,7 @@ export function RoomSection({ idea }: { idea: IdeaDetail }) {
 
       <div className="rounded-lg border bg-muted/20 px-4 py-3 space-y-2.5">
         <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           <span className="text-sm font-medium">{idea.room.roomName}</span>
           <Badge
             variant={idea.room.roomType === "shared" ? "default" : "secondary"}

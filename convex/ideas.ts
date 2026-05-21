@@ -227,6 +227,13 @@ async function buildIdeaListItems(
         ownerName: getUserDisplayName(owner),
         ownerImage: owner?.image,
         ownerHandle: owner?.handle,
+        teamFormationStatus: idea.teamFormationStatus ?? "forming",
+        teamFormationSource: idea.teamFormationSource,
+        teamFormedAt: idea.teamFormedAt,
+        roomRequestStatus: idea.roomId
+          ? "assigned"
+          : (idea.roomRequestStatus ?? "none"),
+        roomRequestedAt: idea.roomRequestedAt,
         memberCount: idea.memberCount ?? effectiveLegacyMembers.length,
         interestCount: idea.interestCount ?? legacyInterestDocs?.length ?? 0,
         reactionCounts: idea.reactionCounts ?? legacyReactionCounts,
@@ -477,6 +484,8 @@ export const create = mutation({
       ownerId: userId,
       categoryId: args.categoryId,
       onsiteOnly: args.onsiteOnly ?? false,
+      teamFormationStatus: "forming",
+      roomRequestStatus: "none",
       memberCount: 0,
       interestCount: 0,
       reactionCounts: {},
@@ -516,6 +525,52 @@ export const create = mutation({
     }
 
     return ideaId;
+  },
+});
+
+export const markTeamFormed = mutation({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, { ideaId }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (idea.ownerId !== userId) {
+      throw new Error("Only the owner can mark the team formed");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(ideaId, {
+      teamFormationStatus: "formed",
+      teamFormationSource: "owner",
+      teamFormedAt: idea.teamFormedAt ?? now,
+      roomRequestStatus: idea.roomId ? "assigned" : "requested",
+      roomRequestedAt: idea.roomRequestedAt ?? now,
+    });
+  },
+});
+
+export const markTeamForming = mutation({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, { ideaId }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (idea.ownerId !== userId) {
+      throw new Error("Only the owner can mark the team forming");
+    }
+    if (idea.roomId) {
+      throw new Error("Unassign the room before marking this team as forming");
+    }
+
+    await ctx.db.patch(ideaId, {
+      teamFormationStatus: "forming",
+      teamFormationSource: undefined,
+      teamFormedAt: undefined,
+      roomRequestStatus: "none",
+      roomRequestedAt: undefined,
+    });
   },
 });
 
@@ -583,6 +638,7 @@ export const update = mutation({
       onsiteOnly: args.onsiteOnly ?? false,
       needsTeammates,
     });
+    await refreshIdeaMemberStats(ctx, args.ideaId);
   },
 });
 
@@ -1358,6 +1414,13 @@ export const get = query({
       ownerImage: owner?.image,
       ownerHandle: owner?.handle,
       ownerEmail: isOwner ? owner?.email : undefined,
+      teamFormationStatus: idea.teamFormationStatus ?? "forming",
+      teamFormationSource: idea.teamFormationSource,
+      teamFormedAt: idea.teamFormedAt,
+      roomRequestStatus: idea.roomId
+        ? "assigned"
+        : (idea.roomRequestStatus ?? "none"),
+      roomRequestedAt: idea.roomRequestedAt,
       members: memberDetails,
       memberCount: effectiveMembers.length,
       interestedUsers,

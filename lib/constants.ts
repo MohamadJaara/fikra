@@ -73,6 +73,34 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   shared: "Shared",
 };
 
+export const TEAM_FORMATION_STATUSES = ["forming", "formed"] as const;
+export type TeamFormationStatus = (typeof TEAM_FORMATION_STATUSES)[number];
+
+export const TEAM_FORMATION_LABELS: Record<TeamFormationStatus, string> = {
+  forming: "Forming",
+  formed: "Team Formed",
+};
+
+export const TEAM_FORMATION_SOURCES = ["auto", "owner"] as const;
+export type TeamFormationSource = (typeof TEAM_FORMATION_SOURCES)[number];
+
+export const TEAM_FORMATION_SOURCE_LABELS: Record<
+  TeamFormationSource,
+  string
+> = {
+  auto: "Auto detected",
+  owner: "Marked by owner",
+};
+
+export const ROOM_REQUEST_STATUSES = ["none", "requested", "assigned"] as const;
+export type RoomRequestStatus = (typeof ROOM_REQUEST_STATUSES)[number];
+
+export const ROOM_REQUEST_LABELS: Record<RoomRequestStatus, string> = {
+  none: "No Room Request",
+  requested: "Needs Room",
+  assigned: "Room Assigned",
+};
+
 export const SORT_OPTIONS = [
   "newest",
   "oldest",
