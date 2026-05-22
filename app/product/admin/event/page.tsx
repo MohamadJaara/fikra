@@ -28,19 +28,55 @@ function toDateTimeLocal(value: number) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
-function formatPreview(value: string, timezone: string) {
-  const timestamp = new Date(value).getTime();
-  if (!Number.isFinite(timestamp)) return "Choose a date and time";
-
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
+function getTimeZoneLabel(value: number, timezone: string) {
+  const parts = new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
-    minute: "2-digit",
     timeZone: timezone,
     timeZoneName: "short",
-  }).format(new Date(timestamp));
+  }).formatToParts(new Date(value));
+
+  return parts.find((part) => part.type === "timeZoneName")?.value ?? timezone;
+}
+
+function formatPreview(startValue: string, endValue: string, timezone: string) {
+  const startTimestamp = new Date(startValue).getTime();
+  if (!Number.isFinite(startTimestamp)) return "Choose a start date and time";
+
+  try {
+    const dateFormatter = new Intl.DateTimeFormat(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      timeZone: timezone,
+    });
+    const timeFormatter = new Intl.DateTimeFormat(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone: timezone,
+    });
+
+    const startDate = new Date(startTimestamp);
+    const startDateLabel = dateFormatter.format(startDate);
+    const startTimeLabel = timeFormatter.format(startDate);
+    const endTimestamp = endValue ? new Date(endValue).getTime() : NaN;
+
+    if (!Number.isFinite(endTimestamp)) {
+      return `${startDateLabel}, ${startTimeLabel} ${getTimeZoneLabel(startTimestamp, timezone)}`;
+    }
+
+    const endDate = new Date(endTimestamp);
+    const endDateLabel = dateFormatter.format(endDate);
+    const endTimeLabel = timeFormatter.format(endDate);
+    const timezoneLabel = getTimeZoneLabel(endTimestamp, timezone);
+
+    if (startDateLabel === endDateLabel) {
+      return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel} ${timezoneLabel}`;
+    }
+
+    return `${startDateLabel}, ${startTimeLabel} - ${endDateLabel}, ${endTimeLabel} ${timezoneLabel}`;
+  } catch {
+    return "Enter a valid timezone";
+  }
 }
 
 export default function AdminEventPage() {
@@ -55,6 +91,7 @@ export default function AdminEventPage() {
   const [initialized, setInitialized] = useState(false);
   const [title, setTitle] = useState("Hackathon kickoff");
   const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
   const [timezone, setTimezone] = useState(browserTimezone);
   const [location, setLocation] = useState("");
   const [note, setNote] = useState("");
@@ -68,24 +105,36 @@ export default function AdminEventPage() {
     if (event) {
       setTitle(event.title);
       setStartsAt(toDateTimeLocal(event.startsAt));
+      setEndsAt(event.endsAt ? toDateTimeLocal(event.endsAt) : "");
       setTimezone(event.timezone);
       setLocation(event.location ?? "");
       setNote(event.note ?? "");
       setActive(event.active);
     } else {
-      setStartsAt(toDateTimeLocal(Date.now() + 7 * 24 * 60 * 60 * 1000));
+      const defaultStart = Date.now() + 7 * 24 * 60 * 60 * 1000;
+      setStartsAt(toDateTimeLocal(defaultStart));
+      setEndsAt(toDateTimeLocal(defaultStart + 8 * 60 * 60 * 1000));
       setTimezone(browserTimezone);
     }
     setInitialized(true);
     /* eslint-enable react-hooks/set-state-in-effect, @eslint-react/set-state-in-effect */
   }, [browserTimezone, event, initialized]);
 
-  const preview = formatPreview(startsAt, timezone);
+  const preview = formatPreview(startsAt, endsAt, timezone);
 
   const handleSave = async () => {
-    const timestamp = new Date(startsAt).getTime();
-    if (!Number.isFinite(timestamp)) {
-      toast.error("Choose a valid event date");
+    const startTimestamp = new Date(startsAt).getTime();
+    const endTimestamp = endsAt ? new Date(endsAt).getTime() : undefined;
+    if (!Number.isFinite(startTimestamp)) {
+      toast.error("Choose a valid start date");
+      return;
+    }
+    if (endTimestamp !== undefined && !Number.isFinite(endTimestamp)) {
+      toast.error("Choose a valid end date");
+      return;
+    }
+    if (endTimestamp !== undefined && endTimestamp <= startTimestamp) {
+      toast.error("End date must be after the start date");
       return;
     }
 
@@ -93,7 +142,8 @@ export default function AdminEventPage() {
     try {
       await saveEvent({
         title,
-        startsAt: timestamp,
+        startsAt: startTimestamp,
+        ...(endTimestamp !== undefined ? { endsAt: endTimestamp } : {}),
         timezone,
         active,
         ...(location.trim() ? { location } : {}),
@@ -113,7 +163,9 @@ export default function AdminEventPage() {
     try {
       await clearEvent();
       setTitle("Hackathon kickoff");
-      setStartsAt(toDateTimeLocal(Date.now() + 7 * 24 * 60 * 60 * 1000));
+      const defaultStart = Date.now() + 7 * 24 * 60 * 60 * 1000;
+      setStartsAt(toDateTimeLocal(defaultStart));
+      setEndsAt(toDateTimeLocal(defaultStart + 8 * 60 * 60 * 1000));
       setTimezone(browserTimezone);
       setLocation("");
       setNote("");
@@ -179,12 +231,22 @@ export default function AdminEventPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="event-start">Date and time</Label>
+                <Label htmlFor="event-start">From</Label>
                 <Input
                   id="event-start"
                   type="datetime-local"
                   value={startsAt}
                   onChange={(event) => setStartsAt(event.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="event-end">To</Label>
+                <Input
+                  id="event-end"
+                  type="datetime-local"
+                  value={endsAt}
+                  onChange={(event) => setEndsAt(event.target.value)}
                 />
               </div>
 
@@ -198,7 +260,7 @@ export default function AdminEventPage() {
                 />
               </div>
 
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2">
                 <Label htmlFor="event-location">Location</Label>
                 <Input
                   id="event-location"
@@ -254,7 +316,7 @@ export default function AdminEventPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Event Date
+                      Event Dates
                     </p>
                     <h2 className="break-words text-base font-semibold">
                       {title || "Untitled event"}

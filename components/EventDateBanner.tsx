@@ -5,19 +5,62 @@ import { useQuery } from "convex/react";
 import { motion } from "framer-motion";
 import { CalendarClock, MapPin, Timer } from "lucide-react";
 
-function formatEventDate(startsAt: number, timezone: string) {
-  return new Intl.DateTimeFormat(undefined, {
+function getTimeZoneLabel(value: number, timezone: string) {
+  const parts = new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    timeZone: timezone,
+    timeZoneName: "short",
+  }).formatToParts(new Date(value));
+
+  return parts.find((part) => part.type === "timeZoneName")?.value ?? timezone;
+}
+
+function formatEventRange(
+  startsAt: number,
+  endsAt: number | undefined,
+  timezone: string,
+) {
+  const dateFormatter = new Intl.DateTimeFormat(undefined, {
     weekday: "short",
     month: "short",
     day: "numeric",
+    timeZone: timezone,
+  });
+  const timeFormatter = new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
     timeZone: timezone,
-    timeZoneName: "short",
-  }).format(new Date(startsAt));
+  });
+
+  const startDate = new Date(startsAt);
+  const startDateLabel = dateFormatter.format(startDate);
+  const startTimeLabel = timeFormatter.format(startDate);
+  const timezoneLabel = getTimeZoneLabel(endsAt ?? startsAt, timezone);
+
+  if (!endsAt) {
+    return `${startDateLabel}, ${startTimeLabel} ${timezoneLabel}`;
+  }
+
+  const endDate = new Date(endsAt);
+  const endDateLabel = dateFormatter.format(endDate);
+  const endTimeLabel = timeFormatter.format(endDate);
+
+  if (startDateLabel === endDateLabel) {
+    return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel} ${timezoneLabel}`;
+  }
+
+  return `${startDateLabel}, ${startTimeLabel} - ${endDateLabel}, ${endTimeLabel} ${timezoneLabel}`;
 }
 
-function getRelativeLabel(startsAt: number) {
+function getRelativeLabel(startsAt: number, endsAt: number | undefined) {
+  const now = Date.now();
+  if (endsAt !== undefined && now >= startsAt && now <= endsAt) {
+    return "Live now";
+  }
+  if (endsAt !== undefined && now > endsAt) {
+    return "Ended";
+  }
+
   const diff = startsAt - Date.now();
   const abs = Math.abs(diff);
   const dayMs = 24 * 60 * 60 * 1000;
@@ -42,8 +85,12 @@ export function EventDateBanner() {
 
   if (event === undefined || event === null) return null;
 
-  const formattedDate = formatEventDate(event.startsAt, event.timezone);
-  const relativeLabel = getRelativeLabel(event.startsAt);
+  const formattedDate = formatEventRange(
+    event.startsAt,
+    event.endsAt,
+    event.timezone,
+  );
+  const relativeLabel = getRelativeLabel(event.startsAt, event.endsAt);
 
   return (
     <motion.div
@@ -60,7 +107,7 @@ export function EventDateBanner() {
           </div>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Event Date
+              Event Dates
             </p>
             <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
               <h2 className="truncate text-base font-semibold leading-tight">

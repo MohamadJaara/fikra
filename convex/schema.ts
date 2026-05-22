@@ -248,6 +248,7 @@ export default defineSchema({
     key: v.string(),
     title: v.string(),
     startsAt: v.number(),
+    endsAt: v.optional(v.number()),
     timezone: v.string(),
     location: v.optional(v.string()),
     note: v.optional(v.string()),

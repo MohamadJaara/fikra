@@ -22,6 +22,16 @@ function optionalText(
   return trimmed;
 }
 
+function validateTimezone(timezone: string) {
+  const trimmed = validateStringLength(timezone, 1, 80, "Timezone");
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: trimmed }).format(new Date());
+  } catch {
+    throw new Error("Timezone must be a valid IANA timezone");
+  }
+  return trimmed;
+}
+
 async function getEventSetting(
   ctx: Parameters<typeof getAuthenticatedUser>[0],
 ) {
@@ -56,6 +66,7 @@ export const save = mutation({
   args: {
     title: v.string(),
     startsAt: v.number(),
+    endsAt: v.optional(v.number()),
     timezone: v.string(),
     location: v.optional(v.string()),
     note: v.optional(v.string()),
@@ -65,11 +76,19 @@ export const save = mutation({
     const { userId } = await getAdminUser(ctx);
 
     if (!Number.isFinite(args.startsAt) || args.startsAt <= 0) {
-      throw new Error("Event date must be valid");
+      throw new Error("Event start date must be valid");
+    }
+    if (args.endsAt !== undefined) {
+      if (!Number.isFinite(args.endsAt) || args.endsAt <= 0) {
+        throw new Error("Event end date must be valid");
+      }
+      if (args.endsAt <= args.startsAt) {
+        throw new Error("Event end date must be after the start date");
+      }
     }
 
     const title = validateStringLength(args.title, 1, 80, "Event title");
-    const timezone = validateStringLength(args.timezone, 1, 80, "Timezone");
+    const timezone = validateTimezone(args.timezone);
     const location = optionalText(args.location, 120, "Location");
     const note = optionalText(args.note, 240, "Note");
     const now = Date.now();
@@ -79,6 +98,7 @@ export const save = mutation({
       key: EVENT_SETTING_KEY,
       title,
       startsAt: args.startsAt,
+      endsAt: args.endsAt,
       timezone,
       location,
       note,

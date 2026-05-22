@@ -16,6 +16,7 @@ describe("Event settings authorization", () => {
       asRegularUser.mutation(api.event.save, {
         title: "Demo Day",
         startsAt: Date.now() + 1000,
+        endsAt: Date.now() + 2000,
         timezone: "UTC",
         active: true,
       }),
@@ -34,10 +35,12 @@ describe("Event settings authorization", () => {
     const asAdmin = asUser(t, adminId, `event-admin@${DOMAIN}`);
     const asViewer = asUser(t, userId, `event-viewer@${DOMAIN}`);
     const startsAt = Date.now() + 1000;
+    const endsAt = startsAt + 8 * 60 * 60 * 1000;
 
     await asAdmin.mutation(api.event.save, {
       title: "Demo Day",
       startsAt,
+      endsAt,
       timezone: "UTC",
       location: "Main Hall",
       active: true,
@@ -47,7 +50,28 @@ describe("Event settings authorization", () => {
 
     expect(event?.title).toBe("Demo Day");
     expect(event?.startsAt).toBe(startsAt);
+    expect(event?.endsAt).toBe(endsAt);
     expect(event?.location).toBe("Main Hall");
+  });
+
+  test("event end date must be after the start date", async () => {
+    const t = initTest();
+    const adminId = await insertUser(t, {
+      email: `event-admin-range@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const asAdmin = asUser(t, adminId, `event-admin-range@${DOMAIN}`);
+    const startsAt = Date.now() + 1000;
+
+    await expect(
+      asAdmin.mutation(api.event.save, {
+        title: "Demo Day",
+        startsAt,
+        endsAt: startsAt,
+        timezone: "UTC",
+        active: true,
+      }),
+    ).rejects.toThrow("Event end date must be after the start date");
   });
 
   test("inactive event date is hidden from regular users", async () => {
