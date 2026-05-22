@@ -17,6 +17,7 @@ import {
   DoorOpen,
   Package,
   Megaphone,
+  CalendarClock,
 } from "lucide-react";
 import Link from "next/link";
 import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/lib/constants";
@@ -126,6 +127,13 @@ export default function AdminDashboard() {
       bg: "bg-fuchsia-50 dark:bg-fuchsia-950",
       title: "Announcements",
       subtitle: "Broadcast to all users",
+    },
+    {
+      href: "/product/admin/event",
+      icon: <CalendarClock className="h-5 w-5 text-emerald-600" />,
+      bg: "bg-emerald-50 dark:bg-emerald-950",
+      title: "Event Date",
+      subtitle: "Set the visible hackathon date",
     },
   ];
 

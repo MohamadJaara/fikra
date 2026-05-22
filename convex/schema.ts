@@ -95,11 +95,7 @@ export default defineSchema({
     ),
     teamFormedAt: v.optional(v.number()),
     roomRequestStatus: v.optional(
-      v.union(
-        v.literal("none"),
-        v.literal("requested"),
-        v.literal("assigned"),
-      ),
+      v.union(v.literal("none"), v.literal("requested"), v.literal("assigned")),
     ),
     roomRequestedAt: v.optional(v.number()),
     onsiteOnly: v.optional(v.boolean()),
@@ -247,6 +243,18 @@ export default defineSchema({
     active: v.boolean(),
     createdBy: v.id("users"),
   }).index("by_active", ["active"]),
+
+  eventSettings: defineTable({
+    key: v.string(),
+    title: v.string(),
+    startsAt: v.number(),
+    timezone: v.string(),
+    location: v.optional(v.string()),
+    note: v.optional(v.string()),
+    active: v.boolean(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
 
   dismissedAnnouncements: defineTable({
     announcementId: v.id("announcements"),

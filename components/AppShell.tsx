@@ -2,6 +2,7 @@
 
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { ContentDisclaimer } from "@/components/ContentDisclaimer";
+import { EventDateBanner } from "@/components/EventDateBanner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@convex-dev/auth/react";
@@ -87,6 +88,7 @@ export function AppShell({
           <div className="ml-auto">{viewer && <NotificationBell />}</div>
         </header>
         <AnnouncementBanner />
+        <EventDateBanner />
         <div className="border-b px-4 py-3 md:px-6">
           <ContentDisclaimer />
         </div>
