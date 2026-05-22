@@ -90,6 +90,73 @@ describe("Denormalized idea stats", () => {
     expect(idea?.roomRequestStatus).toBe("requested");
   });
 
+  test("marking an idea full queues a room request", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `full-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `full-owner@${DOMAIN}`);
+
+    const baseArgs = makeIdeaArgs(categoryId);
+    const ideaId = await asOwner.mutation(api.ideas.create, baseArgs);
+
+    await asOwner.mutation(api.ideas.update, {
+      ...baseArgs,
+      ideaId,
+      status: "full",
+    });
+
+    const idea = await asOwner.query(api.ideas.get, { ideaId });
+    expect(idea?.teamFormationStatus).toBe("formed");
+    expect(idea?.teamFormationSource).toBe("auto");
+    expect(idea?.roomRequestStatus).toBe("requested");
+  });
+
+  test("admins can sweep legacy full ideas into the room queue", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `legacy-full-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `legacy-full-owner@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+    });
+
+    await t.run(async (ctx: any) => {
+      await ctx.db.patch(ideaId, {
+        status: "full",
+        teamFormationStatus: "forming",
+        teamFormationSource: undefined,
+        teamFormedAt: undefined,
+        roomRequestStatus: "none",
+        roomRequestedAt: undefined,
+      });
+    });
+
+    const adminId = await insertUser(t, {
+      name: "Admin",
+      email: `legacy-full-admin@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const asAdmin = asUser(t, adminId, `legacy-full-admin@${DOMAIN}`);
+
+    const result = await asAdmin.mutation(api.rooms.queueFullIdeasForRooms, {});
+    expect(result.checkedCount).toBe(1);
+    expect(result.queuedCount).toBe(1);
+
+    const idea = await asOwner.query(api.ideas.get, { ideaId });
+    expect(idea?.teamFormationStatus).toBe("formed");
+    expect(idea?.teamFormationSource).toBe("auto");
+    expect(idea?.roomRequestStatus).toBe("requested");
+  });
+
   test("keeps list stats in sync with mutations", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);

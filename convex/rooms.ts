@@ -66,6 +66,44 @@ export const create = mutation({
   },
 });
 
+export const queueFullIdeasForRooms = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await getAdminUser(ctx);
+
+    const fullIdeas = await ctx.db
+      .query("ideas")
+      .withIndex("by_status", (q) => q.eq("status", "full"))
+      .collect();
+
+    let queuedCount = 0;
+    const now = Date.now();
+    for (const idea of fullIdeas) {
+      if (idea.roomId || idea.roomRequestStatus === "assigned") continue;
+      if (
+        idea.teamFormationStatus === "formed" &&
+        idea.roomRequestStatus === "requested"
+      ) {
+        continue;
+      }
+
+      await ctx.db.patch(idea._id, {
+        teamFormationStatus: "formed",
+        teamFormationSource: idea.teamFormationSource ?? "auto",
+        teamFormedAt: idea.teamFormedAt ?? now,
+        roomRequestStatus: "requested",
+        roomRequestedAt: idea.roomRequestedAt ?? now,
+      });
+      queuedCount++;
+    }
+
+    return {
+      checkedCount: fullIdeas.length,
+      queuedCount,
+    };
+  },
+});
+
 export const update = mutation({
   args: {
     roomId: v.id("rooms"),

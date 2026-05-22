@@ -9,6 +9,7 @@ import {
 } from "./lib";
 import { STATUSES } from "../lib/constants";
 import { internal } from "./_generated/api";
+import { refreshIdeaMemberStats } from "./ideaStats";
 
 const statusValidator = v.union(...STATUSES.map((s) => v.literal(s)));
 
@@ -58,6 +59,7 @@ export const updateIdeaStatus = mutation({
     if (!idea) throw new Error("Idea not found");
 
     await ctx.db.patch(ideaId, { status });
+    await refreshIdeaMemberStats(ctx, ideaId);
   },
 });
 

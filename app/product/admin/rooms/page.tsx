@@ -37,6 +37,7 @@ import {
   ExternalLink,
   ClipboardList,
   CheckCircle2,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -63,6 +64,7 @@ export default function AdminRoomsPage() {
   const updateMutation = useMutation(api.rooms.update);
   const assignMutation = useMutation(api.rooms.assignToIdea);
   const unassignMutation = useMutation(api.rooms.unassignFromIdea);
+  const queueFullIdeasMutation = useMutation(api.rooms.queueFullIdeasForRooms);
 
   const [name, setName] = useState("");
   const [type, setType] = useState<string>("team");
@@ -83,6 +85,7 @@ export default function AdminRoomsPage() {
   const [isAssigning, setIsAssigning] = useState(false);
   const [unassigningIdeaId, setUnassigningIdeaId] =
     useState<Id<"ideas"> | null>(null);
+  const [isCheckingFullIdeas, setIsCheckingFullIdeas] = useState(false);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,12 +186,35 @@ export default function AdminRoomsPage() {
     }
   };
 
+  const handleCheckFullIdeas = async () => {
+    setIsCheckingFullIdeas(true);
+    try {
+      const result = await queueFullIdeasMutation({});
+      toast.success(
+        result.queuedCount === 0
+          ? `Checked ${result.checkedCount} full ideas. Nothing new to queue.`
+          : `Queued ${result.queuedCount} full idea${result.queuedCount === 1 ? "" : "s"} for rooms.`,
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to check full ideas",
+      );
+    } finally {
+      setIsCheckingFullIdeas(false);
+    }
+  };
+
   const unassignedIdeas = ideas?.filter((idea) => !idea.roomId) ?? [];
   const roomRequests = unassignedIdeas.filter(
     (idea) => idea.roomRequestStatus === "requested",
   );
   const otherUnassignedIdeas = unassignedIdeas.filter(
     (idea) => idea.roomRequestStatus !== "requested",
+  );
+  const fullIdeasMissingRoom = otherUnassignedIdeas.filter(
+    (idea) => idea.status === "full",
   );
   const assignableIdeas = [...roomRequests, ...otherUnassignedIdeas];
   const selectedRoom = rooms?.find((r) => r._id === assignDialogRoomId);
@@ -229,14 +255,38 @@ export default function AdminRoomsPage() {
             <div className="min-w-0">
               <h2 className="text-sm font-semibold">Teams needing rooms</h2>
               <p className="text-xs text-muted-foreground">
-                Auto-detected or owner-marked teams that are ready for a room.
+                Auto-detected, owner-marked, or full teams ready for a room.
               </p>
             </div>
           </div>
-          <Badge variant={roomRequests.length > 0 ? "default" : "secondary"}>
-            {roomRequests.length}
-          </Badge>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => void handleCheckFullIdeas()}
+              disabled={isCheckingFullIdeas}
+            >
+              {isCheckingFullIdeas ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Check full ideas
+            </Button>
+            <Badge variant={roomRequests.length > 0 ? "default" : "secondary"}>
+              {roomRequests.length}
+            </Badge>
+          </div>
         </div>
+
+        {fullIdeasMissingRoom.length > 0 && (
+          <div className="border-b bg-amber-50/70 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+            {fullIdeasMissingRoom.length} full idea
+            {fullIdeasMissingRoom.length === 1 ? "" : "s"} without room
+            requests. Run the check to queue them.
+          </div>
+        )}
 
         {roomRequests.length === 0 ? (
           <div className="flex items-center gap-2 px-4 py-4 text-sm text-muted-foreground">

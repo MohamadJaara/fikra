@@ -472,6 +472,8 @@ export const create = mutation({
 
     await validateRoleSlugs(ctx, args.lookingForRoles);
 
+    const isFullAtCreate = args.status === "full";
+    const now = Date.now();
     const ideaId = await ctx.db.insert("ideas", {
       title,
       pitch,
@@ -484,8 +486,11 @@ export const create = mutation({
       ownerId: userId,
       categoryId: args.categoryId,
       onsiteOnly: args.onsiteOnly ?? false,
-      teamFormationStatus: "forming",
-      roomRequestStatus: "none",
+      teamFormationStatus: isFullAtCreate ? "formed" : "forming",
+      teamFormationSource: isFullAtCreate ? "auto" : undefined,
+      teamFormedAt: isFullAtCreate ? now : undefined,
+      roomRequestStatus: isFullAtCreate ? "requested" : "none",
+      roomRequestedAt: isFullAtCreate ? now : undefined,
       memberCount: 0,
       interestCount: 0,
       reactionCounts: {},

@@ -80,6 +80,7 @@ export async function refreshIdeaMemberStats(
       resolveTeamSize(idea) === "solo" && effectiveMembers.length >= 1;
     const hasEnoughPeople = effectiveMembers.length >= MIN_AUTO_FORMED_MEMBERS;
     const autoFormed =
+      idea.status === "full" ||
       soloReady ||
       hasEnoughPeople ||
       (effectiveMembers.length > 0 && requiredRolesFilled);
