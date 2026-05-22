@@ -157,6 +157,63 @@ describe("Denormalized idea stats", () => {
     expect(idea?.roomRequestStatus).toBe("requested");
   });
 
+  test("admins can sweep teams that reached capacity without full status", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `capacity-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `capacity-owner@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      teamSize: "small",
+      status: "forming_team",
+    });
+
+    for (const index of [1, 2, 3]) {
+      const memberId = await insertUser(t, {
+        name: `Member ${index}`,
+        email: `capacity-member-${index}@${DOMAIN}`,
+      });
+      await asUser(
+        t,
+        memberId,
+        `capacity-member-${index}@${DOMAIN}`,
+      ).mutation(api.memberships.join, { ideaId });
+    }
+
+    await t.run(async (ctx: any) => {
+      await ctx.db.patch(ideaId, {
+        status: "forming_team",
+        teamFormationStatus: "forming",
+        teamFormationSource: undefined,
+        teamFormedAt: undefined,
+        roomRequestStatus: "none",
+        roomRequestedAt: undefined,
+      });
+    });
+
+    const adminId = await insertUser(t, {
+      name: "Admin",
+      email: `capacity-admin@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const asAdmin = asUser(t, adminId, `capacity-admin@${DOMAIN}`);
+
+    const result = await asAdmin.mutation(api.rooms.queueFullIdeasForRooms, {});
+    expect(result.checkedCount).toBe(1);
+    expect(result.queuedCount).toBe(1);
+
+    const idea = await asOwner.query(api.ideas.get, { ideaId });
+    expect(idea?.status).toBe("forming_team");
+    expect(idea?.memberCount).toBe(3);
+    expect(idea?.teamFormationStatus).toBe("formed");
+    expect(idea?.roomRequestStatus).toBe("requested");
+  });
+
   test("keeps list stats in sync with mutations", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);

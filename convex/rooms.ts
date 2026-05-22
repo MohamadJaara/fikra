@@ -1,8 +1,59 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAdminUser, isEffectiveIdeaMember, sanitizeText } from "./lib";
+import {
+  getAdminUser,
+  isEffectiveIdeaMember,
+  mergeUniqueStringArrays,
+  resolveTeamSize,
+  sanitizeText,
+} from "./lib";
 import { ROOM_TYPES } from "../lib/constants";
 import { internal } from "./_generated/api";
+import type { Doc } from "./_generated/dataModel";
+
+function teamSizeCapacity(idea: Doc<"ideas">) {
+  const teamSize = resolveTeamSize(idea);
+  if (teamSize === "solo") return 1;
+  if (teamSize === "small") return 3;
+  if (teamSize === "medium") return 6;
+  return 7;
+}
+
+async function getRoomReadiness(
+  ctx: Parameters<typeof getAdminUser>[0],
+  idea: Doc<"ideas">,
+) {
+  const memberships = await ctx.db
+    .query("ideaMembers")
+    .withIndex("by_idea", (q) => q.eq("ideaId", idea._id))
+    .collect();
+  const effectiveMembers = memberships.filter((member) =>
+    isEffectiveIdeaMember(member, idea),
+  );
+  const filledRoles = new Set<string>();
+  for (const member of effectiveMembers) {
+    for (const role of mergeUniqueStringArrays(
+      member.memberRoles,
+      member.role ? [member.role] : undefined,
+    ) ?? []) {
+      filledRoles.add(role);
+    }
+  }
+
+  const capacity = teamSizeCapacity(idea);
+  const hasReachedCapacity = effectiveMembers.length >= capacity;
+  const hasFilledRequestedRoles =
+    effectiveMembers.length > 0 &&
+    idea.lookingForRoles.length > 0 &&
+    idea.lookingForRoles.every((role) => filledRoles.has(role));
+
+  return {
+    isReady:
+      idea.status === "full" || hasReachedCapacity || hasFilledRequestedRoles,
+    memberCount: effectiveMembers.length,
+    filledRoles: [...filledRoles],
+  };
+}
 
 export const list = query({
   args: {},
@@ -71,21 +122,17 @@ export const queueFullIdeasForRooms = mutation({
   handler: async (ctx) => {
     await getAdminUser(ctx);
 
-    const fullIdeas = await ctx.db
-      .query("ideas")
-      .withIndex("by_status", (q) => q.eq("status", "full"))
-      .collect();
+    const ideas = await ctx.db.query("ideas").collect();
 
     let queuedCount = 0;
+    let checkedCount = 0;
     const now = Date.now();
-    for (const idea of fullIdeas) {
+    for (const idea of ideas) {
       if (idea.roomId || idea.roomRequestStatus === "assigned") continue;
-      if (
-        idea.teamFormationStatus === "formed" &&
-        idea.roomRequestStatus === "requested"
-      ) {
-        continue;
-      }
+      const readiness = await getRoomReadiness(ctx, idea);
+      if (!readiness.isReady) continue;
+      checkedCount++;
+      if (idea.roomRequestStatus === "requested") continue;
 
       await ctx.db.patch(idea._id, {
         teamFormationStatus: "formed",
@@ -93,12 +140,14 @@ export const queueFullIdeasForRooms = mutation({
         teamFormedAt: idea.teamFormedAt ?? now,
         roomRequestStatus: "requested",
         roomRequestedAt: idea.roomRequestedAt ?? now,
+        memberCount: readiness.memberCount,
+        filledRoles: readiness.filledRoles,
       });
       queuedCount++;
     }
 
     return {
-      checkedCount: fullIdeas.length,
+      checkedCount,
       queuedCount,
     };
   },

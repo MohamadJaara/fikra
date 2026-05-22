@@ -52,9 +52,17 @@ import {
 import type {
   RoomRequestStatus,
   RoomType,
+  TeamSize,
   TeamFormationSource,
 } from "@/lib/constants";
 import type { RoomItem } from "@/lib/types";
+
+function teamSizeCapacity(teamSize: TeamSize) {
+  if (teamSize === "solo") return 1;
+  if (teamSize === "small") return 3;
+  if (teamSize === "medium") return 6;
+  return 7;
+}
 
 export default function AdminRoomsPage() {
   const rooms = useQuery(api.rooms.list);
@@ -192,14 +200,14 @@ export default function AdminRoomsPage() {
       const result = await queueFullIdeasMutation({});
       toast.success(
         result.queuedCount === 0
-          ? `Checked ${result.checkedCount} full ideas. Nothing new to queue.`
-          : `Queued ${result.queuedCount} full idea${result.queuedCount === 1 ? "" : "s"} for rooms.`,
+          ? `Checked ${result.checkedCount} ready teams. Nothing new to queue.`
+          : `Queued ${result.queuedCount} ready team${result.queuedCount === 1 ? "" : "s"} for rooms.`,
       );
     } catch (error) {
       toast.error(
         error instanceof Error
           ? error.message
-          : "Failed to check full ideas",
+          : "Failed to check ready teams",
       );
     } finally {
       setIsCheckingFullIdeas(false);
@@ -213,8 +221,10 @@ export default function AdminRoomsPage() {
   const otherUnassignedIdeas = unassignedIdeas.filter(
     (idea) => idea.roomRequestStatus !== "requested",
   );
-  const fullIdeasMissingRoom = otherUnassignedIdeas.filter(
-    (idea) => idea.status === "full",
+  const readyTeamsMissingRoom = otherUnassignedIdeas.filter(
+    (idea) =>
+      idea.status === "full" ||
+      idea.memberCount >= teamSizeCapacity(idea.teamSize as TeamSize),
   );
   const assignableIdeas = [...roomRequests, ...otherUnassignedIdeas];
   const selectedRoom = rooms?.find((r) => r._id === assignDialogRoomId);
@@ -272,7 +282,7 @@ export default function AdminRoomsPage() {
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              Check full ideas
+              Check ready teams
             </Button>
             <Badge variant={roomRequests.length > 0 ? "default" : "secondary"}>
               {roomRequests.length}
@@ -280,11 +290,12 @@ export default function AdminRoomsPage() {
           </div>
         </div>
 
-        {fullIdeasMissingRoom.length > 0 && (
+        {readyTeamsMissingRoom.length > 0 && (
           <div className="border-b bg-amber-50/70 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-            {fullIdeasMissingRoom.length} full idea
-            {fullIdeasMissingRoom.length === 1 ? "" : "s"} without room
-            requests. Run the check to queue them.
+            {readyTeamsMissingRoom.length} ready-looking team
+            {readyTeamsMissingRoom.length === 1 ? "" : "s"} without room
+            requests. Run the check to queue teams that reached capacity or
+            filled their roles.
           </div>
         )}
 
