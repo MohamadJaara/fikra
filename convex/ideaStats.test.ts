@@ -214,6 +214,38 @@ describe("Denormalized idea stats", () => {
     expect(idea?.roomRequestStatus).toBe("requested");
   });
 
+  test("admins can manually mark a single idea as needing a room", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `single-room-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `single-room-owner@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+    });
+
+    await expect(
+      asOwner.mutation(api.rooms.markIdeaNeedsRoom, { ideaId }),
+    ).rejects.toThrow("Admin access required");
+
+    const adminId = await insertUser(t, {
+      name: "Admin",
+      email: `single-room-admin@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const asAdmin = asUser(t, adminId, `single-room-admin@${DOMAIN}`);
+
+    await asAdmin.mutation(api.rooms.markIdeaNeedsRoom, { ideaId });
+
+    const idea = await asOwner.query(api.ideas.get, { ideaId });
+    expect(idea?.teamFormationStatus).toBe("formed");
+    expect(idea?.roomRequestStatus).toBe("requested");
+  });
+
   test("keeps list stats in sync with mutations", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);

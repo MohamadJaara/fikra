@@ -27,6 +27,7 @@ import {
   Trash2,
   DoorOpen,
   MapPin,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
@@ -46,8 +47,11 @@ export default function AdminIdeasPage() {
   const deleteIdea = useMutation(api.admin.deleteIdea);
   const updateIdeaStatus = useMutation(api.admin.updateIdeaStatus);
   const updateIdeaOnsiteOnly = useMutation(api.admin.updateIdeaOnsiteOnly);
+  const markIdeaNeedsRoom = useMutation(api.rooms.markIdeaNeedsRoom);
   const roleLabels = useRolesMap();
   const [search, setSearch] = useState("");
+  const [markingRoomIdeaId, setMarkingRoomIdeaId] =
+    useState<Id<"ideas"> | null>(null);
 
   const filtered = useMemo(() => {
     if (!ideas) return [];
@@ -91,6 +95,20 @@ export default function AdminIdeasPage() {
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update");
+    }
+  };
+
+  const handleMarkNeedsRoom = async (ideaId: Id<"ideas">) => {
+    setMarkingRoomIdeaId(ideaId);
+    try {
+      await markIdeaNeedsRoom({ ideaId });
+      toast.success("Idea added to the room queue");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to request room",
+      );
+    } finally {
+      setMarkingRoomIdeaId(null);
     }
   };
 
@@ -230,8 +248,28 @@ export default function AdminIdeasPage() {
                         <DoorOpen className="h-3 w-3" />
                         {idea.roomName}
                       </span>
+                    ) : idea.roomRequestStatus === "requested" ? (
+                      <Badge
+                        variant="outline"
+                        className="border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                      >
+                        Needs room
+                      </Badge>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 gap-1 text-xs"
+                        onClick={() => void handleMarkNeedsRoom(idea._id)}
+                        disabled={markingRoomIdeaId === idea._id}
+                      >
+                        {markingRoomIdeaId === idea._id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <DoorOpen className="h-3 w-3" />
+                        )}
+                        Need room
+                      </Button>
                     )}
                   </TableCell>
                   <TableCell>

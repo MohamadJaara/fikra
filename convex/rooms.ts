@@ -153,6 +153,29 @@ export const queueFullIdeasForRooms = mutation({
   },
 });
 
+export const markIdeaNeedsRoom = mutation({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, { ideaId }) => {
+    await getAdminUser(ctx);
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (idea.roomId) throw new Error("This idea already has a room");
+
+    const readiness = await getRoomReadiness(ctx, idea);
+    const now = Date.now();
+    await ctx.db.patch(ideaId, {
+      teamFormationStatus: "formed",
+      teamFormationSource: idea.teamFormationSource ?? "auto",
+      teamFormedAt: idea.teamFormedAt ?? now,
+      roomRequestStatus: "requested",
+      roomRequestedAt: idea.roomRequestedAt ?? now,
+      memberCount: readiness.memberCount,
+      filledRoles: readiness.filledRoles,
+    });
+  },
+});
+
 export const update = mutation({
   args: {
     roomId: v.id("rooms"),
