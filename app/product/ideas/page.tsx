@@ -19,7 +19,7 @@ import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { usePaginatedQuery, useQuery } from "convex/react";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
@@ -170,6 +170,26 @@ function BrowseIdeasContent() {
     filters.categories.length +
     (filters.needsTeammates ? 1 : 0) +
     (filters.needsResources ? 1 : 0);
+
+  const browseContextQuery = useMemo(() => {
+    const params = new URLSearchParams();
+    params.set("sort", sortBy);
+    if (viewMode !== "list") params.set("view", viewMode);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.statuses.length)
+      params.set("statuses", filters.statuses.join(","));
+    if (filters.roles.length) params.set("roles", filters.roles.join(","));
+    if (filters.resourceTags.length)
+      params.set("resourceTags", filters.resourceTags.join(","));
+    if (filters.categories.length)
+      params.set("categories", filters.categories.join(","));
+    if (filters.needsTeammates) params.set("needsTeammates", "1");
+    if (filters.needsResources) params.set("needsResources", "1");
+    return params.toString();
+  }, [filters, sortBy, viewMode]);
+
+  const ideaDetailHref = (ideaId: Id<"ideas">) =>
+    `/product/ideas/${ideaId}?${browseContextQuery}`;
 
   const toggleStringFilter = (
     key: "statuses" | "roles" | "resourceTags",
@@ -531,7 +551,7 @@ function BrowseIdeasContent() {
                     key={idea._id}
                     className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                   >
-                    <IdeaMasonryItem idea={idea} />
+                    <IdeaMasonryItem idea={idea} href={ideaDetailHref(idea._id)} />
                   </div>
                 ))}
               </div>
@@ -542,7 +562,7 @@ function BrowseIdeasContent() {
                     key={idea._id}
                     className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                   >
-                    <IdeaExpandedRow idea={idea} />
+                    <IdeaExpandedRow idea={idea} href={ideaDetailHref(idea._id)} />
                   </div>
                 ))}
               </div>

@@ -18,9 +18,15 @@ import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 
-export function IdeaMasonryItem({ idea }: { idea: IdeaListItem }) {
+export function IdeaMasonryItem({
+  idea,
+  href,
+}: {
+  idea: IdeaListItem;
+  href?: string;
+}) {
   const roleLabels = useRolesMap();
-  const ideaHref = `/product/ideas/${idea._id}`;
+  const ideaHref = href ?? `/product/ideas/${idea._id}`;
   const expressInterest = useMutation(api.interest.express);
   const removeInterest = useMutation(api.interest.remove);
   const [isToggling, setIsToggling] = useState(false);

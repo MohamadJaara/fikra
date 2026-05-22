@@ -139,6 +139,19 @@ export type IdeaDetail = {
   onsiteOnly?: boolean;
 };
 
+export type IdeaNavigationItem = {
+  _id: Id<"ideas">;
+  title: string;
+  pitch: string;
+  status: string;
+  categoryName?: string;
+};
+
+export type IdeaNavigation = {
+  previous: IdeaNavigationItem | null;
+  next: IdeaNavigationItem | null;
+};
+
 export type MentionedUser = {
   _id: Id<"users">;
   name: string;

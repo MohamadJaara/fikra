@@ -111,4 +111,40 @@ describe("Owner-only idea mutations", () => {
       asOwner.mutation(api.ideas.remove, { ideaId }),
     ).resolves.toBeDefined();
   });
+
+  test("authenticated users can navigate to adjacent ideas", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, { name: "Owner" });
+    const ownerEmail = `owner5@${DOMAIN}`;
+    await t.run(async (ctx: any) => {
+      await ctx.db.patch(ownerId, { email: ownerEmail });
+    });
+    const asOwner = asUser(t, ownerId, ownerEmail);
+
+    const olderIdeaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Older idea",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    const currentIdeaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Current idea",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    const newerIdeaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Newer idea",
+    });
+
+    const navigation = await asOwner.query(api.ideas.getAdjacent, {
+      ideaId: currentIdeaId,
+    });
+
+    expect(navigation.previous?._id).toBe(newerIdeaId);
+    expect(navigation.previous?.title).toBe("Newer idea");
+    expect(navigation.next?._id).toBe(olderIdeaId);
+    expect(navigation.next?.title).toBe("Older idea");
+  });
 });

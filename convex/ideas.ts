@@ -19,7 +19,7 @@ import {
 } from "./lib";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import type { IdeaListItem } from "../lib/types";
+import type { IdeaListItem, IdeaNavigationItem } from "../lib/types";
 import {
   getResourceRequestSummary,
   refreshIdeaInterestStats,
@@ -256,6 +256,22 @@ async function buildIdeaListItems(
   );
 
   return results;
+}
+
+async function buildIdeaNavigationItem(
+  ctx: QueryCtx,
+  idea: Doc<"ideas"> | null,
+): Promise<IdeaNavigationItem | null> {
+  if (!idea) return null;
+
+  const category = idea.categoryId ? await ctx.db.get(idea.categoryId) : null;
+  return {
+    _id: idea._id,
+    title: idea.title,
+    pitch: idea.pitch,
+    status: idea.status,
+    categoryName: category?.name,
+  };
 }
 
 function rawIdeaMatchesFilters(idea: Doc<"ideas">, filters?: IdeaListFilters) {
@@ -1445,6 +1461,51 @@ export const get = query({
       isOwner,
       room,
     };
+  },
+});
+
+const ideaListFiltersValidator = v.object({
+  search: v.optional(v.string()),
+  statuses: v.optional(v.array(v.string())),
+  roles: v.optional(v.array(v.string())),
+  resourceTags: v.optional(v.array(v.string())),
+  categories: v.optional(
+    v.array(v.union(v.id("categories"), v.literal("__none__"))),
+  ),
+  needsTeammates: v.optional(v.boolean()),
+  needsResources: v.optional(v.boolean()),
+});
+
+const ideaListSortValidator = v.union(
+  v.literal("newest"),
+  v.literal("oldest"),
+  v.literal("most_reactions"),
+  v.literal("most_interest"),
+);
+
+export const getAdjacent = query({
+  args: {
+    ideaId: v.id("ideas"),
+    filters: v.optional(ideaListFiltersValidator),
+    sortBy: v.optional(ideaListSortValidator),
+  },
+  handler: async (ctx, { ideaId, filters, sortBy }) => {
+    await getAuthenticatedUser(ctx);
+
+    const candidates = await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
+    const sortedIdeas = sortRawIdeas(
+      candidates.filter((idea) => rawIdeaMatchesFilters(idea, filters)),
+      sortBy ?? "most_interest",
+    );
+    const currentIndex = sortedIdeas.findIndex((idea) => idea._id === ideaId);
+    if (currentIndex === -1) return { previous: null, next: null };
+
+    const [previous, next] = await Promise.all([
+      buildIdeaNavigationItem(ctx, sortedIdeas[currentIndex - 1] ?? null),
+      buildIdeaNavigationItem(ctx, sortedIdeas[currentIndex + 1] ?? null),
+    ]);
+
+    return { previous, next };
   },
 });
 
