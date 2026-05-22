@@ -85,12 +85,12 @@ export default function AdminRoomsPage() {
   const [editDirections, setEditDirections] = useState("");
   const [editMapsLink, setEditMapsLink] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
-  const [assignDialogRoomId, setAssignDialogRoomId] =
-    useState<Id<"rooms"> | null>(null);
-  const [selectedIdeaId, setSelectedIdeaId] = useState<Id<"ideas"> | null>(
+  const [selectedRoomByIdea, setSelectedRoomByIdea] = useState<
+    Record<string, Id<"rooms">>
+  >({});
+  const [assigningIdeaId, setAssigningIdeaId] = useState<Id<"ideas"> | null>(
     null,
   );
-  const [isAssigning, setIsAssigning] = useState(false);
   const [unassigningIdeaId, setUnassigningIdeaId] =
     useState<Id<"ideas"> | null>(null);
   const [isCheckingFullIdeas, setIsCheckingFullIdeas] = useState(false);
@@ -162,21 +162,26 @@ export default function AdminRoomsPage() {
     }
   };
 
-  const handleAssign = async () => {
-    if (!assignDialogRoomId || !selectedIdeaId) return;
-    setIsAssigning(true);
+  const handleAssign = async (ideaId: Id<"ideas">) => {
+    const roomId = selectedRoomByIdea[ideaId];
+    if (!roomId) return;
+
+    setAssigningIdeaId(ideaId);
     try {
       await assignMutation({
-        roomId: assignDialogRoomId,
-        ideaId: selectedIdeaId,
+        roomId,
+        ideaId,
       });
       toast.success("Room assigned to idea");
-      setAssignDialogRoomId(null);
-      setSelectedIdeaId(null);
+      setSelectedRoomByIdea((current) => {
+        const next = { ...current };
+        delete next[ideaId];
+        return next;
+      });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to assign");
     } finally {
-      setIsAssigning(false);
+      setAssigningIdeaId(null);
     }
   };
 
@@ -205,9 +210,7 @@ export default function AdminRoomsPage() {
       );
     } catch (error) {
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to check ready teams",
+        error instanceof Error ? error.message : "Failed to check ready teams",
       );
     } finally {
       setIsCheckingFullIdeas(false);
@@ -226,8 +229,10 @@ export default function AdminRoomsPage() {
       idea.status === "full" ||
       idea.memberCount >= teamSizeCapacity(idea.teamSize as TeamSize),
   );
-  const assignableIdeas = [...roomRequests, ...otherUnassignedIdeas];
-  const selectedRoom = rooms?.find((r) => r._id === assignDialogRoomId);
+  const roomList = rooms ?? [];
+  const hasAvailableRoom = roomList.some(
+    (room) => room.type === "shared" || room.assignedIdeaIds.length === 0,
+  );
 
   if (rooms === undefined || ideas === undefined) {
     return (
@@ -306,41 +311,113 @@ export default function AdminRoomsPage() {
           </div>
         ) : (
           <div className="divide-y">
-            {roomRequests.map((idea) => (
-              <div
-                key={idea._id}
-                className="flex items-center justify-between gap-3 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <Link
-                    href={`/product/ideas/${idea._id}`}
-                    className="truncate text-sm font-medium hover:underline"
-                  >
-                    {idea.title}
-                  </Link>
-                  <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                    <span>{idea.memberCount} members</span>
-                    <span>·</span>
-                    <span>by {idea.ownerName}</span>
-                    {idea.teamFormationSource && (
-                      <>
-                        <span>·</span>
-                        <span>
-                          {TEAM_FORMATION_SOURCE_LABELS[
-                            idea.teamFormationSource as TeamFormationSource
-                          ] || idea.teamFormationSource}
-                        </span>
-                      </>
-                    )}
+            {roomRequests.map((idea) => {
+              const selectedRoomId = selectedRoomByIdea[idea._id];
+              const selectedRoom = rooms.find(
+                (room) => room._id === selectedRoomId,
+              );
+              const selectedRoomIsAvailable =
+                selectedRoom &&
+                (selectedRoom.type === "shared" ||
+                  selectedRoom.assignedIdeaIds.length === 0);
+              const isAssigningThisIdea = assigningIdeaId === idea._id;
+
+              return (
+                <div
+                  key={idea._id}
+                  className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="min-w-0">
+                    <Link
+                      href={`/product/ideas/${idea._id}`}
+                      className="truncate text-sm font-medium hover:underline"
+                    >
+                      {idea.title}
+                    </Link>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                      <span>{idea.memberCount} members</span>
+                      <span>·</span>
+                      <span>by {idea.ownerName}</span>
+                      {idea.teamFormationSource && (
+                        <>
+                          <span>·</span>
+                          <span>
+                            {TEAM_FORMATION_SOURCE_LABELS[
+                              idea.teamFormationSource as TeamFormationSource
+                            ] || idea.teamFormationSource}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto md:items-center">
+                    <Badge
+                      variant="outline"
+                      className="w-fit shrink-0 text-[10px]"
+                    >
+                      {ROOM_REQUEST_LABELS[
+                        idea.roomRequestStatus as RoomRequestStatus
+                      ] || "Needs Room"}
+                    </Badge>
+                    <div className="flex w-full gap-2 md:w-[330px]">
+                      <Select
+                        value={selectedRoomId ?? ""}
+                        onValueChange={(roomId) =>
+                          setSelectedRoomByIdea((current) => ({
+                            ...current,
+                            [idea._id]: roomId as Id<"rooms">,
+                          }))
+                        }
+                        disabled={!hasAvailableRoom || isAssigningThisIdea}
+                      >
+                        <SelectTrigger className="h-8 min-w-0 flex-1 text-xs">
+                          <SelectValue
+                            placeholder={
+                              hasAvailableRoom ? "Choose room" : "No rooms open"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rooms.map((room) => {
+                            const isTeamRoomFull =
+                              room.type === "team" &&
+                              room.assignedIdeaIds.length > 0;
+
+                            return (
+                              <SelectItem
+                                key={room._id}
+                                value={room._id}
+                                disabled={isTeamRoomFull}
+                              >
+                                {room.name}
+                                {room.type === "shared"
+                                  ? ` · Shared (${room.assignedIdeaIds.length})`
+                                  : ""}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        size="sm"
+                        className="h-8 shrink-0 gap-1.5 text-xs"
+                        onClick={() => void handleAssign(idea._id)}
+                        disabled={
+                          !selectedRoomIsAvailable || isAssigningThisIdea
+                        }
+                      >
+                        {isAssigningThisIdea ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Link2 className="h-3.5 w-3.5" />
+                        )}
+                        Assign
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <Badge variant="outline" className="shrink-0 text-[10px]">
-                  {ROOM_REQUEST_LABELS[
-                    idea.roomRequestStatus as RoomRequestStatus
-                  ] || "Needs Room"}
-                </Badge>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -382,11 +459,10 @@ export default function AdminRoomsPage() {
         <div className="border rounded-lg overflow-hidden">
           <div className="divide-y">
             {rooms.map((room) => {
-              const isTeamRoomFull =
-                room.type === "team" && room.assignedIdeaIds.length > 0;
               const hasLocationInfo =
                 room.address || room.directions || room.mapsLink;
-              const hasDetails = hasLocationInfo || room.assignedIdeaIds.length > 0;
+              const hasDetails =
+                hasLocationInfo || room.assignedIdeaIds.length > 0;
 
               return (
                 <div key={room._id} className="px-4 py-3">
@@ -406,115 +482,12 @@ export default function AdminRoomsPage() {
                       {room.assignedIdeaIds.length > 0 && (
                         <span className="text-[11px] text-muted-foreground shrink-0">
                           {room.assignedIdeaIds.length}{" "}
-                          {room.assignedIdeaIds.length === 1
-                            ? "idea"
-                            : "ideas"}
+                          {room.assignedIdeaIds.length === 1 ? "idea" : "ideas"}
                         </span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
-                      <Dialog
-                        open={assignDialogRoomId === room._id}
-                        onOpenChange={(open) => {
-                          if (!open) {
-                            setAssignDialogRoomId(null);
-                            setSelectedIdeaId(null);
-                          }
-                        }}
-                      >
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 text-xs gap-1"
-                            onClick={() => setAssignDialogRoomId(room._id)}
-                            disabled={
-                              assignableIdeas.length === 0 || isTeamRoomFull
-                            }
-                          >
-                            <Link2 className="h-3 w-3" />
-                            Assign
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>
-                              Assign idea to &ldquo;{room.name}&rdquo;
-                            </DialogTitle>
-                            <DialogDescription>
-                              {selectedRoom?.type === "team"
-                                ? "Team rooms can only be assigned to one idea."
-                                : "Shared rooms can be assigned to multiple ideas. Teams with room requests are listed first."}
-                            </DialogDescription>
-                          </DialogHeader>
-                          {isTeamRoomFull ? (
-                            <p className="text-sm text-muted-foreground py-4 text-center">
-                              This team room is already assigned. Unassign it
-                              first to use it with another idea.
-                            </p>
-                          ) : assignableIdeas.length === 0 ? (
-                            <p className="text-sm text-muted-foreground py-4 text-center">
-                              All ideas already have rooms assigned.
-                            </p>
-                          ) : (
-                            <div className="space-y-2 max-h-64 overflow-auto">
-                              {assignableIdeas.map((idea) => (
-                                <button
-                                  key={idea._id}
-                                  type="button"
-                                  onClick={() => setSelectedIdeaId(idea._id)}
-                                  className={`w-full text-left rounded-lg border px-3 py-2 text-sm transition-colors ${
-                                    selectedIdeaId === idea._id
-                                      ? "border-primary bg-primary/5"
-                                      : "hover:bg-muted/50"
-                                  }`}
-                                >
-                                  <span className="font-medium">
-                                    {idea.title}
-                                  </span>
-                                  <span className="text-xs text-muted-foreground ml-2">
-                                    {idea.memberCount} members · by{" "}
-                                    {idea.ownerName}
-                                  </span>
-                                  {idea.roomRequestStatus === "requested" && (
-                                    <Badge
-                                      variant="outline"
-                                      className="ml-2 text-[10px]"
-                                    >
-                                      Needs room
-                                    </Badge>
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          <DialogFooter>
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                setAssignDialogRoomId(null);
-                                setSelectedIdeaId(null);
-                              }}
-                              disabled={isAssigning}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              onClick={handleAssign}
-                              disabled={!selectedIdeaId || isAssigning}
-                            >
-                              {isAssigning ? (
-                                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                              ) : (
-                                <Link2 className="h-4 w-4 mr-1" />
-                              )}
-                              Assign
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-
                       <Dialog
                         open={editRoomId === room._id}
                         onOpenChange={(open) => {
@@ -590,7 +563,9 @@ export default function AdminRoomsPage() {
                               <Input
                                 placeholder="https://maps.google.com/..."
                                 value={editMapsLink}
-                                onChange={(e) => setEditMapsLink(e.target.value)}
+                                onChange={(e) =>
+                                  setEditMapsLink(e.target.value)
+                                }
                               />
                             </div>
                           </div>
