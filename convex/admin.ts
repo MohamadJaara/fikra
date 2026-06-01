@@ -1,10 +1,11 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import {
   getAdminUser,
   getUserDisplayName,
   isEffectiveIdeaMember,
+  mergeUniqueStringArrays,
   resolveTeamSize,
 } from "./lib";
 import { STATUSES } from "../lib/constants";
@@ -13,36 +14,258 @@ import { refreshIdeaMemberStats } from "./ideaStats";
 
 const statusValidator = v.union(...STATUSES.map((s) => v.literal(s)));
 
+function teamSizeCapacity(teamSize: ReturnType<typeof resolveTeamSize>) {
+  if (teamSize === "solo") return 1;
+  if (teamSize === "small") return 3;
+  if (teamSize === "medium") return 6;
+  return 7;
+}
+
+function increment(map: Record<string, number>, key: string, by = 1) {
+  map[key] = (map[key] ?? 0) + by;
+}
+
 export const stats = query({
   args: {},
   handler: async (ctx) => {
     await getAdminUser(ctx);
 
-    const [users, ideas, comments, reactions, ideaInterest] = await Promise.all(
-      [
-        ctx.db.query("users").collect(),
-        ctx.db.query("ideas").collect(),
-        ctx.db.query("comments").collect(),
-        ctx.db.query("reactions").collect(),
-        ctx.db.query("ideaInterest").collect(),
-      ],
-    );
+    const [
+      users,
+      ideas,
+      comments,
+      reactions,
+      ideaInterest,
+      ideaMembers,
+      resourceRequests,
+      resources,
+      roles,
+      rooms,
+    ] = await Promise.all([
+      ctx.db.query("users").collect(),
+      ctx.db.query("ideas").collect(),
+      ctx.db.query("comments").collect(),
+      ctx.db.query("reactions").collect(),
+      ctx.db.query("ideaInterest").collect(),
+      ctx.db.query("ideaMembers").collect(),
+      ctx.db.query("resourceRequests").collect(),
+      ctx.db.query("resources").collect(),
+      ctx.db.query("roles").collect(),
+      ctx.db.query("rooms").collect(),
+    ]);
 
     const onboardedUsers = users.filter((u) => u.onboardingComplete).length;
+    const onsiteUsers = users.filter(
+      (u) => u.participationMode === "onsite",
+    ).length;
+    const remoteUsers = users.filter(
+      (u) => u.participationMode === "remote",
+    ).length;
 
     const ideasByStatus: Record<string, number> = {};
-    for (const idea of ideas) {
-      ideasByStatus[idea.status] = (ideasByStatus[idea.status] || 0) + 1;
+    const resourceNameBySlug: Record<string, string> = Object.fromEntries(
+      resources.map((resource) => [resource.slug, resource.name]),
+    );
+    const activeRoles = roles.filter((role) => !role.deletedAt);
+    const roleNameBySlug: Record<string, string> = Object.fromEntries(
+      activeRoles.map((role) => [role.slug, role.name]),
+    );
+    const membersByIdea = new Map<Id<"ideas">, Doc<"ideaMembers">[]>();
+    for (const member of ideaMembers) {
+      const current = membersByIdea.get(member.ideaId) ?? [];
+      current.push(member);
+      membersByIdea.set(member.ideaId, current);
     }
+
+    const teamFormation = { forming: 0, formed: 0 };
+    const roomOverview = {
+      totalRooms: rooms.length,
+      teamRooms: rooms.filter((room) => room.type === "team").length,
+      sharedRooms: rooms.filter((room) => room.type === "shared").length,
+      assignedIdeas: 0,
+      queuedRoomRequests: 0,
+      readyTeamsMissingRoom: 0,
+      availableTeamRooms: 0,
+      assignedRooms: 0,
+      onsiteOnlyIdeas: 0,
+      buildingWithoutRoom: 0,
+    };
+    const roleSupply: Record<string, number> = {};
+    const roleDemand: Record<string, number> = {};
+    const missingRoleDemand: Record<string, number> = {};
+    const filledRoleDemand: Record<string, number> = {};
+    const ideasNeedingRooms: Array<{
+      _id: Id<"ideas">;
+      title: string;
+      ownerName: string;
+      memberCount: number;
+      teamSize: ReturnType<typeof resolveTeamSize>;
+      roomRequestStatus: string;
+      teamFormationStatus: string;
+      missingRoles: string[];
+      unresolvedResources: number;
+      interestCount: number;
+    }> = [];
+
+    for (const user of users) {
+      for (const role of user.roles ?? []) {
+        increment(roleSupply, role);
+      }
+    }
+
+    for (const room of rooms) {
+      const assignedIdeas = ideas.filter((idea) => idea.roomId === room._id);
+      if (assignedIdeas.length > 0) roomOverview.assignedRooms++;
+      if (room.type === "team" && assignedIdeas.length === 0) {
+        roomOverview.availableTeamRooms++;
+      }
+    }
+
+    for (const idea of ideas) {
+      increment(ideasByStatus, idea.status);
+
+      const effectiveMembers = (membersByIdea.get(idea._id) ?? []).filter(
+        (member) => isEffectiveIdeaMember(member, idea),
+      );
+      const filledRoles = new Set<string>();
+      for (const member of effectiveMembers) {
+        for (const role of mergeUniqueStringArrays(
+          member.memberRoles,
+          member.role ? [member.role] : undefined,
+        ) ?? []) {
+          filledRoles.add(role);
+          increment(filledRoleDemand, role);
+        }
+      }
+      const missingRoles = idea.lookingForRoles.filter(
+        (role) => !filledRoles.has(role),
+      );
+      for (const role of idea.lookingForRoles) increment(roleDemand, role);
+      for (const role of missingRoles) increment(missingRoleDemand, role);
+
+      const teamSize = resolveTeamSize(idea);
+      const memberCount = idea.memberCount ?? effectiveMembers.length;
+      const hasReachedCapacity = memberCount >= teamSizeCapacity(teamSize);
+      const formationStatus =
+        idea.teamFormationStatus ??
+        (idea.status === "full" || hasReachedCapacity ? "formed" : "forming");
+      if (formationStatus === "formed") {
+        teamFormation.formed++;
+      } else {
+        teamFormation.forming++;
+      }
+
+      if (idea.roomId) roomOverview.assignedIdeas++;
+      if (idea.roomRequestStatus === "requested" && !idea.roomId) {
+        roomOverview.queuedRoomRequests++;
+      }
+      if (idea.onsiteOnly) roomOverview.onsiteOnlyIdeas++;
+      if (idea.status === "building" && !idea.roomId) {
+        roomOverview.buildingWithoutRoom++;
+      }
+
+      const unresolvedResources = resourceRequests.filter(
+        (request) => request.ideaId === idea._id && !request.resolved,
+      ).length;
+      const isReadyForRoom =
+        formationStatus === "formed" || idea.status === "full";
+      if (isReadyForRoom && !idea.roomId) {
+        if (idea.roomRequestStatus !== "requested") {
+          roomOverview.readyTeamsMissingRoom++;
+        }
+        ideasNeedingRooms.push({
+          _id: idea._id,
+          title: idea.title,
+          ownerName: getUserDisplayName(
+            users.find((user) => user._id === idea.ownerId),
+          ),
+          memberCount,
+          teamSize,
+          roomRequestStatus: idea.roomRequestStatus ?? "none",
+          teamFormationStatus: formationStatus,
+          missingRoles,
+          unresolvedResources,
+          interestCount: idea.interestCount ?? 0,
+        });
+      }
+    }
+
+    const unresolvedResourceRequests = resourceRequests.filter(
+      (request) => !request.resolved,
+    );
+    const unresolvedResourcesByTag: Record<string, number> = {};
+    for (const request of unresolvedResourceRequests) {
+      increment(unresolvedResourcesByTag, request.tag);
+    }
+
+    const roleGaps = Array.from(
+      new Set([
+        ...Object.keys(roleDemand),
+        ...Object.keys(missingRoleDemand),
+        ...Object.keys(roleSupply),
+      ]),
+    )
+      .map((slug) => ({
+        slug,
+        name: roleNameBySlug[slug] ?? slug,
+        needed: roleDemand[slug] ?? 0,
+        missing: missingRoleDemand[slug] ?? 0,
+        filled: filledRoleDemand[slug] ?? 0,
+        availableUsers: roleSupply[slug] ?? 0,
+        gap: Math.max(
+          (missingRoleDemand[slug] ?? 0) - (roleSupply[slug] ?? 0),
+          0,
+        ),
+      }))
+      .filter(
+        (role) =>
+          role.needed > 0 || role.missing > 0 || role.availableUsers > 0,
+      )
+      .sort(
+        (a, b) =>
+          b.gap - a.gap ||
+          b.missing - a.missing ||
+          b.needed - a.needed ||
+          a.name.localeCompare(b.name),
+      )
+      .slice(0, 8);
+
+    const resourceNeeds = Object.entries(unresolvedResourcesByTag)
+      .map(([slug, count]) => ({
+        slug,
+        name: resourceNameBySlug[slug] ?? slug,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .slice(0, 8);
+
+    const topIdeasNeedingRooms = ideasNeedingRooms
+      .sort(
+        (a, b) =>
+          Number(b.roomRequestStatus === "requested") -
+            Number(a.roomRequestStatus === "requested") ||
+          b.memberCount - a.memberCount ||
+          b.interestCount - a.interestCount,
+      )
+      .slice(0, 6);
 
     return {
       totalUsers: users.length,
       onboardedUsers,
+      onsiteUsers,
+      remoteUsers,
       totalIdeas: ideas.length,
       ideasByStatus,
       totalComments: comments.length,
       totalReactions: reactions.length,
       totalInterest: ideaInterest.length,
+      totalMembers: ideaMembers.length,
+      teamFormation,
+      roomOverview,
+      unresolvedResources: unresolvedResourceRequests.length,
+      resourceNeeds,
+      roleGaps,
+      topIdeasNeedingRooms,
     };
   },
 });
