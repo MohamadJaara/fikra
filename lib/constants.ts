@@ -3,6 +3,7 @@ export const STATUSES = [
   "forming_team",
   "full",
   "building",
+  "shelved",
 ] as const;
 export type Status = (typeof STATUSES)[number];
 
@@ -26,6 +27,7 @@ export const STATUS_LABELS: Record<Status, string> = {
   forming_team: "Forming Team",
   full: "Full",
   building: "Building",
+  shelved: "Shelved",
 };
 
 export const STATUS_COLORS: Record<Status, string> = {
@@ -34,6 +36,7 @@ export const STATUS_COLORS: Record<Status, string> = {
     "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   full: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
   building: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  shelved: "bg-stone-100 text-stone-800 dark:bg-stone-900 dark:text-stone-200",
 };
 
 export const STATUS_DOT_COLORS: Record<Status, string> = {
@@ -41,6 +44,7 @@ export const STATUS_DOT_COLORS: Record<Status, string> = {
   forming_team: "bg-amber-500",
   full: "bg-zinc-400 dark:bg-zinc-500",
   building: "bg-emerald-500",
+  shelved: "bg-stone-500",
 };
 
 export const STATUS_BORDER_COLORS: Record<Status, string> = {
@@ -48,6 +52,7 @@ export const STATUS_BORDER_COLORS: Record<Status, string> = {
   forming_team: "border-l-amber-400 dark:border-l-amber-500",
   full: "border-l-gray-300 dark:border-l-gray-600",
   building: "border-l-emerald-400 dark:border-l-emerald-500",
+  shelved: "border-l-stone-400 dark:border-l-stone-500",
 };
 
 export const PARTICIPATION_MODES = ["onsite", "remote"] as const;
@@ -84,13 +89,11 @@ export const TEAM_FORMATION_LABELS: Record<TeamFormationStatus, string> = {
 export const TEAM_FORMATION_SOURCES = ["auto", "owner"] as const;
 export type TeamFormationSource = (typeof TEAM_FORMATION_SOURCES)[number];
 
-export const TEAM_FORMATION_SOURCE_LABELS: Record<
-  TeamFormationSource,
-  string
-> = {
-  auto: "Auto detected",
-  owner: "Marked by owner",
-};
+export const TEAM_FORMATION_SOURCE_LABELS: Record<TeamFormationSource, string> =
+  {
+    auto: "Auto detected",
+    owner: "Marked by owner",
+  };
 
 export const ROOM_REQUEST_STATUSES = ["none", "requested", "assigned"] as const;
 export type RoomRequestStatus = (typeof ROOM_REQUEST_STATUSES)[number];

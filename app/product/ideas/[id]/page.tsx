@@ -13,6 +13,7 @@ import { IdeaDetailSkeleton } from "@/components/Skeleton";
 import { Toaster } from "sonner";
 import { IdeaHeader } from "@/components/idea-detail/IdeaHeader";
 import { OwnershipTransferRequestBanner } from "@/components/idea-detail/OwnershipTransferRequestBanner";
+import { ShelvedIdeaBanner } from "@/components/idea-detail/ShelvedIdeaBanner";
 import { IdeaContent } from "@/components/idea-detail/IdeaContent";
 import { RoomSection } from "@/components/idea-detail/RoomSection";
 import { TeamSection } from "@/components/idea-detail/TeamSection";
@@ -126,7 +127,9 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
       <div className="flex items-center justify-between mb-4 animate-fade-in">
         <Link
-          href={browseQuery ? `/product/ideas?${browseQuery}` : "/product/ideas"}
+          href={
+            browseQuery ? `/product/ideas?${browseQuery}` : "/product/ideas"
+          }
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
         >
           <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
@@ -157,6 +160,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
           <OwnerWelcomeBanner key={idea._id} ideaId={idea._id} />
         )}
         <OwnershipTransferRequestBanner idea={idea} />
+        <ShelvedIdeaBanner idea={idea} />
       </div>
 
       <div className="animate-reveal-up stagger-4">

@@ -49,7 +49,8 @@ async function getRoomReadiness(
 
   return {
     isReady:
-      idea.status === "full" || hasReachedCapacity || hasFilledRequestedRoles,
+      idea.status !== "shelved" &&
+      (idea.status === "full" || hasReachedCapacity || hasFilledRequestedRoles),
     memberCount: effectiveMembers.length,
     filledRoles: [...filledRoles],
   };

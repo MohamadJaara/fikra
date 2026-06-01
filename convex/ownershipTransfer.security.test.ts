@@ -7,6 +7,7 @@ import {
   asUser,
   makeIdeaArgs,
   seedCategory,
+  seedRoles,
   DOMAIN,
 } from "./testHelpers.test";
 
@@ -176,6 +177,44 @@ describe("Ownership transfer authorization", () => {
     await expect(
       asNonMember.mutation(api.ideas.requestOwnership, { ideaId }),
     ).rejects.toThrow("Only team members can request ownership");
+  });
+
+  test("non-member can request and receive ownership of a shelved idea", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+    await seedRoles(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `shelved-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `shelved-owner@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      lookingForRoles: ["developer"],
+    });
+    await asOwner.mutation(api.ideas.shelve, { ideaId });
+
+    const requesterId = await insertUser(t, {
+      name: "Requester",
+      email: `shelved-requester@${DOMAIN}`,
+    });
+    const asRequester = asUser(t, requesterId, `shelved-requester@${DOMAIN}`);
+
+    const requestId = await asRequester.mutation(api.ideas.requestOwnership, {
+      ideaId,
+    });
+
+    await asOwner.mutation(api.ideas.acceptOwnershipTransfer, { requestId });
+
+    const ideaForNewOwner = await asRequester.query(api.ideas.get, { ideaId });
+    expect(ideaForNewOwner?.isOwner).toBe(true);
+    expect(ideaForNewOwner?.isMember).toBe(true);
+    expect(ideaForNewOwner?.status).toBe("exploring");
+    expect(ideaForNewOwner?.members.map((m) => m.userId)).toContain(
+      requesterId,
+    );
   });
 
   test("member remains joined after their ownership request is accepted", async () => {

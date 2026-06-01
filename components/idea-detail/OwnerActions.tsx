@@ -17,6 +17,8 @@ import {
   Loader2,
   CheckCircle2,
   MapPin,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -388,10 +390,14 @@ function TransferOwnershipDialog({
 export function OwnerActions({ idea }: { idea: IdeaDetail }) {
   const ideaId = idea._id;
   const deleteMutation = useMutation(api.ideas.remove);
+  const shelveMutation = useMutation(api.ideas.shelve);
+  const unshelveMutation = useMutation(api.ideas.unshelve);
   const markTeamFormedMutation = useMutation(api.ideas.markTeamFormed);
   const markTeamFormingMutation = useMutation(api.ideas.markTeamForming);
   const router = useRouter();
   const [isUpdatingFormation, setIsUpdatingFormation] = useState(false);
+  const [isUpdatingShelf, setIsUpdatingShelf] = useState(false);
+  const isShelved = idea.status === "shelved";
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this idea?")) return;
@@ -432,9 +438,60 @@ export function OwnerActions({ idea }: { idea: IdeaDetail }) {
     }
   };
 
+  const handleShelfToggle = async () => {
+    if (isShelved) {
+      setIsUpdatingShelf(true);
+      try {
+        await unshelveMutation({ ideaId });
+        toast.success("Idea reopened");
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to reopen idea",
+        );
+      } finally {
+        setIsUpdatingShelf(false);
+      }
+      return;
+    }
+
+    if (
+      !confirm(
+        "Shelve this idea? It will stay visible and others can request ownership.",
+      )
+    ) {
+      return;
+    }
+
+    setIsUpdatingShelf(true);
+    try {
+      await shelveMutation({ ideaId });
+      toast.success("Idea shelved. Others can request ownership.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to shelve idea",
+      );
+    } finally {
+      setIsUpdatingShelf(false);
+    }
+  };
+
   return (
     <div className="flex flex-wrap justify-end gap-2">
-      {idea.teamFormationStatus === "formed" ? (
+      {isShelved ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => void handleShelfToggle()}
+          disabled={isUpdatingShelf}
+        >
+          {isUpdatingShelf ? (
+            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+          ) : (
+            <ArchiveRestore className="h-4 w-4 mr-1" />
+          )}
+          Reopen
+        </Button>
+      ) : idea.teamFormationStatus === "formed" ? (
         <Button
           variant="outline"
           size="sm"
@@ -479,6 +536,19 @@ export function OwnerActions({ idea }: { idea: IdeaDetail }) {
             idea.pendingOwnershipTransfer.isOwnerInitiated) && (
             <TransferOwnershipDialog idea={idea} asDropdownItem />
           )}
+          <DropdownMenuItem
+            onClick={() => void handleShelfToggle()}
+            disabled={isUpdatingShelf}
+          >
+            {isUpdatingShelf ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : isShelved ? (
+              <ArchiveRestore className="h-4 w-4 mr-2" />
+            ) : (
+              <Archive className="h-4 w-4 mr-2" />
+            )}
+            {isShelved ? "Reopen idea" : "Shelve idea"}
+          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
               document

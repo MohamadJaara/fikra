@@ -148,7 +148,10 @@ export const stats = query({
       const hasReachedCapacity = memberCount >= teamSizeCapacity(teamSize);
       const formationStatus =
         idea.teamFormationStatus ??
-        (idea.status === "full" || hasReachedCapacity ? "formed" : "forming");
+        (idea.status !== "shelved" &&
+        (idea.status === "full" || hasReachedCapacity)
+          ? "formed"
+          : "forming");
       if (formationStatus === "formed") {
         teamFormation.formed++;
       } else {
@@ -168,7 +171,8 @@ export const stats = query({
         (request) => request.ideaId === idea._id && !request.resolved,
       ).length;
       const isReadyForRoom =
-        formationStatus === "formed" || idea.status === "full";
+        idea.status !== "shelved" &&
+        (formationStatus === "formed" || idea.status === "full");
       if (isReadyForRoom && !idea.roomId) {
         if (idea.roomRequestStatus !== "requested") {
           roomOverview.readyTeamsMissingRoom++;

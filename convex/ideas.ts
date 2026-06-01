@@ -32,6 +32,8 @@ const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
 const TRANSFER_STATUS_DECLINED = "declined";
 const TRANSFER_STATUS_CANCELED = "canceled";
+const IDEA_STATUS_SHELVED = "shelved";
+const IDEA_STATUS_EXPLORING = "exploring";
 const _IDEA_LIST_SORT_OPTIONS = [
   "newest",
   "oldest",
@@ -303,7 +305,9 @@ function rawIdeaMatchesFilters(idea: Doc<"ideas">, filters?: IdeaListFilters) {
   }
 
   if (filters.needsTeammates) {
-    if (idea.status === "full") return false;
+    if (idea.status === "full" || idea.status === IDEA_STATUS_SHELVED) {
+      return false;
+    }
     const filledRoles = new Set(idea.filledRoles ?? []);
     if (!idea.lookingForRoles.some((role) => !filledRoles.has(role)))
       return false;
@@ -516,7 +520,10 @@ export const create = mutation({
       filledRoles: [],
       resourceRequestCount: 0,
       hasUnresolvedResources: false,
-      needsTeammates: args.status !== "full" && args.lookingForRoles.length > 0,
+      needsTeammates:
+        args.status !== "full" &&
+        args.status !== IDEA_STATUS_SHELVED &&
+        args.lookingForRoles.length > 0,
       resourceRequestSummary: [],
     });
 
@@ -645,6 +652,7 @@ export const update = mutation({
     const currentFilledRoles = new Set(idea.filledRoles ?? []);
     const needsTeammates =
       args.status !== "full" &&
+      args.status !== IDEA_STATUS_SHELVED &&
       args.lookingForRoles.some((role) => !currentFilledRoles.has(role));
 
     await ctx.db.patch(args.ideaId, {
@@ -662,6 +670,46 @@ export const update = mutation({
       needsTeammates,
     });
     await refreshIdeaMemberStats(ctx, args.ideaId);
+  },
+});
+
+export const shelve = mutation({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, { ideaId }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (idea.ownerId !== userId) {
+      throw new Error("Only the owner can shelve this idea");
+    }
+
+    await ctx.db.patch(ideaId, {
+      status: IDEA_STATUS_SHELVED,
+      needsTeammates: false,
+      teamFormationStatus: "forming",
+      teamFormationSource: undefined,
+      teamFormedAt: undefined,
+      roomRequestStatus: idea.roomId ? "assigned" : "none",
+      roomRequestedAt: undefined,
+    });
+  },
+});
+
+export const unshelve = mutation({
+  args: { ideaId: v.id("ideas") },
+  handler: async (ctx, { ideaId }) => {
+    const { userId } = await getAuthenticatedUser(ctx);
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (idea.ownerId !== userId) {
+      throw new Error("Only the owner can unshelve this idea");
+    }
+    if (idea.status !== IDEA_STATUS_SHELVED) return;
+
+    await ctx.db.patch(ideaId, { status: IDEA_STATUS_EXPLORING });
+    await refreshIdeaMemberStats(ctx, ideaId);
   },
 });
 
@@ -810,7 +858,7 @@ export const requestOwnership = mutation({
         q.eq("ideaId", ideaId).eq("userId", userId),
       )
       .first();
-    if (!membership) {
+    if (!membership && idea.status !== IDEA_STATUS_SHELVED) {
       throw new Error("Only team members can request ownership");
     }
     assertOnsiteEligibleForIdea(idea, user);
@@ -891,12 +939,22 @@ export const acceptOwnershipTransfer = mutation({
       )
       .first();
 
-    if (requesterInitiated && !newOwnerMembership) {
+    if (
+      requesterInitiated &&
+      !newOwnerMembership &&
+      idea.status !== IDEA_STATUS_SHELVED
+    ) {
       throw new Error("Requester must still be a team member");
     }
 
     if (newOwnerMembership && newOwnerMembership.joinedAsOwner !== true) {
       await ctx.db.patch(newOwnerMembership._id, {
+        joinedAsOwner: true,
+      });
+    } else if (!newOwnerMembership && idea.status === IDEA_STATUS_SHELVED) {
+      await ctx.db.insert("ideaMembers", {
+        ideaId: request.ideaId,
+        userId: newOwnerId,
         joinedAsOwner: true,
       });
     }
@@ -927,7 +985,12 @@ export const acceptOwnershipTransfer = mutation({
       await ctx.db.delete(previousOwnerMembership._id);
     }
 
-    await ctx.db.patch(request.ideaId, { ownerId: newOwnerId });
+    await ctx.db.patch(request.ideaId, {
+      ownerId: newOwnerId,
+      ...(idea.status === IDEA_STATUS_SHELVED
+        ? { status: IDEA_STATUS_EXPLORING }
+        : {}),
+    });
     await refreshIdeaMemberStats(ctx, request.ideaId);
     if (targetInterest) {
       await refreshIdeaInterestStats(ctx, request.ideaId);
@@ -1483,6 +1546,7 @@ export const get = query({
       hasUnresolvedResources: resourceDocs.some((r) => !r.resolved),
       missingRoles,
       pendingOwnershipTransfer,
+      hasPendingOwnershipTransfer: pendingTransferRequest !== null,
       isMember: effectiveMembers.some((m) => m.userId === userId),
       isInterested: interestDocs.some((i) => i.userId === userId),
       isBookmarked: bookmarkDoc !== null,

@@ -30,6 +30,7 @@ const statusAccentColors: Record<Status, string> = {
   forming_team: "text-amber-500",
   full: "text-zinc-400 dark:text-zinc-500",
   building: "text-emerald-500",
+  shelved: "text-stone-500",
 };
 
 export default function ActivityPage() {
@@ -243,9 +244,7 @@ function IdeaList({
         <div className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center mb-4">
           <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40" />
         </div>
-        <p className="text-sm font-medium text-foreground/80">
-          {emptyMessage}
-        </p>
+        <p className="text-sm font-medium text-foreground/80">{emptyMessage}</p>
         <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
           {emptyDescription}
         </p>
@@ -260,8 +259,7 @@ function IdeaList({
         if (!idea) return null;
         const status = idea.status as Status;
         const dotColor = STATUS_DOT_COLORS[status] || "bg-zinc-400";
-        const borderColor =
-          STATUS_BORDER_COLORS[status] || "border-l-zinc-300";
+        const borderColor = STATUS_BORDER_COLORS[status] || "border-l-zinc-300";
         const accentColor = statusAccentColors[status] || "text-zinc-400";
         return (
           <motion.div
@@ -322,9 +320,7 @@ function ResourceList({
         <div className="w-10 h-10 rounded-full border-2 border-dashed border-muted-foreground/30 flex items-center justify-center mb-4">
           <Package className="h-4 w-4 text-muted-foreground/40" />
         </div>
-        <p className="text-sm font-medium text-foreground/80">
-          All clear
-        </p>
+        <p className="text-sm font-medium text-foreground/80">All clear</p>
         <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
           No unresolved resource requests across any ideas.
         </p>

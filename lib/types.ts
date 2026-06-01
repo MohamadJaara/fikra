@@ -131,6 +131,7 @@ export type IdeaDetail = {
   hasUnresolvedResources: boolean;
   missingRoles: string[];
   pendingOwnershipTransfer: OwnershipTransferRequest | null;
+  hasPendingOwnershipTransfer: boolean;
   isMember: boolean;
   isInterested: boolean;
   isBookmarked: boolean;

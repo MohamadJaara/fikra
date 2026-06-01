@@ -93,6 +93,9 @@ export function IdeaForm({
   const categories = useQuery(api.categories.list);
   const roles = useRolesList();
   const resources = useResourcesList();
+  const statusOptions = isEditing
+    ? STATUSES
+    : STATUSES.filter((s) => s !== "shelved");
 
   const toggleRole = (role: string) => {
     setSelectedRoles((prev) =>
@@ -134,10 +137,7 @@ export function IdeaForm({
         <SectionLabel>The Basics</SectionLabel>
         <div className="space-y-5">
           <div>
-            <label
-              htmlFor="title"
-              className="text-sm font-medium mb-1.5 block"
-            >
+            <label htmlFor="title" className="text-sm font-medium mb-1.5 block">
               Title
             </label>
             <Input
@@ -155,10 +155,7 @@ export function IdeaForm({
           </div>
 
           <div>
-            <label
-              htmlFor="pitch"
-              className="text-sm font-medium mb-1.5 block"
-            >
+            <label htmlFor="pitch" className="text-sm font-medium mb-1.5 block">
               One-line Pitch
             </label>
             <Input
@@ -276,7 +273,7 @@ export function IdeaForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {STATUSES.map((s) => (
+                  {statusOptions.map((s) => (
                     <SelectItem key={s} value={s}>
                       {STATUS_LABELS[s]}
                     </SelectItem>
@@ -288,7 +285,8 @@ export function IdeaForm({
 
           <div>
             <label className="text-sm font-medium mb-1.5 block">
-              Category {!isEditing && <span className="text-destructive">*</span>}
+              Category{" "}
+              {!isEditing && <span className="text-destructive">*</span>}
             </label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger>

@@ -63,12 +63,15 @@ export function TeamSection({
     if (!roles) return [] as { slug: string; name: string }[];
     return roles.map((role) => ({ slug: role.slug, name: role.name }));
   }, [roles]);
-  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(() => new Set());
+  const [selectedRoles, setSelectedRoles] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [isJoinDialogOpen, setIsJoinDialogOpen] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isRequestingOwnership, setIsRequestingOwnership] = useState(false);
   const areRolesLoading = roles === undefined;
+  const isShelved = idea.status === "shelved";
 
   const requestedJoinRoles = useMemo(
     () =>
@@ -343,6 +346,10 @@ export function TeamSection({
               </Button>
             )}
           </>
+        ) : isShelved ? (
+          <div className="flex-1 min-w-[260px] rounded-lg border border-stone-200 bg-stone-50/70 px-4 py-3 text-sm text-stone-700 dark:border-stone-800 dark:bg-stone-950/40 dark:text-stone-300">
+            This team is paused while the idea looks for a new owner.
+          </div>
         ) : (
           <>
             {idea.onsiteOnly && viewer?.participationMode !== "onsite" && (

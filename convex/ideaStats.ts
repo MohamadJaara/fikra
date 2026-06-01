@@ -65,6 +65,7 @@ export async function refreshIdeaMemberStats(
   const needsTeammates =
     !!idea &&
     idea.status !== "full" &&
+    idea.status !== "shelved" &&
     idea.lookingForRoles.some((role) => !filledRoles.has(role));
   const patch: Partial<Doc<"ideas">> = {
     memberCount: effectiveMembers.length,
@@ -80,10 +81,11 @@ export async function refreshIdeaMemberStats(
       resolveTeamSize(idea) === "solo" && effectiveMembers.length >= 1;
     const hasEnoughPeople = effectiveMembers.length >= MIN_AUTO_FORMED_MEMBERS;
     const autoFormed =
-      idea.status === "full" ||
-      soloReady ||
-      hasEnoughPeople ||
-      (effectiveMembers.length > 0 && requiredRolesFilled);
+      idea.status !== "shelved" &&
+      (idea.status === "full" ||
+        soloReady ||
+        hasEnoughPeople ||
+        (effectiveMembers.length > 0 && requiredRolesFilled));
     const isManuallyFormed =
       idea.teamFormationStatus === "formed" &&
       idea.teamFormationSource === "owner";
