@@ -26,6 +26,7 @@ import {
   refreshIdeaMemberStats,
   refreshIdeaResourceStats,
 } from "./ideaStats";
+import { assertIdeaSubmissionsOpen } from "./ideaSubmissions";
 
 const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
@@ -468,6 +469,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    await assertIdeaSubmissionsOpen(ctx);
 
     const title = validateStringLength(args.title, 1, 120, "Title");
     const pitch = validateStringLength(args.pitch, 1, 200, "Pitch");

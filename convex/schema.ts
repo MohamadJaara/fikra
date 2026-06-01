@@ -257,6 +257,16 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
 
+  ideaSubmissionSettings: defineTable({
+    key: v.string(),
+    deadlineAt: v.number(),
+    timezone: v.string(),
+    message: v.optional(v.string()),
+    active: v.boolean(),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
   dismissedAnnouncements: defineTable({
     announcementId: v.id("announcements"),
     userId: v.id("users"),

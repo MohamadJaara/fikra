@@ -18,6 +18,7 @@ import {
   Package,
   Megaphone,
   CalendarClock,
+  CalendarX2,
 } from "lucide-react";
 import Link from "next/link";
 import { STATUSES, STATUS_LABELS, STATUS_COLORS } from "@/lib/constants";
@@ -134,6 +135,13 @@ export default function AdminDashboard() {
       bg: "bg-emerald-50 dark:bg-emerald-950",
       title: "Event Date",
       subtitle: "Set the visible hackathon date",
+    },
+    {
+      href: "/product/admin/idea-deadline",
+      icon: <CalendarX2 className="h-5 w-5 text-amber-600" />,
+      bg: "bg-amber-50 dark:bg-amber-950",
+      title: "Idea Deadline",
+      subtitle: "Close or reopen new submissions",
     },
   ];
 
