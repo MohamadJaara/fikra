@@ -1030,6 +1030,25 @@ export const cancelOwnershipTransfer = mutation({
   },
 });
 
+const ideaListFiltersValidator = v.object({
+  search: v.optional(v.string()),
+  statuses: v.optional(v.array(v.string())),
+  roles: v.optional(v.array(v.string())),
+  resourceTags: v.optional(v.array(v.string())),
+  categories: v.optional(
+    v.array(v.union(v.id("categories"), v.literal("__none__"))),
+  ),
+  needsTeammates: v.optional(v.boolean()),
+  needsResources: v.optional(v.boolean()),
+});
+
+const ideaListSortValidator = v.union(
+  v.literal("newest"),
+  v.literal("oldest"),
+  v.literal("most_reactions"),
+  v.literal("most_interest"),
+);
+
 export const list = query({
   args: {
     paginationOpts: paginationOptsValidator,
@@ -1046,14 +1065,7 @@ export const list = query({
         needsResources: v.optional(v.boolean()),
       }),
     ),
-    sortBy: v.optional(
-      v.union(
-        v.literal("newest"),
-        v.literal("oldest"),
-        v.literal("most_reactions"),
-        v.literal("most_interest"),
-      ),
-    ),
+    sortBy: v.optional(ideaListSortValidator),
   },
   handler: async (ctx, args) => {
     const userId = await getIdeaListViewerId(ctx);
@@ -1236,6 +1248,20 @@ export const list = query({
       args.paginationOpts,
       userId,
     );
+  },
+});
+
+export const count = query({
+  args: {
+    filters: v.optional(ideaListFiltersValidator),
+  },
+  handler: async (ctx, { filters }) => {
+    const userId = await getIdeaListViewerId(ctx);
+    if (!userId) return 0;
+
+    const candidates = await ctx.db.query("ideas").collect();
+    return candidates.filter((idea) => rawIdeaMatchesFilters(idea, filters))
+      .length;
   },
 });
 
@@ -1465,25 +1491,6 @@ export const get = query({
     };
   },
 });
-
-const ideaListFiltersValidator = v.object({
-  search: v.optional(v.string()),
-  statuses: v.optional(v.array(v.string())),
-  roles: v.optional(v.array(v.string())),
-  resourceTags: v.optional(v.array(v.string())),
-  categories: v.optional(
-    v.array(v.union(v.id("categories"), v.literal("__none__"))),
-  ),
-  needsTeammates: v.optional(v.boolean()),
-  needsResources: v.optional(v.boolean()),
-});
-
-const ideaListSortValidator = v.union(
-  v.literal("newest"),
-  v.literal("oldest"),
-  v.literal("most_reactions"),
-  v.literal("most_interest"),
-);
 
 export const getAdjacent = query({
   args: {

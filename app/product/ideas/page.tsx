@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/select";
 import type { IdeaListItem } from "@/lib/types";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 60;
 
 type FilterState = {
   search: string;
@@ -162,6 +162,21 @@ function BrowseIdeasContent() {
     { initialNumItems: PAGE_SIZE },
   );
   const ideaResults = ideas as IdeaListItem[];
+  const ideaCount = useQuery(api.ideas.count, {
+    filters: {
+      search: filters.search,
+      statuses: filters.statuses,
+      roles: filters.roles,
+      resourceTags: filters.resourceTags,
+      categories: filters.categories,
+      needsTeammates: filters.needsTeammates,
+      needsResources: filters.needsResources,
+    },
+  });
+  const remainingIdeaCount =
+    typeof ideaCount === "number"
+      ? Math.max(ideaCount - ideaResults.length, 0)
+      : null;
 
   const activeFilterCount =
     filters.statuses.length +
@@ -232,9 +247,9 @@ function BrowseIdeasContent() {
             Ideas
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5 font-mono tabular-nums">
-            {status === "LoadingFirstPage"
+            {status === "LoadingFirstPage" || ideaCount === undefined
               ? "loading..."
-              : `${ideaResults.length} idea${ideaResults.length !== 1 ? "s" : ""}`}
+              : `${ideaCount} idea${ideaCount !== 1 ? "s" : ""}`}
           </p>
         </div>
         <Link href="/product/ideas/new">
@@ -568,14 +583,22 @@ function BrowseIdeasContent() {
               </div>
             )}
             {status === "CanLoadMore" && (
-              <div className="flex justify-center mt-10">
+              <div className="flex flex-col items-center gap-2 mt-10">
                 <Button
                   variant="outline"
                   onClick={() => loadMore(PAGE_SIZE)}
                   className="min-w-[140px]"
                 >
-                  Load more
+                  Load{" "}
+                  {remainingIdeaCount === null
+                    ? "more"
+                    : `${Math.min(remainingIdeaCount, PAGE_SIZE)} more`}
                 </Button>
+                {ideaCount !== undefined && (
+                  <p className="text-xs text-muted-foreground font-mono tabular-nums">
+                    Showing {ideaResults.length} of {ideaCount}
+                  </p>
+                )}
               </div>
             )}
             {status === "LoadingMore" && (
