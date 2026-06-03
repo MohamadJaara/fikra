@@ -692,6 +692,8 @@ export const shelve = mutation({
       teamFormedAt: undefined,
       roomRequestStatus: idea.roomId ? "assigned" : "none",
       roomRequestedAt: undefined,
+      adminShelvedAt: undefined,
+      adminShelvedBy: undefined,
     });
   },
 });
@@ -708,7 +710,11 @@ export const unshelve = mutation({
     }
     if (idea.status !== IDEA_STATUS_SHELVED) return;
 
-    await ctx.db.patch(ideaId, { status: IDEA_STATUS_EXPLORING });
+    await ctx.db.patch(ideaId, {
+      status: IDEA_STATUS_EXPLORING,
+      adminShelvedAt: undefined,
+      adminShelvedBy: undefined,
+    });
     await refreshIdeaMemberStats(ctx, ideaId);
   },
 });

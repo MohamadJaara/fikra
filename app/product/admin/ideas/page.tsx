@@ -21,6 +21,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -48,6 +57,7 @@ import {
   ClipboardList,
   ExternalLink,
   Navigation,
+  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
@@ -71,9 +81,11 @@ import type {
 import type { RoomItem } from "@/lib/types";
 import { useRolesMap } from "@/lib/hooks";
 
-const ALL_STATUSES = "all";
 const ALL_ROOM_STATES = "all";
 const ALL_ONSITE_STATES = "all";
+const WORKING_STATUSES: Status[] = STATUSES.filter(
+  (status) => status !== "shelved",
+);
 
 function teamSizeCapacity(teamSize: TeamSize) {
   if (teamSize === "solo") return 1;
@@ -120,6 +132,18 @@ function parseSharedLimit(value: string, type: string) {
   return Number(trimmed);
 }
 
+function sameStatuses(a: Status[], b: Status[]) {
+  return a.length === b.length && a.every((status) => b.includes(status));
+}
+
+function statusFilterLabel(statuses: Status[]) {
+  if (statuses.length === STATUSES.length) return "All statuses";
+  if (sameStatuses(statuses, WORKING_STATUSES)) return "All except shelved";
+  if (statuses.length === 1) return STATUS_LABELS[statuses[0]];
+  if (statuses.length === 0) return "No statuses";
+  return `${statuses.length} statuses`;
+}
+
 export default function AdminIdeasPage() {
   const ideas = useQuery(api.admin.listIdeas);
   const rooms = useQuery(api.rooms.list);
@@ -136,7 +160,9 @@ export default function AdminIdeasPage() {
   const roleLabels = useRolesMap();
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState(ALL_STATUSES);
+  const [selectedStatuses, setSelectedStatuses] = useState<Status[]>(() => [
+    ...WORKING_STATUSES,
+  ]);
   const [roomFilter, setRoomFilter] = useState(ALL_ROOM_STATES);
   const [onsiteFilter, setOnsiteFilter] = useState(ALL_ONSITE_STATES);
   const [markingRoomIdeaId, setMarkingRoomIdeaId] =
@@ -177,7 +203,8 @@ export default function AdminIdeasPage() {
         idea.ownerName.toLowerCase().includes(q) ||
         idea.ownerEmail?.toLowerCase().includes(q);
       const matchesStatus =
-        statusFilter === ALL_STATUSES || idea.status === statusFilter;
+        selectedStatuses.length === STATUSES.length ||
+        selectedStatuses.includes(idea.status as Status);
       const matchesRoom =
         roomFilter === ALL_ROOM_STATES ||
         (roomFilter === "assigned" && idea.roomId) ||
@@ -193,7 +220,7 @@ export default function AdminIdeasPage() {
 
       return matchesSearch && matchesStatus && matchesRoom && matchesOnsite;
     });
-  }, [ideas, onsiteFilter, roomFilter, search, statusFilter]);
+  }, [ideas, onsiteFilter, roomFilter, search, selectedStatuses]);
 
   const roomList = rooms ?? [];
   const ideaList = ideas ?? [];
@@ -215,6 +242,14 @@ export default function AdminIdeasPage() {
   );
   const onsiteIdeas = ideaList.filter((idea) => idea.onsiteOnly);
 
+  const toggleStatusFilter = (status: Status) => {
+    setSelectedStatuses((current) =>
+      current.includes(status)
+        ? current.filter((s) => s !== status)
+        : [...current, status],
+    );
+  };
+
   const handleDeleteIdea = async (ideaId: Id<"ideas">, title: string) => {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     try {
@@ -226,9 +261,22 @@ export default function AdminIdeasPage() {
   };
 
   const handleStatusChange = async (ideaId: Id<"ideas">, status: Status) => {
+    if (
+      status === "shelved" &&
+      !confirm(
+        "Shelve this idea? The owner will be notified and can reopen it if they plan to keep working on it.",
+      )
+    ) {
+      return;
+    }
+
     try {
       await updateIdeaStatus({ ideaId, status });
-      toast.success("Status updated");
+      toast.success(
+        status === "shelved"
+          ? "Idea shelved and owner notified"
+          : "Status updated",
+      );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update");
     }
@@ -499,19 +547,48 @@ export default function AdminIdeasPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="lg:w-[165px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_STATUSES}>All statuses</SelectItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="h-10 justify-between gap-2 lg:w-[190px]"
+                >
+                  <span className="truncate">
+                    {statusFilterLabel(selectedStatuses)}
+                  </span>
+                  <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuLabel>Status filter</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onSelect={() => setSelectedStatuses([...STATUSES])}
+                >
+                  All statuses
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => setSelectedStatuses([...WORKING_STATUSES])}
+                >
+                  All except shelved
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => setSelectedStatuses(["shelved"])}
+                >
+                  Shelved only
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 {STATUSES.map((status) => (
-                  <SelectItem key={status} value={status}>
+                  <DropdownMenuCheckboxItem
+                    key={status}
+                    checked={selectedStatuses.includes(status)}
+                    onCheckedChange={() => toggleStatusFilter(status)}
+                    onSelect={(event) => event.preventDefault()}
+                  >
                     {STATUS_LABELS[status]}
-                  </SelectItem>
+                  </DropdownMenuCheckboxItem>
                 ))}
-              </SelectContent>
-            </Select>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Select value={roomFilter} onValueChange={setRoomFilter}>
               <SelectTrigger className="lg:w-[165px]">
                 <SelectValue />

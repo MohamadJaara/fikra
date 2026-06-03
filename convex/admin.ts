@@ -13,6 +13,7 @@ import { internal } from "./_generated/api";
 import { refreshIdeaMemberStats } from "./ideaStats";
 
 const statusValidator = v.union(...STATUSES.map((s) => v.literal(s)));
+const IDEA_STATUS_SHELVED = "shelved";
 
 function teamSizeCapacity(teamSize: ReturnType<typeof resolveTeamSize>) {
   if (teamSize === "solo") return 1;
@@ -280,12 +281,40 @@ export const updateIdeaStatus = mutation({
     status: statusValidator,
   },
   handler: async (ctx, { ideaId, status }) => {
-    await getAdminUser(ctx);
+    const { userId } = await getAdminUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
 
-    await ctx.db.patch(ideaId, { status });
+    if (status === IDEA_STATUS_SHELVED) {
+      await ctx.db.patch(ideaId, {
+        status,
+        needsTeammates: false,
+        teamFormationStatus: "forming",
+        teamFormationSource: undefined,
+        teamFormedAt: undefined,
+        roomRequestStatus: idea.roomId ? "assigned" : "none",
+        roomRequestedAt: undefined,
+        adminShelvedAt: Date.now(),
+        adminShelvedBy: userId,
+      });
+
+      if (idea.status !== IDEA_STATUS_SHELVED) {
+        await ctx.runMutation(internal.notifications.create, {
+          recipientId: idea.ownerId,
+          actorId: userId,
+          ideaId,
+          type: "idea_shelved_by_admin",
+        });
+      }
+      return;
+    }
+
+    await ctx.db.patch(ideaId, {
+      status,
+      adminShelvedAt: undefined,
+      adminShelvedBy: undefined,
+    });
     await refreshIdeaMemberStats(ctx, ideaId);
   },
 });

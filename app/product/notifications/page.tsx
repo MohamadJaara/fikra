@@ -29,6 +29,7 @@ const TYPE_LABELS: Record<string, string> = {
   merge_declined: "declined the merge with",
   mutual_interest: "and you both like each other's ideas — including",
   room_assigned: "assigned a room to",
+  idea_shelved_by_admin: "shelved your idea",
 };
 
 export default function NotificationsPage() {

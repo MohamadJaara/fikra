@@ -36,6 +36,7 @@ const TYPE_LABELS: Record<string, string> = {
   merge_accepted: "accepted the merge with",
   merge_declined: "declined the merge with",
   room_assigned: "assigned a room to",
+  idea_shelved_by_admin: "shelved your idea",
 };
 
 export function NotificationBell() {

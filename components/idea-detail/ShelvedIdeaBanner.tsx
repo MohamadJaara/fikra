@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useMutation } from "convex/react";
-import { Archive, ArrowRightLeft, Loader2 } from "lucide-react";
+import { Archive, ArchiveRestore, ArrowRightLeft, Loader2 } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import type { IdeaDetail } from "@/lib/types";
@@ -10,9 +10,13 @@ import { toast } from "sonner";
 
 export function ShelvedIdeaBanner({ idea }: { idea: IdeaDetail }) {
   const requestOwnership = useMutation(api.ideas.requestOwnership);
+  const unshelve = useMutation(api.ideas.unshelve);
   const [isRequesting, setIsRequesting] = useState(false);
+  const [isReopening, setIsReopening] = useState(false);
 
   if (idea.status !== "shelved") return null;
+
+  const wasShelvedByAdmin = Boolean(idea.adminShelvedAt);
 
   const handleRequestOwnership = async () => {
     setIsRequesting(true);
@@ -28,6 +32,20 @@ export function ShelvedIdeaBanner({ idea }: { idea: IdeaDetail }) {
     }
   };
 
+  const handleReopen = async () => {
+    setIsReopening(true);
+    try {
+      await unshelve({ ideaId: idea._id });
+      toast.success("Idea reopened");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to reopen idea",
+      );
+    } finally {
+      setIsReopening(false);
+    }
+  };
+
   return (
     <div className="mb-6 rounded-lg border border-stone-200 bg-stone-50/80 p-4 dark:border-stone-800 dark:bg-stone-950/40">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -37,14 +55,34 @@ export function ShelvedIdeaBanner({ idea }: { idea: IdeaDetail }) {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-medium text-stone-900 dark:text-stone-100">
-              Needs new owner
+              {wasShelvedByAdmin ? "Shelved by an admin" : "Needs new owner"}
             </p>
             <p className="mt-1 text-sm leading-6 text-stone-700 dark:text-stone-300">
-              This idea is shelved by its owner. It stays visible so someone
-              else can pick it up and lead it.
+              {wasShelvedByAdmin
+                ? idea.isOwner
+                  ? "An admin shelved this idea. If you think it should keep moving, reopen it and continue working on it."
+                  : "An admin shelved this idea. It stays visible so the owner can reopen it if they plan to keep working on it."
+                : "This idea is shelved by its owner. It stays visible so someone else can pick it up and lead it."}
             </p>
           </div>
         </div>
+
+        {idea.isOwner && wasShelvedByAdmin && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="shrink-0 border-stone-300 bg-background dark:border-stone-700"
+            onClick={() => void handleReopen()}
+            disabled={isReopening}
+          >
+            {isReopening ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <ArchiveRestore className="h-4 w-4 mr-1" />
+            )}
+            Reopen idea
+          </Button>
+        )}
 
         {!idea.isOwner && (
           <Button

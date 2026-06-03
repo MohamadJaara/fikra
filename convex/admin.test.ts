@@ -7,6 +7,7 @@ import {
   DOMAIN,
   initTest,
   insertUser,
+  makeIdeaArgs,
   seedCategory,
   seedResources,
   seedRoles,
@@ -94,5 +95,57 @@ describe("Admin dashboard stats", () => {
       missingRoles: ["designer"],
       unresolvedResources: 1,
     });
+  });
+
+  test("admin shelving notifies owner and owner can unshelve", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const adminId = await insertUser(t, {
+      name: "Admin",
+      email: `shelve-admin@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `shelve-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `shelve-owner@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Needs Moderation",
+    });
+
+    await asUser(t, adminId, `shelve-admin@${DOMAIN}`).mutation(
+      api.admin.updateIdeaStatus,
+      {
+        ideaId,
+        status: "shelved",
+      },
+    );
+
+    const shelvedIdea = await t.run(async (ctx: any) => {
+      return await ctx.db.get(ideaId);
+    });
+    expect(shelvedIdea.status).toBe("shelved");
+    expect(shelvedIdea.adminShelvedBy).toBe(adminId);
+    expect(shelvedIdea.adminShelvedAt).toBeTypeOf("number");
+
+    const notifications = await asOwner.query(api.notifications.list, {});
+    expect(notifications[0]).toMatchObject({
+      type: "idea_shelved_by_admin",
+      actorName: "Admin",
+      ideaTitle: "Needs Moderation",
+    });
+
+    await asOwner.mutation(api.ideas.unshelve, { ideaId });
+
+    const reopenedIdea = await t.run(async (ctx: any) => {
+      return await ctx.db.get(ideaId);
+    });
+    expect(reopenedIdea.status).toBe("exploring");
+    expect(reopenedIdea.adminShelvedBy).toBeUndefined();
+    expect(reopenedIdea.adminShelvedAt).toBeUndefined();
   });
 });

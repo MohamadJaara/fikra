@@ -42,6 +42,8 @@ export type IdeaListItem = {
   isOwner: boolean;
   room: IdeaRoomInfo | null;
   onsiteOnly?: boolean;
+  adminShelvedAt?: number;
+  adminShelvedBy?: Id<"users">;
 };
 
 export type ResourceRequestItem = {
@@ -138,6 +140,8 @@ export type IdeaDetail = {
   isOwner: boolean;
   room: IdeaRoomInfo | null;
   onsiteOnly?: boolean;
+  adminShelvedAt?: number;
+  adminShelvedBy?: Id<"users">;
 };
 
 export type IdeaNavigationItem = {

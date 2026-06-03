@@ -100,6 +100,8 @@ export default defineSchema({
     ),
     roomRequestedAt: v.optional(v.number()),
     onsiteOnly: v.optional(v.boolean()),
+    adminShelvedAt: v.optional(v.number()),
+    adminShelvedBy: v.optional(v.id("users")),
     memberCount: v.optional(v.number()),
     interestCount: v.optional(v.number()),
     reactionCounts: v.optional(v.record(v.string(), v.number())),
