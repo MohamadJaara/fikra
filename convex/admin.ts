@@ -275,6 +275,187 @@ export const stats = query({
   },
 });
 
+export const ideasReport = query({
+  args: {},
+  handler: async (ctx) => {
+    const { userId } = await getAdminUser(ctx);
+
+    const [
+      ideas,
+      users,
+      rooms,
+      comments,
+      reactions,
+      interest,
+      memberships,
+      resourceRequests,
+    ] = await Promise.all([
+      ctx.db.query("ideas").collect(),
+      ctx.db.query("users").collect(),
+      ctx.db.query("rooms").collect(),
+      ctx.db.query("comments").collect(),
+      ctx.db.query("reactions").collect(),
+      ctx.db.query("ideaInterest").collect(),
+      ctx.db.query("ideaMembers").collect(),
+      ctx.db.query("resourceRequests").collect(),
+    ]);
+
+    const userById = new Map(users.map((user) => [user._id, user]));
+    const roomById = new Map(rooms.map((room) => [room._id, room]));
+    const commentsByIdea: Record<string, number> = {};
+    const reactionsByIdea: Record<string, number> = {};
+    const interestByIdea: Record<string, number> = {};
+    const resourcesByIdea: Record<string, number> = {};
+    const membersByIdea = new Map<Id<"ideas">, Doc<"ideaMembers">[]>();
+    const byStatus: Record<string, number> = {};
+
+    for (const comment of comments) increment(commentsByIdea, comment.ideaId);
+    for (const reaction of reactions) increment(reactionsByIdea, reaction.ideaId);
+    for (const item of interest) increment(interestByIdea, item.ideaId);
+    for (const request of resourceRequests) {
+      if (!request.resolved) increment(resourcesByIdea, request.ideaId);
+    }
+    for (const membership of memberships) {
+      const current = membersByIdea.get(membership.ideaId) ?? [];
+      current.push(membership);
+      membersByIdea.set(membership.ideaId, current);
+    }
+    for (const idea of ideas) increment(byStatus, idea.status);
+
+    const roomUsage = rooms
+      .map((room) => {
+        const assignedIdeas = ideas.filter((idea) => idea.roomId === room._id);
+        return {
+          roomId: room._id,
+          name: room.name,
+          type: room.type,
+          assignmentLimit: room.assignmentLimit,
+          assignedIdeas: assignedIdeas.length,
+          assignedIdeaTitles: assignedIdeas.map((idea) => idea.title),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    const ideaRows = ideas
+      .map((idea) => {
+        const owner = userById.get(idea.ownerId);
+        const room = idea.roomId ? roomById.get(idea.roomId) : null;
+        const effectiveMembers = (membersByIdea.get(idea._id) ?? []).filter(
+          (member) => isEffectiveIdeaMember(member, idea),
+        );
+        const filledRoles = new Set<string>();
+        for (const member of effectiveMembers) {
+          for (const role of mergeUniqueStringArrays(
+            member.memberRoles,
+            member.role ? [member.role] : undefined,
+          ) ?? []) {
+            filledRoles.add(role);
+          }
+        }
+        const teamSize = resolveTeamSize(idea);
+        const memberCount = effectiveMembers.length;
+        const missingRoles = idea.lookingForRoles.filter(
+          (role) => !filledRoles.has(role),
+        );
+        const hasReachedCapacity = memberCount >= teamSizeCapacity(teamSize);
+        const teamFormationStatus =
+          idea.teamFormationStatus ??
+          (idea.status !== IDEA_STATUS_SHELVED &&
+          (idea.status === "full" || hasReachedCapacity)
+            ? "formed"
+            : "forming");
+        const roomRequestStatus = idea.roomId
+          ? "assigned"
+          : (idea.roomRequestStatus ?? "none");
+
+        return {
+          ideaId: idea._id,
+          title: idea.title,
+          ownerName: getUserDisplayName(owner),
+          ownerEmail: owner?.email,
+          status: idea.status,
+          isShelved: idea.status === IDEA_STATUS_SHELVED,
+          adminShelvedAt: idea.adminShelvedAt,
+          teamSize,
+          memberCount,
+          teamFormationStatus,
+          hasReachedCapacity,
+          missingRoles,
+          roomRequestStatus,
+          roomName: room?.name,
+          roomType: room?.type,
+          onsiteOnly: idea.onsiteOnly ?? false,
+          comments: commentsByIdea[idea._id] ?? 0,
+          reactions: reactionsByIdea[idea._id] ?? 0,
+          interest: interestByIdea[idea._id] ?? 0,
+          unresolvedResources: resourcesByIdea[idea._id] ?? 0,
+          createdAt: idea._creationTime,
+        };
+      })
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    const assignedIdeas = ideaRows.filter((idea) => idea.roomName).length;
+    const shelvedIdeas = ideaRows.filter((idea) => idea.isShelved).length;
+    const roomRequests = ideaRows.filter(
+      (idea) => idea.roomRequestStatus === "requested",
+    ).length;
+    const activeIdeas = ideaRows.filter((idea) => !idea.isShelved);
+    const decisionQueues = {
+      roomRequests: ideaRows.filter(
+        (idea) => !idea.isShelved && idea.roomRequestStatus === "requested",
+      ),
+      readyWithoutRoomRequest: ideaRows.filter(
+        (idea) =>
+          !idea.isShelved &&
+          !idea.roomName &&
+          idea.roomRequestStatus !== "requested" &&
+          (idea.teamFormationStatus === "formed" ||
+            idea.status === "full" ||
+            idea.hasReachedCapacity),
+      ),
+      buildingWithoutRoom: ideaRows.filter(
+        (idea) => idea.status === "building" && !idea.roomName,
+      ),
+      resourceBlocked: activeIdeas.filter(
+        (idea) => idea.unresolvedResources > 0,
+      ),
+      shelvedIdeas: ideaRows.filter((idea) => idea.isShelved),
+      highInterestUnassigned: activeIdeas
+        .filter((idea) => !idea.roomName && idea.interest > 0)
+        .sort((a, b) => b.interest - a.interest)
+        .slice(0, 10),
+    };
+
+    return {
+      generatedAt: Date.now(),
+      generatedBy: userId,
+      summary: {
+        totalIdeas: ideas.length,
+        shelvedIdeas,
+        activeIdeas: activeIdeas.length,
+        assignedIdeas,
+        unassignedIdeas: ideas.length - assignedIdeas,
+        roomRequests,
+        readyWithoutRoomRequest:
+          decisionQueues.readyWithoutRoomRequest.length,
+        buildingWithoutRoom: decisionQueues.buildingWithoutRoom.length,
+        resourceBlockedIdeas: decisionQueues.resourceBlocked.length,
+        onsiteOnlyIdeas: ideaRows.filter((idea) => idea.onsiteOnly).length,
+        totalRooms: rooms.length,
+        teamRooms: rooms.filter((room) => room.type === "team").length,
+        sharedRooms: rooms.filter((room) => room.type === "shared").length,
+        totalComments: comments.length,
+        totalReactions: reactions.length,
+        totalInterest: interest.length,
+        byStatus,
+      },
+      decisionQueues,
+      roomUsage,
+      ideas: ideaRows,
+    };
+  },
+});
+
 export const updateIdeaStatus = mutation({
   args: {
     ideaId: v.id("ideas"),

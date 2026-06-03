@@ -148,4 +148,66 @@ describe("Admin dashboard stats", () => {
     expect(reopenedIdea.adminShelvedBy).toBeUndefined();
     expect(reopenedIdea.adminShelvedAt).toBeUndefined();
   });
+
+  test("ideas report is admin-only and includes decision data", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const adminId = await insertUser(t, {
+      name: "Admin",
+      email: `report-admin@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `report-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `report-owner@${DOMAIN}`);
+
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Report Idea",
+      status: "building",
+    });
+
+    await t.run(async (ctx: any) => {
+      await ctx.db.patch(ideaId, {
+        teamFormationStatus: "formed",
+        roomRequestStatus: "requested",
+      });
+      await ctx.db.insert("resourceRequests", {
+        ideaId,
+        tag: "linux_vps",
+        resolved: false,
+      });
+      await ctx.db.insert("rooms", {
+        name: "Shared Lab",
+        type: "shared",
+        assignmentLimit: 3,
+      });
+    });
+
+    await expect(asOwner.query(api.admin.ideasReport, {})).rejects.toThrow(
+      "Admin access required",
+    );
+
+    const report = await asUser(t, adminId, `report-admin@${DOMAIN}`).query(
+      api.admin.ideasReport,
+      {},
+    );
+
+    expect(report.summary.totalIdeas).toBe(1);
+    expect(report.summary.roomRequests).toBe(1);
+    expect(report.summary.resourceBlockedIdeas).toBe(1);
+    expect(report.decisionQueues.roomRequests[0]).toMatchObject({
+      title: "Report Idea",
+      roomRequestStatus: "requested",
+      unresolvedResources: 1,
+    });
+    expect(report.roomUsage[0]).toMatchObject({
+      name: "Shared Lab",
+      type: "shared",
+      assignmentLimit: 3,
+    });
+  });
 });
