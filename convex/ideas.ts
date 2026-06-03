@@ -46,6 +46,7 @@ const MAX_CANDIDATE_IDEAS = 1000;
 type IdeaListSortOption = (typeof _IDEA_LIST_SORT_OPTIONS)[number];
 type IdeaListFilters = {
   search?: string;
+  shelf?: "active" | "shelved";
   statuses?: string[];
   roles?: string[];
   resourceTags?: string[];
@@ -280,6 +281,14 @@ async function buildIdeaNavigationItem(
 function rawIdeaMatchesFilters(idea: Doc<"ideas">, filters?: IdeaListFilters) {
   if (!filters) return true;
 
+  if (filters.shelf === "active" && idea.status === IDEA_STATUS_SHELVED) {
+    return false;
+  }
+
+  if (filters.shelf === "shelved" && idea.status !== IDEA_STATUS_SHELVED) {
+    return false;
+  }
+
   const search = filters.search?.trim().toLowerCase();
   if (
     search &&
@@ -343,6 +352,7 @@ function rawIdeaMatchesFilters(idea: Doc<"ideas">, filters?: IdeaListFilters) {
 function hasActiveIdeaListFilters(filters?: IdeaListFilters) {
   if (!filters) return false;
   return Boolean(
+    filters.shelf ||
     filters.search?.trim() ||
     filters.statuses?.length ||
     filters.roles?.length ||
@@ -351,6 +361,13 @@ function hasActiveIdeaListFilters(filters?: IdeaListFilters) {
     filters.needsTeammates ||
     filters.needsResources,
   );
+}
+
+function normalizeIdeaListFilters(filters?: IdeaListFilters): IdeaListFilters {
+  return {
+    ...filters,
+    shelf: filters?.shelf ?? "active",
+  };
 }
 
 function sortRawIdeas(
@@ -1101,6 +1118,7 @@ export const cancelOwnershipTransfer = mutation({
 
 const ideaListFiltersValidator = v.object({
   search: v.optional(v.string()),
+  shelf: v.optional(v.union(v.literal("active"), v.literal("shelved"))),
   statuses: v.optional(v.array(v.string())),
   roles: v.optional(v.array(v.string())),
   resourceTags: v.optional(v.array(v.string())),
@@ -1121,19 +1139,7 @@ const ideaListSortValidator = v.union(
 export const list = query({
   args: {
     paginationOpts: paginationOptsValidator,
-    filters: v.optional(
-      v.object({
-        search: v.optional(v.string()),
-        statuses: v.optional(v.array(v.string())),
-        roles: v.optional(v.array(v.string())),
-        resourceTags: v.optional(v.array(v.string())),
-        categories: v.optional(
-          v.array(v.union(v.id("categories"), v.literal("__none__"))),
-        ),
-        needsTeammates: v.optional(v.boolean()),
-        needsResources: v.optional(v.boolean()),
-      }),
-    ),
+    filters: v.optional(ideaListFiltersValidator),
     sortBy: v.optional(ideaListSortValidator),
   },
   handler: async (ctx, args) => {
@@ -1143,7 +1149,7 @@ export const list = query({
     }
 
     const sortBy = args.sortBy ?? "most_interest";
-    const filters = args.filters;
+    const filters = normalizeIdeaListFilters(args.filters);
     const hasFilters = hasActiveIdeaListFilters(filters);
     const isTimeSort = sortBy === "newest" || sortBy === "oldest";
 
@@ -1328,9 +1334,11 @@ export const count = query({
     const userId = await getIdeaListViewerId(ctx);
     if (!userId) return 0;
 
+    const normalizedFilters = normalizeIdeaListFilters(filters);
     const candidates = await ctx.db.query("ideas").collect();
-    return candidates.filter((idea) => rawIdeaMatchesFilters(idea, filters))
-      .length;
+    return candidates.filter((idea) =>
+      rawIdeaMatchesFilters(idea, normalizedFilters),
+    ).length;
   },
 });
 
@@ -1571,9 +1579,12 @@ export const getAdjacent = query({
   handler: async (ctx, { ideaId, filters, sortBy }) => {
     await getAuthenticatedUser(ctx);
 
+    const normalizedFilters = normalizeIdeaListFilters(filters);
     const candidates = await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
     const sortedIdeas = sortRawIdeas(
-      candidates.filter((idea) => rawIdeaMatchesFilters(idea, filters)),
+      candidates.filter((idea) =>
+        rawIdeaMatchesFilters(idea, normalizedFilters),
+      ),
       sortBy ?? "most_interest",
     );
     const currentIndex = sortedIdeas.findIndex((idea) => idea._id === ideaId);

@@ -57,9 +57,12 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
   navigationParams.delete("comment");
   const browseQuery = navigationParams.toString();
   const sortBy = (searchParams.get("sort") as SortOption) || "most_interest";
+  const shelfView: "active" | "shelved" =
+    searchParams.get("shelf") === "shelved" ? "shelved" : "active";
   const navigationFilters = useMemo(
     () => ({
       search: searchParams.get("search") || undefined,
+      shelf: shelfView,
       statuses: splitParam(searchParams.get("statuses")),
       roles: splitParam(searchParams.get("roles")),
       resourceTags: splitParam(searchParams.get("resourceTags")),
@@ -69,7 +72,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
       needsTeammates: searchParams.get("needsTeammates") === "1" || undefined,
       needsResources: searchParams.get("needsResources") === "1" || undefined,
     }),
-    [searchParams],
+    [searchParams, shelfView],
   );
   const idea = useQuery(api.ideas.get, { ideaId });
   const navigation = useQuery(api.ideas.getAdjacent, {

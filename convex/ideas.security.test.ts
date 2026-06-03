@@ -147,4 +147,45 @@ describe("Owner-only idea mutations", () => {
     expect(navigation.next?._id).toBe(olderIdeaId);
     expect(navigation.next?.title).toBe("Older idea");
   });
+
+  test("idea lists hide shelved ideas by default and expose the shelved view", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, { name: "Owner" });
+    const ownerEmail = `owner6@${DOMAIN}`;
+    await t.run(async (ctx: any) => {
+      await ctx.db.patch(ownerId, { email: ownerEmail });
+    });
+    const asOwner = asUser(t, ownerId, ownerEmail);
+
+    const activeIdeaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Active idea",
+    });
+    const shelvedIdeaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Shelved idea",
+    });
+    await asOwner.mutation(api.ideas.shelve, { ideaId: shelvedIdeaId });
+
+    const defaultList = await asOwner.query(api.ideas.list, {
+      paginationOpts: { numItems: 100, cursor: null },
+    });
+    expect(defaultList.page.map((idea) => idea._id)).toEqual([activeIdeaId]);
+
+    const defaultCount = await asOwner.query(api.ideas.count, {});
+    expect(defaultCount).toBe(1);
+
+    const shelvedList = await asOwner.query(api.ideas.list, {
+      paginationOpts: { numItems: 100, cursor: null },
+      filters: { shelf: "shelved" },
+    });
+    expect(shelvedList.page.map((idea) => idea._id)).toEqual([shelvedIdeaId]);
+
+    const shelvedCount = await asOwner.query(api.ideas.count, {
+      filters: { shelf: "shelved" },
+    });
+    expect(shelvedCount).toBe(1);
+  });
 });

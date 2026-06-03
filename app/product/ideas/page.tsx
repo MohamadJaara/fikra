@@ -44,6 +44,9 @@ import {
 import type { IdeaListItem } from "@/lib/types";
 
 const PAGE_SIZE = 60;
+const STATUS_FILTERS = STATUSES.filter((status) => status !== "shelved");
+
+type ShelfView = "active" | "shelved";
 
 type FilterState = {
   search: string;
@@ -91,17 +94,23 @@ function BrowseIdeasContent() {
   const categoryList = useQuery(api.categories.list);
   const rolesList = useRolesList();
   const resourcesList = useResourcesList();
+  const statusParamValues =
+    searchParams.get("statuses")?.split(",").filter(Boolean) ?? [];
+  const initialShelfView: ShelfView =
+    searchParams.get("shelf") === "shelved" ||
+    statusParamValues.includes("shelved")
+      ? "shelved"
+      : "active";
   const [filters, setFilters] = useState<FilterState>({
     search: searchParams.get("search") || "",
-    statuses: searchParams.get("statuses")?.split(",").filter(Boolean) ?? [],
+    statuses: statusParamValues.filter((status) => status !== "shelved"),
     roles: searchParams.get("roles")?.split(",").filter(Boolean) ?? [],
     resourceTags:
       searchParams.get("resourceTags")?.split(",").filter(Boolean) ?? [],
     categories:
-      (searchParams
-        .get("categories")
-        ?.split(",")
-        .filter(Boolean) as Array<Id<"categories"> | "__none__">) ?? [],
+      (searchParams.get("categories")?.split(",").filter(Boolean) as Array<
+        Id<"categories"> | "__none__"
+      >) ?? [],
     needsTeammates: searchParams.get("needsTeammates") === "1",
     needsResources: searchParams.get("needsResources") === "1",
   });
@@ -113,6 +122,7 @@ function BrowseIdeasContent() {
       searchParams.has("needsTeammates") ||
       searchParams.has("needsResources"),
   );
+  const [shelfView, setShelfView] = useState<ShelfView>(initialShelfView);
   const [sortBy, setSortBy] = useState<SortOption>(
     (searchParams.get("sort") as SortOption) || "most_interest",
   );
@@ -124,6 +134,7 @@ function BrowseIdeasContent() {
     const params = new URLSearchParams();
     if (sortBy !== "most_interest") params.set("sort", sortBy);
     if (viewMode !== "list") params.set("view", viewMode);
+    if (shelfView === "shelved") params.set("shelf", shelfView);
     if (filters.search) params.set("search", filters.search);
     if (filters.statuses.length)
       params.set("statuses", filters.statuses.join(","));
@@ -140,7 +151,7 @@ function BrowseIdeasContent() {
       router.replace(qs ? `${pathname}?${qs}` : pathname);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps, @eslint-react/exhaustive-deps
-  }, [filters, sortBy, viewMode]);
+  }, [filters, shelfView, sortBy, viewMode]);
   const {
     results: ideas,
     status,
@@ -150,6 +161,7 @@ function BrowseIdeasContent() {
     {
       filters: {
         search: filters.search,
+        shelf: shelfView,
         statuses: filters.statuses,
         roles: filters.roles,
         resourceTags: filters.resourceTags,
@@ -165,6 +177,7 @@ function BrowseIdeasContent() {
   const ideaCount = useQuery(api.ideas.count, {
     filters: {
       search: filters.search,
+      shelf: shelfView,
       statuses: filters.statuses,
       roles: filters.roles,
       resourceTags: filters.resourceTags,
@@ -190,6 +203,7 @@ function BrowseIdeasContent() {
     const params = new URLSearchParams();
     params.set("sort", sortBy);
     if (viewMode !== "list") params.set("view", viewMode);
+    if (shelfView === "shelved") params.set("shelf", shelfView);
     if (filters.search) params.set("search", filters.search);
     if (filters.statuses.length)
       params.set("statuses", filters.statuses.join(","));
@@ -201,7 +215,7 @@ function BrowseIdeasContent() {
     if (filters.needsTeammates) params.set("needsTeammates", "1");
     if (filters.needsResources) params.set("needsResources", "1");
     return params.toString();
-  }, [filters, sortBy, viewMode]);
+  }, [filters, shelfView, sortBy, viewMode]);
 
   const ideaDetailHref = (ideaId: Id<"ideas">) =>
     `/product/ideas/${ideaId}?${browseContextQuery}`;
@@ -239,6 +253,11 @@ function BrowseIdeasContent() {
     });
   };
 
+  const changeShelfView = (view: ShelfView) => {
+    setShelfView(view);
+    setFilters((prev) => ({ ...prev, statuses: [] }));
+  };
+
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-8 py-6 md:py-10">
       <div className="flex items-end justify-between mb-8 animate-fade-in">
@@ -249,7 +268,7 @@ function BrowseIdeasContent() {
           <p className="text-sm text-muted-foreground mt-1.5 font-mono tabular-nums">
             {status === "LoadingFirstPage" || ideaCount === undefined
               ? "loading..."
-              : `${ideaCount} idea${ideaCount !== 1 ? "s" : ""}`}
+              : `${ideaCount} ${shelfView === "shelved" ? "shelved " : ""}idea${ideaCount !== 1 ? "s" : ""}`}
           </p>
         </div>
         <Link href="/product/ideas/new">
@@ -261,9 +280,33 @@ function BrowseIdeasContent() {
       </div>
 
       <div
-        className="flex items-center gap-2 mb-2 animate-fade-in"
+        className="flex flex-col gap-3 mb-2 animate-fade-in sm:flex-row sm:items-center"
         style={{ animationDelay: "0.05s" }}
       >
+        <div className="grid h-9 grid-cols-2 rounded-md border border-border/60 p-0.5 sm:w-[190px]">
+          <button
+            type="button"
+            onClick={() => changeShelfView("active")}
+            className={`rounded-[5px] px-3 text-xs font-medium transition-colors ${
+              shelfView === "active"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            onClick={() => changeShelfView("shelved")}
+            className={`rounded-[5px] px-3 text-xs font-medium transition-colors ${
+              shelfView === "shelved"
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Shelved
+          </button>
+        </div>
         <div className="relative flex-1">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
           <Input
@@ -328,9 +371,7 @@ function BrowseIdeasContent() {
       </div>
 
       {activeFilterCount > 0 && !showFilters && (
-        <div
-          className="flex items-center flex-wrap gap-1.5 py-3 animate-fade-in"
-        >
+        <div className="flex items-center flex-wrap gap-1.5 py-3 animate-fade-in">
           {filters.statuses.map((s) => (
             <ActiveFilterPill
               key={s}
@@ -409,21 +450,23 @@ function BrowseIdeasContent() {
             )}
           </div>
 
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2 font-medium">
-              Status
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {STATUSES.map((s) => (
-                <FilterPill
-                  key={s}
-                  label={STATUS_LABELS[s]}
-                  active={filters.statuses.includes(s)}
-                  onClick={() => toggleStringFilter("statuses", s)}
-                />
-              ))}
+          {shelfView === "active" && (
+            <div>
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2 font-medium">
+                Status
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {STATUS_FILTERS.map((s) => (
+                  <FilterPill
+                    key={s}
+                    label={STATUS_LABELS[s]}
+                    active={filters.statuses.includes(s)}
+                    onClick={() => toggleStringFilter("statuses", s)}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground/60 mb-2 font-medium">
@@ -527,10 +570,7 @@ function BrowseIdeasContent() {
           ) : (
             <div className="divide-y divide-border/40">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className={`animate-fade-in stagger-${i + 1}`}
-                >
+                <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
                   <IdeaExpandedRowSkeleton />
                 </div>
               ))}
@@ -539,23 +579,33 @@ function BrowseIdeasContent() {
         ) : ideaResults.length === 0 ? (
           <div className="text-center py-24 animate-fade-in">
             <p className="text-lg font-medium mb-1.5">
-              {activeFilterCount === 0 && !filters.search
-                ? "No ideas yet"
-                : "No matching ideas"}
+              {shelfView === "shelved" &&
+              activeFilterCount === 0 &&
+              !filters.search
+                ? "No shelved ideas"
+                : activeFilterCount === 0 && !filters.search
+                  ? "No ideas yet"
+                  : "No matching ideas"}
             </p>
             <p className="text-sm text-muted-foreground mb-6">
-              {activeFilterCount === 0 && !filters.search
-                ? "Be the first to share a concept for the hackathon."
-                : "Try adjusting your search or filters."}
+              {shelfView === "shelved" &&
+              activeFilterCount === 0 &&
+              !filters.search
+                ? "Ideas you shelve will move out of the active board and appear here."
+                : activeFilterCount === 0 && !filters.search
+                  ? "Be the first to share a concept for the hackathon."
+                  : "Try adjusting your search or filters."}
             </p>
-            {activeFilterCount === 0 && !filters.search && (
-              <Link href="/product/ideas/new">
-                <Button variant="outline">
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  Add the First Idea
-                </Button>
-              </Link>
-            )}
+            {shelfView === "active" &&
+              activeFilterCount === 0 &&
+              !filters.search && (
+                <Link href="/product/ideas/new">
+                  <Button variant="outline">
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add the First Idea
+                  </Button>
+                </Link>
+              )}
           </div>
         ) : (
           <>
@@ -566,7 +616,10 @@ function BrowseIdeasContent() {
                     key={idea._id}
                     className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                   >
-                    <IdeaMasonryItem idea={idea} href={ideaDetailHref(idea._id)} />
+                    <IdeaMasonryItem
+                      idea={idea}
+                      href={ideaDetailHref(idea._id)}
+                    />
                   </div>
                 ))}
               </div>
@@ -577,7 +630,10 @@ function BrowseIdeasContent() {
                     key={idea._id}
                     className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                   >
-                    <IdeaExpandedRow idea={idea} href={ideaDetailHref(idea._id)} />
+                    <IdeaExpandedRow
+                      idea={idea}
+                      href={ideaDetailHref(idea._id)}
+                    />
                   </div>
                 ))}
               </div>
