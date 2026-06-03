@@ -60,6 +60,7 @@ export default defineSchema({
   rooms: defineTable({
     name: v.string(),
     type: v.string(),
+    assignmentLimit: v.optional(v.number()),
     address: v.optional(v.string()),
     directions: v.optional(v.string()),
     mapsLink: v.optional(v.string()),

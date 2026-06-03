@@ -246,6 +246,68 @@ describe("Denormalized idea stats", () => {
     expect(idea?.roomRequestStatus).toBe("requested");
   });
 
+  test("shared rooms can be capped or left unlimited", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `shared-limit-owner@${DOMAIN}`,
+    });
+    const asOwner = asUser(t, ownerId, `shared-limit-owner@${DOMAIN}`);
+
+    const firstIdeaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "First Shared Idea",
+    });
+    const secondIdeaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Second Shared Idea",
+    });
+
+    const adminId = await insertUser(t, {
+      name: "Admin",
+      email: `shared-limit-admin@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const asAdmin = asUser(t, adminId, `shared-limit-admin@${DOMAIN}`);
+
+    const cappedRoomId = await asAdmin.mutation(api.rooms.create, {
+      name: "Capped Shared Room",
+      type: "shared",
+      assignmentLimit: 1,
+    });
+
+    await asAdmin.mutation(api.rooms.assignToIdea, {
+      roomId: cappedRoomId,
+      ideaId: firstIdeaId,
+    });
+    await expect(
+      asAdmin.mutation(api.rooms.assignToIdea, {
+        roomId: cappedRoomId,
+        ideaId: secondIdeaId,
+      }),
+    ).rejects.toThrow("This shared room has reached its idea limit");
+
+    const unlimitedRoomId = await asAdmin.mutation(api.rooms.create, {
+      name: "Unlimited Shared Room",
+      type: "shared",
+    });
+
+    await asAdmin.mutation(api.rooms.assignToIdea, {
+      roomId: unlimitedRoomId,
+      ideaId: secondIdeaId,
+    });
+
+    const rooms = await asAdmin.query(api.rooms.list, {});
+    expect(
+      rooms.find((room) => room._id === cappedRoomId)?.assignmentLimit,
+    ).toBe(1);
+    expect(
+      rooms.find((room) => room._id === unlimitedRoomId)?.assignmentLimit,
+    ).toBeUndefined();
+  });
+
   test("keeps list stats in sync with mutations", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);

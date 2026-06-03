@@ -178,6 +178,7 @@ export type RoomItem = {
   _creationTime: number;
   name: string;
   type: string;
+  assignmentLimit?: number;
   address?: string;
   directions?: string;
   mapsLink?: string;

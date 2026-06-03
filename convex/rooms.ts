@@ -19,6 +19,40 @@ function teamSizeCapacity(idea: Doc<"ideas">) {
   return 7;
 }
 
+function normalizeAssignmentLimit(
+  limit: number | undefined,
+  roomType: string,
+) {
+  if (roomType !== "shared") return undefined;
+  if (limit === undefined) return undefined;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 999) {
+    throw new Error("Shared room limit must be a whole number from 1 to 999");
+  }
+  return limit;
+}
+
+function isRoomAvailableForIdea(
+  room: Pick<Doc<"rooms">, "_id" | "type" | "assignmentLimit">,
+  assignedIdeas: Doc<"ideas">[],
+  ideaId: Doc<"ideas">["_id"],
+) {
+  if (room.type === "team") {
+    return (
+      assignedIdeas.length === 0 ||
+      assignedIdeas.some((idea) => idea._id === ideaId)
+    );
+  }
+
+  if (room.type === "shared" && room.assignmentLimit !== undefined) {
+    const assignedToOtherIdeas = assignedIdeas.filter(
+      (idea) => idea._id !== ideaId,
+    );
+    return assignedToOtherIdeas.length < room.assignmentLimit;
+  }
+
+  return true;
+}
+
 async function getRoomReadiness(
   ctx: Parameters<typeof getAdminUser>[0],
   idea: Doc<"ideas">,
@@ -75,6 +109,7 @@ export const list = query({
           _creationTime: room._creationTime,
           name: room.name,
           type: room.type,
+          assignmentLimit: room.assignmentLimit,
           address: room.address,
           directions: room.directions,
           mapsLink: room.mapsLink,
@@ -92,6 +127,7 @@ export const create = mutation({
   args: {
     name: v.string(),
     type: v.string(),
+    assignmentLimit: v.optional(v.number()),
     address: v.optional(v.string()),
     directions: v.optional(v.string()),
     mapsLink: v.optional(v.string()),
@@ -108,9 +144,15 @@ export const create = mutation({
       throw new Error("Invalid room type");
     }
 
+    const assignmentLimit = normalizeAssignmentLimit(
+      args.assignmentLimit,
+      args.type,
+    );
+
     return await ctx.db.insert("rooms", {
       name,
       type: args.type,
+      assignmentLimit,
       address: args.address ? sanitizeText(args.address) : undefined,
       directions: args.directions ? sanitizeText(args.directions) : undefined,
       mapsLink: args.mapsLink ? sanitizeText(args.mapsLink) : undefined,
@@ -182,6 +224,7 @@ export const update = mutation({
     roomId: v.id("rooms"),
     name: v.string(),
     type: v.string(),
+    assignmentLimit: v.optional(v.number()),
     address: v.optional(v.string()),
     directions: v.optional(v.string()),
     mapsLink: v.optional(v.string()),
@@ -197,6 +240,11 @@ export const update = mutation({
     if (!ROOM_TYPES.includes(args.type as (typeof ROOM_TYPES)[number])) {
       throw new Error("Invalid room type");
     }
+
+    const assignmentLimit = normalizeAssignmentLimit(
+      args.assignmentLimit,
+      args.type,
+    );
 
     const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Room not found");
@@ -216,6 +264,7 @@ export const update = mutation({
     await ctx.db.patch(args.roomId, {
       name,
       type: args.type,
+      assignmentLimit,
       address: args.address ? sanitizeText(args.address) : undefined,
       directions: args.directions ? sanitizeText(args.directions) : undefined,
       mapsLink: args.mapsLink ? sanitizeText(args.mapsLink) : undefined,
@@ -267,14 +316,16 @@ export const assignToIdea = mutation({
     const idea = await ctx.db.get(args.ideaId);
     if (!idea) throw new Error("Idea not found");
 
-    if (room.type === "team") {
-      const assignedIdea = await ctx.db
-        .query("ideas")
-        .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
-        .first();
-      if (assignedIdea && assignedIdea._id !== args.ideaId) {
+    const assignedIdeas = await ctx.db
+      .query("ideas")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .collect();
+
+    if (!isRoomAvailableForIdea(room, assignedIdeas, args.ideaId)) {
+      if (room.type === "team") {
         throw new Error("Team rooms can only be assigned to one idea");
       }
+      throw new Error("This shared room has reached its idea limit");
     }
 
     await ctx.db.patch(args.ideaId, {

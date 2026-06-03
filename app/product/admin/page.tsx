@@ -67,7 +67,7 @@ export default function AdminDashboard() {
       title: "Teams Need Rooms",
       value: stats.roomOverview.queuedRoomRequests,
       subtitle: `${stats.roomOverview.assignedIdeas} already assigned`,
-      href: "/product/admin/rooms",
+      href: "/product/admin/ideas",
       icon: <DoorOpen className="h-4 w-4" />,
       tone: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200",
     },
@@ -160,8 +160,8 @@ export default function AdminDashboard() {
       href: "/product/admin/ideas",
       icon: <Sparkles className="h-5 w-5 text-yellow-600" />,
       bg: "bg-yellow-50 dark:bg-yellow-950",
-      title: "Manage Ideas",
-      subtitle: `${stats.totalIdeas} ideas submitted`,
+      title: "Ideas & Rooms",
+      subtitle: `${stats.totalIdeas} ideas · ${stats.roomOverview.totalRooms} rooms`,
     },
     {
       href: "/product/admin/categories",
@@ -183,13 +183,6 @@ export default function AdminDashboard() {
       bg: "bg-cyan-50 dark:bg-cyan-950",
       title: "Manage Resources",
       subtitle: "Resource request options",
-    },
-    {
-      href: "/product/admin/rooms",
-      icon: <DoorOpen className="h-5 w-5 text-indigo-600" />,
-      bg: "bg-indigo-50 dark:bg-indigo-950",
-      title: "Manage Rooms",
-      subtitle: "Assign rooms to ideas",
     },
     {
       href: "/product/admin/comments",
@@ -234,9 +227,9 @@ export default function AdminDashboard() {
           </p>
         </div>
         <Button asChild size="sm" className="gap-2 sm:mt-1">
-          <Link href="/product/admin/rooms">
+          <Link href="/product/admin/ideas">
             <DoorOpen className="h-4 w-4" />
-            Room Queue
+            Ideas & Rooms
           </Link>
         </Button>
       </div>
@@ -298,7 +291,7 @@ export default function AdminDashboard() {
               <h2 className="text-sm font-semibold">Teams And Rooms</h2>
             </div>
             <Button asChild variant="outline" size="sm" className="gap-2">
-              <Link href="/product/admin/rooms">
+              <Link href="/product/admin/ideas">
                 <ClipboardList className="h-4 w-4" />
                 Manage
               </Link>
