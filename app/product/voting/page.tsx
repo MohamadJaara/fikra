@@ -2,20 +2,22 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { useProductViewer } from "@/components/ProductLayoutClient";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { STATUS_LABELS, TEAM_SIZE_LABELS, type Status } from "@/lib/constants";
 import { useMutation, useQuery } from "convex/react";
 import {
-  ArrowRight,
+  BarChart3,
   Check,
   Clock3,
   Loader2,
+  PauseCircle,
   Search,
   Users,
   Vote,
 } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
 
@@ -35,13 +37,22 @@ type BallotIdea = {
 };
 
 export default function VotingPage() {
+  const viewer = useProductViewer();
   const status = useQuery(api.voting.status);
   const ballot = useQuery(api.voting.ballot);
+  const adminOverview = useQuery(
+    api.voting.adminOverview,
+    viewer.isAdmin ? {} : "skip",
+  );
+  const results = useQuery(api.voting.results, viewer.isAdmin ? {} : "skip");
   const toggleVote = useMutation(api.voting.toggleVote);
+  const stopVoting = useMutation(api.voting.stop);
   const [query, setQuery] = useState("");
   const [pendingIdeaId, setPendingIdeaId] = useState<Id<"ideas"> | null>(null);
+  const [stopping, setStopping] = useState(false);
 
   const ideas = useMemo(() => (ballot ?? []) as BallotIdea[], [ballot]);
+  const maxVotes = Math.max(...(results ?? []).map((row) => row.voteCount), 1);
   const filteredIdeas = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) return ideas;
@@ -66,6 +77,18 @@ export default function VotingPage() {
     }
   };
 
+  const handleStopVoting = async () => {
+    setStopping(true);
+    try {
+      await stopVoting();
+      toast.success("Voting stopped");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to stop");
+    } finally {
+      setStopping(false);
+    }
+  };
+
   if (status === undefined || ballot === undefined) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -85,9 +108,6 @@ export default function VotingPage() {
           Once an admin opens voting, the active idea board will appear here.
           Results stay private to admins.
         </p>
-        <Button asChild variant="outline" className="mt-6">
-          <Link href="/product/ideas">Browse ideas</Link>
-        </Button>
         <Toaster />
       </div>
     );
@@ -113,7 +133,7 @@ export default function VotingPage() {
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Pick the unshelved ideas you want to back. Your selections can be
-            changed while voting is open.
+            changed while voting is open. Idea browsing is locked to this page.
           </p>
         </div>
 
@@ -127,6 +147,93 @@ export default function VotingPage() {
           />
         </label>
       </div>
+
+      {viewer.isAdmin && (
+        <section className="space-y-3 rounded-lg border bg-muted/20 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <BarChart3 className="h-4 w-4" />
+                Admin Results
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Visible only to admins. Everyone else only sees their own
+                selected votes.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={handleStopVoting}
+              disabled={stopping}
+              className="gap-2"
+            >
+              {stopping ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <PauseCircle className="h-4 w-4" />
+              )}
+              Stop voting
+            </Button>
+          </div>
+
+          {adminOverview === undefined || results === undefined ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-px overflow-hidden rounded-lg border bg-border sm:grid-cols-3">
+                <div className="bg-background p-3">
+                  <p className="text-xs text-muted-foreground">Votes</p>
+                  <p className="mt-1 text-2xl font-bold">
+                    {adminOverview.totalVotes}
+                  </p>
+                </div>
+                <div className="bg-background p-3">
+                  <p className="text-xs text-muted-foreground">Voters</p>
+                  <p className="mt-1 text-2xl font-bold">
+                    {adminOverview.totalVoters}
+                  </p>
+                </div>
+                <div className="bg-background p-3">
+                  <p className="text-xs text-muted-foreground">Ballot</p>
+                  <p className="mt-1 text-2xl font-bold">
+                    {adminOverview.ballotIdeaCount}
+                  </p>
+                </div>
+              </div>
+
+              <div className="divide-y divide-border/60 rounded-lg border bg-background">
+                {results.slice(0, 8).map((idea, index) => (
+                  <div key={idea._id} className="p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          #{index + 1} {idea.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {idea.ownerName}
+                          {idea.categoryName ? ` · ${idea.categoryName}` : ""}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold">{idea.voteCount}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          vote{idea.voteCount === 1 ? "" : "s"}
+                        </p>
+                      </div>
+                    </div>
+                    <Progress
+                      value={(idea.voteCount / maxVotes) * 100}
+                      className="mt-2 h-1.5"
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {ideas.length === 0 ? (
         <div className="py-24 text-center">
@@ -151,12 +258,7 @@ export default function VotingPage() {
             >
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <Link
-                    href={`/product/ideas/${idea._id}`}
-                    className="text-base font-semibold transition-colors hover:text-primary"
-                  >
-                    {idea.title}
-                  </Link>
+                  <h2 className="text-base font-semibold">{idea.title}</h2>
                   <Badge variant="secondary">
                     {STATUS_LABELS[idea.status as Status] ?? idea.status}
                   </Badge>
@@ -196,14 +298,6 @@ export default function VotingPage() {
                     <Vote className="h-4 w-4" />
                   )}
                   {idea.userVoted ? "Voted" : "Vote"}
-                </Button>
-                <Button asChild variant="ghost" size="icon">
-                  <Link
-                    href={`/product/ideas/${idea._id}`}
-                    aria-label={`Open ${idea.title}`}
-                  >
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
                 </Button>
               </div>
             </div>

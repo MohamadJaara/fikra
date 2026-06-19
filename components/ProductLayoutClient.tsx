@@ -24,6 +24,7 @@ export function useProductViewer() {
 
 export function ProductLayoutClient({ children }: { children: ReactNode }) {
   const viewer = useQuery(api.users.viewerOrNull);
+  const votingStatus = useQuery(api.voting.status, viewer ? {} : "skip");
   const router = useRouter();
   const pathname = usePathname();
 
@@ -35,15 +36,22 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
     }
 
     const onOnboardingPage = pathname === "/product/onboarding";
+    const onVotingPage = pathname === "/product/voting";
 
     if (!viewer.onboardingComplete && !onOnboardingPage) {
       router.replace("/product/onboarding");
     } else if (viewer.onboardingComplete && onOnboardingPage) {
       router.replace("/product");
+    } else if (
+      viewer.onboardingComplete &&
+      votingStatus?.active &&
+      !onVotingPage
+    ) {
+      router.replace("/product/voting");
     }
-  }, [viewer, pathname, router]);
+  }, [viewer, votingStatus, pathname, router]);
 
-  if (viewer === undefined) {
+  if (viewer === undefined || (viewer !== null && votingStatus === undefined)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-3">
@@ -57,8 +65,12 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
   if (viewer === null) return null;
 
   const onOnboardingPage = pathname === "/product/onboarding";
+  const onVotingPage = pathname === "/product/voting";
   if (!viewer.onboardingComplete && !onOnboardingPage) return null;
   if (viewer.onboardingComplete && onOnboardingPage) return null;
+  if (viewer.onboardingComplete && votingStatus?.active && !onVotingPage) {
+    return null;
+  }
 
   return (
     <ProductViewerContext value={viewer}>

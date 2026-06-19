@@ -71,6 +71,22 @@ export async function getAdminUser(ctx: QueryCtx | MutationCtx) {
   return { userId, user };
 }
 
+export async function isVotingActive(ctx: QueryCtx | MutationCtx) {
+  const setting = await ctx.db
+    .query("votingSettings")
+    .withIndex("by_key", (q) => q.eq("key", "main"))
+    .unique();
+  return setting?.active === true;
+}
+
+export async function assertIdeasUnlocked(ctx: QueryCtx | MutationCtx) {
+  if (await isVotingActive(ctx)) {
+    throw new Error(
+      "Voting is active. Ideas are only available from the voting page.",
+    );
+  }
+}
+
 export function sanitizeText(text: string): string {
   return text.trim();
 }

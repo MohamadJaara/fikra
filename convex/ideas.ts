@@ -6,6 +6,7 @@ import {
   getAuthenticatedUser,
   getResourceNameMap,
   getUserDisplayName,
+  assertIdeasUnlocked,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   sanitizeText,
@@ -490,6 +491,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    await assertIdeasUnlocked(ctx);
     await assertIdeaSubmissionsOpen(ctx);
 
     const title = validateStringLength(args.title, 1, 120, "Title");
@@ -1147,6 +1149,7 @@ export const list = query({
     if (!userId) {
       return { page: [], isDone: true, continueCursor: "" };
     }
+    await assertIdeasUnlocked(ctx);
 
     const sortBy = args.sortBy ?? "most_interest";
     const filters = normalizeIdeaListFilters(args.filters);
@@ -1333,6 +1336,7 @@ export const count = query({
   handler: async (ctx, { filters }) => {
     const userId = await getIdeaListViewerId(ctx);
     if (!userId) return 0;
+    await assertIdeasUnlocked(ctx);
 
     const normalizedFilters = normalizeIdeaListFilters(filters);
     const candidates = await ctx.db.query("ideas").collect();
@@ -1352,6 +1356,7 @@ export const listByCategory = query({
     if (!userId) {
       return { page: [], isDone: true, continueCursor: "" };
     }
+    await assertIdeasUnlocked(ctx);
 
     const { page, isDone, continueCursor } = await ctx.db
       .query("ideas")
@@ -1368,6 +1373,7 @@ export const get = query({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    await assertIdeasUnlocked(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) return null;
@@ -1578,6 +1584,7 @@ export const getAdjacent = query({
   },
   handler: async (ctx, { ideaId, filters, sortBy }) => {
     await getAuthenticatedUser(ctx);
+    await assertIdeasUnlocked(ctx);
 
     const normalizedFilters = normalizeIdeaListFilters(filters);
     const candidates = await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
@@ -1603,6 +1610,7 @@ export const getByOwner = query({
   args: {},
   handler: async (ctx) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    await assertIdeasUnlocked(ctx);
     return await ctx.db
       .query("ideas")
       .withIndex("by_owner", (q) => q.eq("ownerId", userId))
@@ -1614,6 +1622,7 @@ export const getBookmarked = query({
   args: {},
   handler: async (ctx) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    await assertIdeasUnlocked(ctx);
 
     const bookmarks = await ctx.db
       .query("ideaBookmarks")

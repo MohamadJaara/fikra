@@ -152,4 +152,52 @@ describe("Voting", () => {
       0,
     );
   });
+
+  test("active voting locks direct idea browsing and creation", async () => {
+    const t = initTest();
+    const categoryId = await seedCategory(t);
+    const adminId = await insertUser(t, {
+      name: "Admin",
+      email: `lock-admin@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const ownerId = await insertUser(t, {
+      name: "Owner",
+      email: `lock-owner@${DOMAIN}`,
+    });
+    const voterId = await insertUser(t, {
+      name: "Voter",
+      email: `lock-voter@${DOMAIN}`,
+    });
+
+    const asOwner = asUser(t, ownerId, `lock-owner@${DOMAIN}`);
+    const ideaId = await asOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      title: "Locked Idea",
+    });
+    await asUser(t, adminId, `lock-admin@${DOMAIN}`).mutation(
+      api.voting.start,
+      {},
+    );
+
+    const asVoter = asUser(t, voterId, `lock-voter@${DOMAIN}`);
+    await expect(
+      asVoter.mutation(api.ideas.create, {
+        ...makeIdeaArgs(categoryId),
+        title: "Late Idea",
+      }),
+    ).rejects.toThrow("Voting is active");
+    await expect(
+      asVoter.query(api.ideas.get, { ideaId }),
+    ).rejects.toThrow("Voting is active");
+    await expect(
+      asVoter.query(api.ideas.list, {
+        paginationOpts: { numItems: 10, cursor: null },
+      }),
+    ).rejects.toThrow("Voting is active");
+
+    const ballot = await asVoter.query(api.voting.ballot, {});
+    expect(ballot).toHaveLength(1);
+    expect(ballot[0]).toMatchObject({ title: "Locked Idea" });
+  });
 });
