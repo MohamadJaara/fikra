@@ -45,6 +45,7 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
     } else if (
       viewer.onboardingComplete &&
       votingStatus?.active &&
+      !viewer.isAdmin &&
       !onVotingPage
     ) {
       router.replace("/product/voting");
@@ -68,7 +69,12 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
   const onVotingPage = pathname === "/product/voting";
   if (!viewer.onboardingComplete && !onOnboardingPage) return null;
   if (viewer.onboardingComplete && onOnboardingPage) return null;
-  if (viewer.onboardingComplete && votingStatus?.active && !onVotingPage) {
+  if (
+    viewer.onboardingComplete &&
+    votingStatus?.active &&
+    !viewer.isAdmin &&
+    !onVotingPage
+  ) {
     return null;
   }
 
