@@ -46,7 +46,7 @@ async function getActiveIdeas(ctx: QueryCtx) {
 
   return batches
     .flat()
-    .sort((a, b) => b._creationTime - a._creationTime)
+    .sort((a, b) => a._creationTime - b._creationTime)
     .slice(0, MAX_BALLOT_IDEAS);
 }
 
