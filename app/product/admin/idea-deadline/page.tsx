@@ -60,8 +60,14 @@ export default function AdminIdeaDeadlinePage() {
     "The idea submission deadline has passed. Thanks for bringing your creativity here. You can still browse ideas, join teams, and keep the momentum going.",
   );
   const [active, setActive] = useState(true);
+  const [now, setNow] = useState(() => Date.now());
   const [saving, setSaving] = useState(false);
   const [resuming, setResuming] = useState(false);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     if (setting === undefined || initialized) return;
@@ -84,8 +90,7 @@ export default function AdminIdeaDeadlinePage() {
 
   const preview = formatDeadline(deadlineAt, timezone);
   const parsedDeadline = new Date(deadlineAt).getTime();
-  const isPast =
-    Number.isFinite(parsedDeadline) && parsedDeadline <= Date.now();
+  const isPast = Number.isFinite(parsedDeadline) && parsedDeadline <= now;
   const statusLabel = !active
     ? "Idea creation is open"
     : isPast

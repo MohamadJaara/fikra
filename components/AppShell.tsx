@@ -22,6 +22,7 @@ import {
   Users,
   Sparkles,
   Bookmark,
+  Vote,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -161,6 +162,13 @@ function SidebarContent({
           onClick={onClose}
         >
           Saved
+        </NavLink>
+        <NavLink
+          href="/product/voting"
+          icon={<Vote className="h-4 w-4" />}
+          onClick={onClose}
+        >
+          Voting
         </NavLink>
         <NavLink
           href="/product/activity"

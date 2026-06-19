@@ -227,6 +227,27 @@ export default defineSchema({
     .index("by_idea", ["ideaId"])
     .index("by_idea_and_user", ["ideaId", "userId"]),
 
+  votingSettings: defineTable({
+    key: v.string(),
+    active: v.boolean(),
+    currentRound: v.number(),
+    startedAt: v.optional(v.number()),
+    endedAt: v.optional(v.number()),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  ideaVotes: defineTable({
+    ideaId: v.id("ideas"),
+    userId: v.id("users"),
+    round: v.number(),
+    createdAt: v.number(),
+  })
+    .index("by_round", ["round"])
+    .index("by_user_and_round", ["userId", "round"])
+    .index("by_idea_and_round", ["ideaId", "round"])
+    .index("by_idea_and_user_and_round", ["ideaId", "userId", "round"]),
+
   notifications: defineTable({
     recipientId: v.id("users"),
     actorId: v.id("users"),
