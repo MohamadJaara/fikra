@@ -116,6 +116,48 @@ export const save = mutation({
   },
 });
 
+export const markDone = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { userId } = await getAdminUser(ctx);
+    const existing = await getEventSetting(ctx);
+    if (!existing) {
+      throw new Error("Save the event date before marking the hackathon done");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(existing._id, {
+      completedAt: now,
+      completedBy: userId,
+      updatedBy: userId,
+      updatedAt: now,
+    });
+
+    return { completedAt: now };
+  },
+});
+
+export const reopen = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const { userId } = await getAdminUser(ctx);
+    const existing = await getEventSetting(ctx);
+    if (!existing) {
+      throw new Error("Save the event date before reopening the hackathon");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(existing._id, {
+      completedAt: undefined,
+      completedBy: undefined,
+      updatedBy: userId,
+      updatedAt: now,
+    });
+
+    return { completedAt: null };
+  },
+});
+
 export const clear = mutation({
   args: {},
   handler: async (ctx) => {

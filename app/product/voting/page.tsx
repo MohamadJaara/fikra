@@ -44,7 +44,15 @@ export default function VotingPage() {
     api.voting.adminOverview,
     viewer.isAdmin ? {} : "skip",
   );
-  const results = useQuery(api.voting.results, viewer.isAdmin ? {} : "skip");
+  const showFinalResults =
+    status !== undefined &&
+    !status.active &&
+    status.currentRound > 0 &&
+    status.endedAt !== undefined;
+  const results = useQuery(
+    api.voting.results,
+    viewer.isAdmin || showFinalResults ? {} : "skip",
+  );
   const toggleVote = useMutation(api.voting.toggleVote);
   const stopVoting = useMutation(api.voting.stop);
   const [query, setQuery] = useState("");
@@ -89,7 +97,11 @@ export default function VotingPage() {
     }
   };
 
-  if (status === undefined || ballot === undefined) {
+  if (
+    status === undefined ||
+    ballot === undefined ||
+    (showFinalResults && results === undefined)
+  ) {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -98,6 +110,66 @@ export default function VotingPage() {
   }
 
   if (!status.active) {
+    if (showFinalResults) {
+      return (
+        <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
+          <div className="border-b pb-5">
+            <Badge variant="outline" className="mb-2 gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Results posted
+            </Badge>
+            <h1 className="text-2xl font-bold">Voting Results</h1>
+            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+              Voting has ended. Here are the final results for round{" "}
+              {status.currentRound}.
+            </p>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border">
+            {results?.length === 0 ? (
+              <div className="p-6 text-sm text-muted-foreground">
+                No unshelved ideas were available for this ballot.
+              </div>
+            ) : (
+              results?.map((idea, index) => (
+                <div key={idea._id} className="border-b p-4 last:border-b-0">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="w-6 shrink-0 font-mono text-xs text-muted-foreground">
+                          #{index + 1}
+                        </span>
+                        <h2 className="truncate font-medium">{idea.title}</h2>
+                      </div>
+                      <p className="mt-1 line-clamp-2 pl-8 text-sm text-muted-foreground">
+                        {idea.pitch}
+                      </p>
+                      <p className="mt-2 pl-8 text-xs text-muted-foreground">
+                        {idea.ownerName}
+                        {idea.categoryName ? ` · ${idea.categoryName}` : ""}
+                      </p>
+                    </div>
+                    <div className="min-w-[9rem] sm:text-right">
+                      <p className="text-2xl font-bold">{idea.voteCount}</p>
+                      <p className="text-xs text-muted-foreground">
+                        vote{idea.voteCount === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                  </div>
+                  <Progress
+                    value={(idea.voteCount / maxVotes) * 100}
+                    className="mt-4 h-2"
+                  />
+                </div>
+              ))
+            )}
+          </div>
+
+          <Toaster />
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto flex min-h-[60vh] max-w-2xl flex-col items-center justify-center px-4 text-center">
         <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-lg border bg-muted/40">
@@ -106,7 +178,6 @@ export default function VotingPage() {
         <h1 className="text-2xl font-bold">Voting has not started</h1>
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           Once an admin opens voting, the active idea board will appear here.
-          Results stay private to admins.
         </p>
         <Toaster />
       </div>

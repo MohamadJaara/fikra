@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Eye,
   MapPin,
+  RotateCcw,
   Save,
   Trash2,
 } from "lucide-react";
@@ -82,6 +83,8 @@ function formatPreview(startValue: string, endValue: string, timezone: string) {
 export default function AdminEventPage() {
   const event = useQuery(api.event.getForAdmin);
   const saveEvent = useMutation(api.event.save);
+  const markDone = useMutation(api.event.markDone);
+  const reopen = useMutation(api.event.reopen);
   const clearEvent = useMutation(api.event.clear);
   const browserTimezone = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -96,7 +99,8 @@ export default function AdminEventPage() {
   const [location, setLocation] = useState("");
   const [note, setNote] = useState("");
   const [active, setActive] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [completedAt, setCompletedAt] = useState<number | undefined>();
+  const [saving, setSaving] = useState<"save" | "done" | "reopen" | null>(null);
 
   useEffect(() => {
     if (event === undefined || initialized) return;
@@ -110,6 +114,7 @@ export default function AdminEventPage() {
       setLocation(event.location ?? "");
       setNote(event.note ?? "");
       setActive(event.active);
+      setCompletedAt(event.completedAt);
     } else {
       const defaultStart = Date.now() + 7 * 24 * 60 * 60 * 1000;
       setStartsAt(toDateTimeLocal(defaultStart));
@@ -138,7 +143,7 @@ export default function AdminEventPage() {
       return;
     }
 
-    setSaving(true);
+    setSaving("save");
     try {
       await saveEvent({
         title,
@@ -153,7 +158,47 @@ export default function AdminEventPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save");
     } finally {
-      setSaving(false);
+      setSaving(null);
+    }
+  };
+
+  const handleMarkDone = async () => {
+    if (!event) return;
+    if (!confirm("Mark the hackathon as done? Users will see it as complete."))
+      return;
+
+    setSaving("done");
+    try {
+      const result = await markDone();
+      setCompletedAt(result.completedAt);
+      toast.success("Hackathon marked done");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to mark done",
+      );
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!event) return;
+    if (
+      !confirm(
+        "Reopen the hackathon status? Users will no longer see it as complete.",
+      )
+    )
+      return;
+
+    setSaving("reopen");
+    try {
+      await reopen();
+      setCompletedAt(undefined);
+      toast.success("Hackathon reopened");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to reopen");
+    } finally {
+      setSaving(null);
     }
   };
 
@@ -170,6 +215,7 @@ export default function AdminEventPage() {
       setLocation("");
       setNote("");
       setActive(true);
+      setCompletedAt(undefined);
       toast.success("Event date cleared");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to clear");
@@ -199,14 +245,35 @@ export default function AdminEventPage() {
 
         <div className="flex items-center gap-2">
           {event && (
-            <Button variant="outline" onClick={handleClear}>
+            <Button
+              variant="outline"
+              onClick={completedAt ? handleReopen : handleMarkDone}
+              disabled={saving !== null}
+            >
+              {completedAt ? (
+                <RotateCcw className="mr-2 h-4 w-4" />
+              ) : (
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+              )}
+              {completedAt ? "Reopen" : "Mark done"}
+            </Button>
+          )}
+          {event && (
+            <Button
+              variant="outline"
+              onClick={handleClear}
+              disabled={saving !== null}
+            >
               <Trash2 className="mr-2 h-4 w-4" />
               Clear
             </Button>
           )}
-          <Button onClick={handleSave} disabled={saving || !initialized}>
+          <Button
+            onClick={handleSave}
+            disabled={saving !== null || !initialized}
+          >
             <Save className="mr-2 h-4 w-4" />
-            {saving ? "Saving..." : "Save"}
+            {saving === "save" ? "Saving..." : "Save"}
           </Button>
         </div>
       </div>
@@ -316,7 +383,7 @@ export default function AdminEventPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                      Event Dates
+                      {completedAt ? "Hackathon Complete" : "Event Dates"}
                     </p>
                     <h2 className="break-words text-base font-semibold">
                       {title || "Untitled event"}

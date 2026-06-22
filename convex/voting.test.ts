@@ -56,7 +56,7 @@ describe("Voting", () => {
     });
   });
 
-  test("participants can toggle votes while only admins can see results", async () => {
+  test("participants can toggle votes while admins see live results and users see final results", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);
     const adminId = await insertUser(t, {
@@ -73,23 +73,22 @@ describe("Voting", () => {
       email: `results-voter@${DOMAIN}`,
     });
 
-    const ideaId = await asUser(
-      t,
-      ownerId,
-      `results-owner@${DOMAIN}`,
-    ).mutation(api.ideas.create, {
-      ...makeIdeaArgs(categoryId),
-      title: "Vote Magnet",
-    });
+    const ideaId = await asUser(t, ownerId, `results-owner@${DOMAIN}`).mutation(
+      api.ideas.create,
+      {
+        ...makeIdeaArgs(categoryId),
+        title: "Vote Magnet",
+      },
+    );
     const asAdmin = asUser(t, adminId, `results-admin@${DOMAIN}`);
     const asVoter = asUser(t, voterId, `results-voter@${DOMAIN}`);
 
     await expect(asVoter.query(api.voting.results, {})).rejects.toThrow(
-      "Admin access required",
+      "Results are available after voting ends",
     );
-    await expect(asVoter.mutation(api.voting.toggleVote, { ideaId })).rejects.toThrow(
-      "Voting is not open",
-    );
+    await expect(
+      asVoter.mutation(api.voting.toggleVote, { ideaId }),
+    ).rejects.toThrow("Voting is not open");
 
     await asAdmin.mutation(api.voting.start, {});
     await expect(
@@ -103,10 +102,22 @@ describe("Voting", () => {
       title: "Vote Magnet",
       voteCount: 1,
     });
+    await expect(asVoter.query(api.voting.results, {})).rejects.toThrow(
+      "Results are available after voting ends",
+    );
 
     await asVoter.mutation(api.voting.toggleVote, { ideaId });
     const updatedResults = await asAdmin.query(api.voting.results, {});
     expect(updatedResults[0].voteCount).toBe(0);
+
+    await asVoter.mutation(api.voting.toggleVote, { ideaId });
+    await asAdmin.mutation(api.voting.stop, {});
+
+    const finalResults = await asVoter.query(api.voting.results, {});
+    expect(finalResults[0]).toMatchObject({
+      title: "Vote Magnet",
+      voteCount: 1,
+    });
   });
 
   test("a new voting round does not reuse previous votes", async () => {
@@ -187,9 +198,9 @@ describe("Voting", () => {
         title: "Late Idea",
       }),
     ).rejects.toThrow("Voting is active");
-    await expect(
-      asVoter.query(api.ideas.get, { ideaId }),
-    ).rejects.toThrow("Voting is active");
+    await expect(asVoter.query(api.ideas.get, { ideaId })).rejects.toThrow(
+      "Voting is active",
+    );
     await expect(
       asVoter.query(api.ideas.list, {
         paginationOpts: { numItems: 10, cursor: null },

@@ -277,6 +277,8 @@ export default defineSchema({
     location: v.optional(v.string()),
     note: v.optional(v.string()),
     active: v.boolean(),
+    completedAt: v.optional(v.number()),
+    completedBy: v.optional(v.id("users")),
     updatedBy: v.id("users"),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),

@@ -21,11 +21,6 @@ async function getVotingSettings(ctx: QueryCtx) {
     .unique();
 }
 
-async function getCurrentRound(ctx: QueryCtx) {
-  const settings = await getVotingSettings(ctx);
-  return settings?.currentRound ?? 0;
-}
-
 async function getRoundVoteRows(ctx: QueryCtx, round: number) {
   if (round <= 0) return [];
   return await ctx.db
@@ -198,8 +193,18 @@ export const adminOverview = query({
 export const results = query({
   args: {},
   handler: async (ctx) => {
-    await getAdminUser(ctx);
-    const currentRound = await getCurrentRound(ctx);
+    const { user } = await getAuthenticatedUser(ctx);
+    const settings = await getVotingSettings(ctx);
+    const currentRound = settings?.currentRound ?? 0;
+    const votingEnded =
+      currentRound > 0 &&
+      settings?.active === false &&
+      settings.endedAt !== undefined;
+
+    if (!user.isAdmin && !votingEnded) {
+      throw new Error("Results are available after voting ends");
+    }
+
     const [votes, ideas] = await Promise.all([
       getRoundVoteRows(ctx, currentRound),
       getActiveIdeas(ctx),

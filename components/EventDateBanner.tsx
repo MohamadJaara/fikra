@@ -3,7 +3,7 @@
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
 import { motion } from "framer-motion";
-import { CalendarClock, MapPin, Timer } from "lucide-react";
+import { CalendarClock, CheckCircle2, MapPin, Timer } from "lucide-react";
 
 function getTimeZoneLabel(value: number, timezone: string) {
   const parts = new Intl.DateTimeFormat(undefined, {
@@ -52,7 +52,15 @@ function formatEventRange(
   return `${startDateLabel}, ${startTimeLabel} - ${endDateLabel}, ${endTimeLabel} ${timezoneLabel}`;
 }
 
-function getRelativeLabel(startsAt: number, endsAt: number | undefined) {
+function getRelativeLabel(
+  startsAt: number,
+  endsAt: number | undefined,
+  completedAt: number | undefined,
+) {
+  if (completedAt !== undefined) {
+    return "Done";
+  }
+
   const now = Date.now();
   if (endsAt !== undefined && now >= startsAt && now <= endsAt) {
     return "Live now";
@@ -90,7 +98,13 @@ export function EventDateBanner() {
     event.endsAt,
     event.timezone,
   );
-  const relativeLabel = getRelativeLabel(event.startsAt, event.endsAt);
+  const isComplete = event.completedAt !== undefined;
+  const relativeLabel = getRelativeLabel(
+    event.startsAt,
+    event.endsAt,
+    event.completedAt,
+  );
+  const StatusIcon = isComplete ? CheckCircle2 : Timer;
 
   return (
     <motion.div
@@ -103,11 +117,15 @@ export function EventDateBanner() {
         <div className="flex min-w-0 items-start gap-3">
           <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-sm">
             <CalendarClock className="h-5 w-5" />
-            <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background bg-emerald-500" />
+            <span
+              className={`absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background ${
+                isComplete ? "bg-sky-500" : "bg-emerald-500"
+              }`}
+            />
           </div>
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Event Dates
+              {isComplete ? "Hackathon Complete" : "Event Dates"}
             </p>
             <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
               <h2 className="truncate text-base font-semibold leading-tight">
@@ -135,7 +153,13 @@ export function EventDateBanner() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 rounded-lg border bg-background/70 px-3 py-2 text-sm shadow-sm">
-          <Timer className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+          <StatusIcon
+            className={`h-4 w-4 ${
+              isComplete
+                ? "text-sky-600 dark:text-sky-400"
+                : "text-emerald-600 dark:text-emerald-400"
+            }`}
+          />
           <span className="font-semibold">{relativeLabel}</span>
         </div>
       </div>

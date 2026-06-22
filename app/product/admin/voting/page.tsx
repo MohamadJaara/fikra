@@ -76,7 +76,7 @@ export default function AdminVotingPage() {
               Voting
             </h1>
             <p className="text-sm text-muted-foreground">
-              Open participant voting and watch private admin-only results.
+              Open participant voting and watch live results.
             </p>
           </div>
         </div>
@@ -179,12 +179,14 @@ export default function AdminVotingPage() {
               <div>
                 <h2 className="text-sm font-semibold">Results</h2>
                 <p className="text-xs text-muted-foreground">
-                  Visible only to admins. Participants can only see their own
-                  selected votes.
+                  Live results are admin-only. Participants can see final
+                  results after voting ends.
                 </p>
               </div>
               {overview.endedAt && !overview.active && (
-                <Badge variant="outline">Stopped {formatTime(overview.endedAt)}</Badge>
+                <Badge variant="outline">
+                  Stopped {formatTime(overview.endedAt)}
+                </Badge>
               )}
             </div>
 

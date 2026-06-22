@@ -98,4 +98,41 @@ describe("Event settings authorization", () => {
     );
     expect(await asViewer.query(api.event.getCurrent, {})).toBeNull();
   });
+
+  test("admins can mark the hackathon done and reopen it", async () => {
+    const t = initTest();
+    const adminId = await insertUser(t, {
+      email: `event-admin-done@${DOMAIN}`,
+      isAdmin: true,
+    });
+    const userId = await insertUser(t, {
+      email: `event-viewer-done@${DOMAIN}`,
+    });
+    const asAdmin = asUser(t, adminId, `event-admin-done@${DOMAIN}`);
+    const asViewer = asUser(t, userId, `event-viewer-done@${DOMAIN}`);
+
+    await asAdmin.mutation(api.event.save, {
+      title: "Demo Day",
+      startsAt: Date.now() + 1000,
+      timezone: "UTC",
+      active: true,
+    });
+
+    await expect(asViewer.mutation(api.event.markDone, {})).rejects.toThrow(
+      "Admin access required",
+    );
+
+    const result = await asAdmin.mutation(api.event.markDone, {});
+    expect(result.completedAt).toEqual(expect.any(Number));
+
+    const completedEvent = await asViewer.query(api.event.getCurrent, {});
+    expect(completedEvent?.completedAt).toBe(result.completedAt);
+    expect(completedEvent?.completedBy).toBe(adminId);
+
+    await asAdmin.mutation(api.event.reopen, {});
+
+    const reopenedEvent = await asViewer.query(api.event.getCurrent, {});
+    expect(reopenedEvent?.completedAt).toBeUndefined();
+    expect(reopenedEvent?.completedBy).toBeUndefined();
+  });
 });
