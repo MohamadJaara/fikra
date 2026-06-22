@@ -2,6 +2,13 @@
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,14 +22,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import {
   Archive,
   ArrowLeft,
   CheckCircle2,
   Copy,
   PauseCircle,
+  Pencil,
   PlayCircle,
   PlusCircle,
+  Save,
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -36,6 +46,10 @@ const STATUS_LABELS: Record<string, string> = {
   completed: "Completed",
   archived: "Archived",
 };
+
+type HackathonItem = FunctionReturnType<
+  typeof api.hackathons.getForAdmin
+>[number];
 
 function toLocalInputValue(timestamp: number) {
   const date = new Date(timestamp);
@@ -60,6 +74,7 @@ export default function AdminHackathonsPage() {
   const completeHackathon = useMutation(api.hackathons.complete);
   const archiveHackathon = useMutation(api.hackathons.archive);
   const cloneConfig = useMutation(api.hackathons.cloneConfigFrom);
+  const updateHackathon = useMutation(api.hackathons.update);
 
   const [title, setTitle] = useState("");
   const [slug, setSlug] = useState("");
@@ -76,6 +91,27 @@ export default function AdminHackathonsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [cloningTargetId, setCloningTargetId] =
     useState<Id<"hackathons"> | null>(null);
+  const [editingHackathon, setEditingHackathon] =
+    useState<HackathonItem | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+  const [editStartsAt, setEditStartsAt] = useState("");
+  const [editEndsAt, setEditEndsAt] = useState("");
+  const [editTimezone, setEditTimezone] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const openEditDialog = (hackathon: HackathonItem) => {
+    setEditingHackathon(hackathon);
+    setEditTitle(hackathon.title);
+    setEditSlug(hackathon.slug);
+    setEditStartsAt(toLocalInputValue(hackathon.startsAt));
+    setEditEndsAt(hackathon.endsAt ? toLocalInputValue(hackathon.endsAt) : "");
+    setEditTimezone(hackathon.timezone);
+    setEditLocation(hackathon.location ?? "");
+    setEditNote(hackathon.note ?? "");
+  };
 
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -141,6 +177,33 @@ export default function AdminHackathonsPage() {
       );
     } finally {
       setCloningTargetId(null);
+    }
+  };
+
+  const handleUpdate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editingHackathon || !editTitle.trim() || !editStartsAt) return;
+    setIsUpdating(true);
+    try {
+      await updateHackathon({
+        hackathonId: editingHackathon._id,
+        title: editTitle,
+        slug: optionalText(editSlug),
+        startsAt: new Date(editStartsAt).getTime(),
+        endsAt: editEndsAt ? new Date(editEndsAt).getTime() : undefined,
+        timezone: editTimezone,
+        location: optionalText(editLocation),
+        note: optionalText(editNote),
+        status: editingHackathon.status,
+      });
+      toast.success("Hackathon saved");
+      setEditingHackathon(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save hackathon",
+      );
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -305,6 +368,14 @@ export default function AdminHackathonsPage() {
                   </Badge>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={`Edit ${hackathon.title}`}
+                    onClick={() => openEditDialog(hackathon)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                   {hackathon.status !== "active" && (
                     <Button
                       size="sm"
@@ -363,6 +434,100 @@ export default function AdminHackathonsPage() {
           })}
         </div>
       </div>
+
+      <Dialog
+        open={editingHackathon !== null}
+        onOpenChange={(open) => {
+          if (!open && !isUpdating) setEditingHackathon(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Hackathon</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUpdate} className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-hackathon-title">Title</Label>
+              <Input
+                id="edit-hackathon-title"
+                value={editTitle}
+                onChange={(event) => setEditTitle(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-hackathon-slug">Slug</Label>
+              <Input
+                id="edit-hackathon-slug"
+                value={editSlug}
+                onChange={(event) => setEditSlug(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-hackathon-timezone">Timezone</Label>
+              <Input
+                id="edit-hackathon-timezone"
+                value={editTimezone}
+                onChange={(event) => setEditTimezone(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-hackathon-start">Starts</Label>
+              <Input
+                id="edit-hackathon-start"
+                type="datetime-local"
+                value={editStartsAt}
+                onChange={(event) => setEditStartsAt(event.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-hackathon-end">Ends</Label>
+              <Input
+                id="edit-hackathon-end"
+                type="datetime-local"
+                value={editEndsAt}
+                onChange={(event) => setEditEndsAt(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-hackathon-location">Location</Label>
+              <Input
+                id="edit-hackathon-location"
+                value={editLocation}
+                onChange={(event) => setEditLocation(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="edit-hackathon-note">Note</Label>
+              <Textarea
+                id="edit-hackathon-note"
+                value={editNote}
+                onChange={(event) => setEditNote(event.target.value)}
+                rows={3}
+              />
+            </div>
+            <DialogFooter className="md:col-span-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingHackathon(null)}
+                disabled={isUpdating}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isUpdating || !editTitle.trim() || !editStartsAt}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isUpdating ? "Saving..." : "Save Changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
       <Toaster />
     </div>
   );
