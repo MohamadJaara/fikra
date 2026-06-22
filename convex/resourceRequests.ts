@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
   getAuthenticatedUser,
   getResourceNameMap,
   getUserDisplayName,
@@ -20,11 +21,12 @@ export const add = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (idea.ownerId !== userId && !user.isAdmin) {
       throw new Error("Only the owner or an admin can add resource requests");
     }
 
-    await validateResourceSlugs(ctx, [tag]);
+    await validateResourceSlugs(ctx, [tag], idea.hackathonId);
 
     const existing = await ctx.db
       .query("resourceRequests")
@@ -36,6 +38,7 @@ export const add = mutation({
     }
 
     await ctx.db.insert("resourceRequests", {
+      hackathonId: idea.hackathonId,
       ideaId,
       tag,
       notes: notes ? sanitizeText(notes) : undefined,
@@ -55,6 +58,7 @@ export const resolve = mutation({
 
     const idea = await ctx.db.get(request.ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (idea.ownerId !== userId && !user.isAdmin) {
       throw new Error(
         "Only the owner or an admin can resolve resource requests",
@@ -76,6 +80,7 @@ export const unresolve = mutation({
 
     const idea = await ctx.db.get(request.ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (idea.ownerId !== userId && !user.isAdmin) {
       throw new Error(
         "Only the owner or an admin can unresolve resource requests",
@@ -97,6 +102,7 @@ export const remove = mutation({
 
     const idea = await ctx.db.get(request.ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (idea.ownerId !== userId && !user.isAdmin) {
       throw new Error(
         "Only the owner or an admin can remove resource requests",
@@ -109,15 +115,22 @@ export const remove = mutation({
 });
 
 export const getAllUnresolved = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAuthenticatedUser(ctx);
-    const resourceNameMap = await getResourceNameMap(ctx);
+    const resourceNameMap = await getResourceNameMap(ctx, hackathonId);
 
-    const unresolved = await ctx.db
-      .query("resourceRequests")
-      .withIndex("by_resolved", (q) => q.eq("resolved", false))
-      .collect();
+    const unresolved = hackathonId
+      ? await ctx.db
+          .query("resourceRequests")
+          .withIndex("by_hackathon_and_resolved", (q) =>
+            q.eq("hackathonId", hackathonId).eq("resolved", false),
+          )
+          .collect()
+      : await ctx.db
+          .query("resourceRequests")
+          .withIndex("by_resolved", (q) => q.eq("resolved", false))
+          .collect();
 
     const withIdeas = await Promise.all(
       unresolved.map(async (r) => {

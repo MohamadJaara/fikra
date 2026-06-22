@@ -1,5 +1,10 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { query, mutation, type QueryCtx } from "./_generated/server";
+import {
+  query,
+  mutation,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import {
@@ -7,6 +12,10 @@ import {
   getResourceNameMap,
   getUserDisplayName,
   assertIdeasUnlocked,
+  assertHackathonWritable,
+  assertIdeaInHackathon,
+  getHackathonByIdOrCurrent,
+  getParticipant,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   sanitizeText,
@@ -123,7 +132,7 @@ async function buildIdeaListItems(
   ideas: Doc<"ideas">[],
   userId: Id<"users">,
 ) {
-  const resourceNameMap = await getResourceNameMap(ctx);
+  const resourceNameMap = await getResourceNameMap(ctx, ideas[0]?.hackathonId);
   const {
     memberIdeaIds,
     interestedIdeaIds,
@@ -458,19 +467,39 @@ async function filterSortPaginateEnrich(
   return { page: enrichedPage, isDone, continueCursor };
 }
 
-function assertOnsiteEligibleForIdea(
-  idea: { onsiteOnly?: boolean },
+async function getEffectiveParticipationMode(
+  ctx: QueryCtx | MutationCtx,
+  hackathonId: Id<"hackathons"> | undefined,
+  userId: Id<"users">,
   user: { participationMode?: string },
 ) {
-  if (idea.onsiteOnly && user.participationMode !== "onsite") {
-    throw new Error(
-      "This team is limited to on-site participants only. Update your participation mode to on-site in settings to continue.",
-    );
+  if (!hackathonId) return user.participationMode;
+  const participant = await getParticipant(ctx, hackathonId, userId);
+  return participant?.participationMode ?? user.participationMode;
+}
+
+async function assertUserOnsiteEligibleForIdea(
+  ctx: QueryCtx | MutationCtx,
+  idea: Pick<Doc<"ideas">, "hackathonId" | "onsiteOnly">,
+  userId: Id<"users">,
+  user: { participationMode?: string },
+  message: string,
+) {
+  if (!idea.onsiteOnly) return;
+  const mode = await getEffectiveParticipationMode(
+    ctx,
+    idea.hackathonId,
+    userId,
+    user,
+  );
+  if (mode !== "onsite") {
+    throw new Error(message);
   }
 }
 
 export const create = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     title: v.string(),
     pitch: v.string(),
     problem: v.string(),
@@ -490,9 +519,11 @@ export const create = mutation({
     onsiteOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await getAuthenticatedUser(ctx);
-    await assertIdeasUnlocked(ctx);
-    await assertIdeaSubmissionsOpen(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertHackathonWritable(ctx, hackathon?._id, user);
+    await assertIdeasUnlocked(ctx, hackathon?._id);
+    await assertIdeaSubmissionsOpen(ctx, hackathon?._id);
 
     const title = validateStringLength(args.title, 1, 120, "Title");
     const pitch = validateStringLength(args.pitch, 1, 200, "Pitch");
@@ -511,11 +542,21 @@ export const create = mutation({
       throw new Error("Invalid team size");
     }
 
-    await validateRoleSlugs(ctx, args.lookingForRoles);
+    await validateRoleSlugs(ctx, args.lookingForRoles, hackathon?._id);
+    const category = await ctx.db.get(args.categoryId);
+    if (!category) throw new Error("Category not found");
+    if (
+      hackathon?._id &&
+      category.hackathonId !== undefined &&
+      category.hackathonId !== hackathon._id
+    ) {
+      throw new Error("Category does not belong to this hackathon");
+    }
 
     const isFullAtCreate = args.status === "full";
     const now = Date.now();
     const ideaId = await ctx.db.insert("ideas", {
+      hackathonId: hackathon?._id,
       title,
       pitch,
       problem,
@@ -554,7 +595,7 @@ export const create = mutation({
         seenTags.add(tag);
         validatedTags.push(tag);
       }
-      await validateResourceSlugs(ctx, validatedTags);
+      await validateResourceSlugs(ctx, validatedTags, hackathon?._id);
 
       const notes = args.resourceNotes
         ? sanitizeText(
@@ -564,6 +605,7 @@ export const create = mutation({
 
       for (const tag of validatedTags) {
         await ctx.db.insert("resourceRequests", {
+          hackathonId: hackathon?._id,
           ideaId,
           tag,
           notes,
@@ -580,13 +622,14 @@ export const create = mutation({
 export const markTeamFormed = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) {
       throw new Error("Only the owner can mark the team formed");
     }
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const now = Date.now();
     await ctx.db.patch(ideaId, {
@@ -602,13 +645,14 @@ export const markTeamFormed = mutation({
 export const markTeamForming = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) {
       throw new Error("Only the owner can mark the team forming");
     }
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (idea.roomId) {
       throw new Error("Unassign the room before marking this team as forming");
     }
@@ -643,11 +687,12 @@ export const update = mutation({
     onsiteOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(args.ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) throw new Error("Only the owner can edit");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const title = validateStringLength(args.title, 1, 120, "Title");
     const pitch = validateStringLength(args.pitch, 1, 200, "Pitch");
@@ -666,7 +711,18 @@ export const update = mutation({
       throw new Error("Invalid team size");
     }
 
-    await validateRoleSlugs(ctx, args.lookingForRoles);
+    await validateRoleSlugs(ctx, args.lookingForRoles, idea.hackathonId);
+    if (args.categoryId) {
+      const category = await ctx.db.get(args.categoryId);
+      if (!category) throw new Error("Category not found");
+      if (
+        idea.hackathonId &&
+        category.hackathonId !== undefined &&
+        category.hackathonId !== idea.hackathonId
+      ) {
+        throw new Error("Category does not belong to this hackathon");
+      }
+    }
 
     const currentFilledRoles = new Set(idea.filledRoles ?? []);
     const needsTeammates =
@@ -695,13 +751,14 @@ export const update = mutation({
 export const shelve = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) {
       throw new Error("Only the owner can shelve this idea");
     }
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     await ctx.db.patch(ideaId, {
       status: IDEA_STATUS_SHELVED,
@@ -720,13 +777,14 @@ export const shelve = mutation({
 export const unshelve = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) {
       throw new Error("Only the owner can unshelve this idea");
     }
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (idea.status !== IDEA_STATUS_SHELVED) return;
 
     await ctx.db.patch(ideaId, {
@@ -741,10 +799,11 @@ export const unshelve = mutation({
 export const remove = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) throw new Error("Only the owner can delete");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const members = await ctx.db
       .query("ideaMembers")
@@ -811,13 +870,14 @@ export const requestOwnershipTransfer = mutation({
     leaveAfterTransfer: v.optional(v.boolean()),
   },
   handler: async (ctx, { ideaId, targetUserId, leaveAfterTransfer }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) {
       throw new Error("Only the owner can transfer ownership");
     }
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (targetUserId === userId) {
       throw new Error("Choose someone else to own this idea");
     }
@@ -830,7 +890,13 @@ export const requestOwnershipTransfer = mutation({
     if (!targetUser.email || !isEmailAllowed(targetUser.email)) {
       throw new Error("New owner is not allowed to access this workspace");
     }
-    assertOnsiteEligibleForIdea(idea, targetUser);
+    await assertUserOnsiteEligibleForIdea(
+      ctx,
+      idea,
+      targetUserId,
+      targetUser,
+      "This team is limited to on-site participants only. Update your participation mode to on-site in settings to continue.",
+    );
 
     const existingPendingRequest = await ctx.db
       .query("ownershipTransferRequests")
@@ -843,6 +909,7 @@ export const requestOwnershipTransfer = mutation({
     }
 
     const requestId = await ctx.db.insert("ownershipTransferRequests", {
+      hackathonId: idea.hackathonId,
       ideaId,
       requesterId: userId,
       recipientId: targetUserId,
@@ -873,6 +940,7 @@ export const requestOwnership = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (idea.ownerId === userId) {
       throw new Error("You already own this idea");
     }
@@ -886,7 +954,13 @@ export const requestOwnership = mutation({
     if (!membership && idea.status !== IDEA_STATUS_SHELVED) {
       throw new Error("Only team members can request ownership");
     }
-    assertOnsiteEligibleForIdea(idea, user);
+    await assertUserOnsiteEligibleForIdea(
+      ctx,
+      idea,
+      userId,
+      user,
+      "This team is limited to on-site participants only. Update your participation mode to on-site in settings to continue.",
+    );
 
     const existingPendingRequest = await ctx.db
       .query("ownershipTransferRequests")
@@ -899,6 +973,7 @@ export const requestOwnership = mutation({
     }
 
     const requestId = await ctx.db.insert("ownershipTransferRequests", {
+      hackathonId: idea.hackathonId,
       ideaId,
       requesterId: userId,
       recipientId: idea.ownerId,
@@ -923,7 +998,7 @@ export const acceptOwnershipTransfer = mutation({
     leaveAfterTransfer: v.optional(v.boolean()),
   },
   handler: async (ctx, { requestId, leaveAfterTransfer }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const request = await ctx.db.get(requestId);
     if (!request) throw new Error("Ownership transfer request not found");
@@ -936,6 +1011,7 @@ export const acceptOwnershipTransfer = mutation({
 
     const idea = await ctx.db.get(request.ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const ownerInitiated = request.requesterId === idea.ownerId;
     const requesterInitiated = request.recipientId === idea.ownerId;
@@ -955,7 +1031,13 @@ export const acceptOwnershipTransfer = mutation({
     if (!newOwner.email || !isEmailAllowed(newOwner.email)) {
       throw new Error("New owner is not allowed to access this workspace");
     }
-    assertOnsiteEligibleForIdea(idea, newOwner);
+    await assertUserOnsiteEligibleForIdea(
+      ctx,
+      idea,
+      newOwnerId,
+      newOwner,
+      "This team is limited to on-site participants only. Update your participation mode to on-site in settings to continue.",
+    );
 
     const newOwnerMembership = await ctx.db
       .query("ideaMembers")
@@ -978,6 +1060,7 @@ export const acceptOwnershipTransfer = mutation({
       });
     } else if (!newOwnerMembership && idea.status === IDEA_STATUS_SHELVED) {
       await ctx.db.insert("ideaMembers", {
+        hackathonId: idea.hackathonId,
         ideaId: request.ideaId,
         userId: newOwnerId,
         joinedAsOwner: true,
@@ -1140,6 +1223,7 @@ const ideaListSortValidator = v.union(
 
 export const list = query({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     paginationOpts: paginationOptsValidator,
     filters: v.optional(ideaListFiltersValidator),
     sortBy: v.optional(ideaListSortValidator),
@@ -1149,7 +1233,8 @@ export const list = query({
     if (!userId) {
       return { page: [], isDone: true, continueCursor: "" };
     }
-    await assertIdeasUnlocked(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertIdeasUnlocked(ctx, hackathon?._id);
 
     const sortBy = args.sortBy ?? "most_interest";
     const filters = normalizeIdeaListFilters(args.filters);
@@ -1157,30 +1242,54 @@ export const list = query({
     const isTimeSort = sortBy === "newest" || sortBy === "oldest";
 
     if (!hasFilters && isTimeSort) {
-      const { page, isDone, continueCursor } = await ctx.db
-        .query("ideas")
-        .order(sortBy === "oldest" ? "asc" : "desc")
-        .paginate(args.paginationOpts);
+      const { page, isDone, continueCursor } = hackathon
+        ? await ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon", (q) =>
+              q.eq("hackathonId", hackathon._id),
+            )
+            .order(sortBy === "oldest" ? "asc" : "desc")
+            .paginate(args.paginationOpts)
+        : await ctx.db
+            .query("ideas")
+            .order(sortBy === "oldest" ? "asc" : "desc")
+            .paginate(args.paginationOpts);
       const enrichedPage = await buildIdeaListItems(ctx, page, userId);
       return { page: enrichedPage, isDone, continueCursor };
     }
 
     if (!hasFilters && sortBy === "most_interest") {
-      const { page, isDone, continueCursor } = await ctx.db
-        .query("ideas")
-        .withIndex("by_interestCount")
-        .order("desc")
-        .paginate(args.paginationOpts);
+      const { page, isDone, continueCursor } = hackathon
+        ? await ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon_and_interestCount", (q) =>
+              q.eq("hackathonId", hackathon._id),
+            )
+            .order("desc")
+            .paginate(args.paginationOpts)
+        : await ctx.db
+            .query("ideas")
+            .withIndex("by_interestCount")
+            .order("desc")
+            .paginate(args.paginationOpts);
       const enrichedPage = await buildIdeaListItems(ctx, page, userId);
       return { page: enrichedPage, isDone, continueCursor };
     }
 
     if (!hasFilters && sortBy === "most_reactions") {
-      const { page, isDone, continueCursor } = await ctx.db
-        .query("ideas")
-        .withIndex("by_reactionTotal")
-        .order("desc")
-        .paginate(args.paginationOpts);
+      const { page, isDone, continueCursor } = hackathon
+        ? await ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon_and_reactionTotal", (q) =>
+              q.eq("hackathonId", hackathon._id),
+            )
+            .order("desc")
+            .paginate(args.paginationOpts)
+        : await ctx.db
+            .query("ideas")
+            .withIndex("by_reactionTotal")
+            .order("desc")
+            .paginate(args.paginationOpts);
       const enrichedPage = await buildIdeaListItems(ctx, page, userId);
       return { page: enrichedPage, isDone, continueCursor };
     }
@@ -1188,14 +1297,32 @@ export const list = query({
     if (filters?.search?.trim()) {
       const searchTerm = filters.search.trim();
       const [titleResults, pitchResults] = await Promise.all([
-        ctx.db
-          .query("ideas")
-          .withSearchIndex("search_title", (q) => q.search("title", searchTerm))
-          .take(100),
-        ctx.db
-          .query("ideas")
-          .withSearchIndex("search_pitch", (q) => q.search("pitch", searchTerm))
-          .take(100),
+        hackathon
+          ? ctx.db
+              .query("ideas")
+              .withSearchIndex("search_title_by_hackathon", (q) =>
+                q.search("title", searchTerm).eq("hackathonId", hackathon._id),
+              )
+              .take(100)
+          : ctx.db
+              .query("ideas")
+              .withSearchIndex("search_title", (q) =>
+                q.search("title", searchTerm),
+              )
+              .take(100),
+        hackathon
+          ? ctx.db
+              .query("ideas")
+              .withSearchIndex("search_pitch_by_hackathon", (q) =>
+                q.search("pitch", searchTerm).eq("hackathonId", hackathon._id),
+              )
+              .take(100)
+          : ctx.db
+              .query("ideas")
+              .withSearchIndex("search_pitch", (q) =>
+                q.search("pitch", searchTerm),
+              )
+              .take(100),
       ]);
       const seen = new Set<Id<"ideas">>();
       const candidates: Doc<"ideas">[] = [];
@@ -1226,21 +1353,36 @@ export const list = query({
         !filters.needsTeammates &&
         !filters.needsResources
       ) {
-        const { page, isDone, continueCursor } = await ctx.db
-          .query("ideas")
-          .withIndex("by_status", (q) => q.eq("status", statuses[0]))
-          .order(sortBy === "oldest" ? "asc" : "desc")
-          .paginate(args.paginationOpts);
+        const { page, isDone, continueCursor } = hackathon
+          ? await ctx.db
+              .query("ideas")
+              .withIndex("by_hackathon_and_status", (q) =>
+                q.eq("hackathonId", hackathon._id).eq("status", statuses[0]),
+              )
+              .order(sortBy === "oldest" ? "asc" : "desc")
+              .paginate(args.paginationOpts)
+          : await ctx.db
+              .query("ideas")
+              .withIndex("by_status", (q) => q.eq("status", statuses[0]))
+              .order(sortBy === "oldest" ? "asc" : "desc")
+              .paginate(args.paginationOpts);
         const enrichedPage = await buildIdeaListItems(ctx, page, userId);
         return { page: enrichedPage, isDone, continueCursor };
       }
 
       const statusSets = await Promise.all(
         statuses.map((status) =>
-          ctx.db
-            .query("ideas")
-            .withIndex("by_status", (q) => q.eq("status", status))
-            .take(candidateLimitForPagination(args.paginationOpts)),
+          hackathon
+            ? ctx.db
+                .query("ideas")
+                .withIndex("by_hackathon_and_status", (q) =>
+                  q.eq("hackathonId", hackathon._id).eq("status", status),
+                )
+                .take(candidateLimitForPagination(args.paginationOpts))
+            : ctx.db
+                .query("ideas")
+                .withIndex("by_status", (q) => q.eq("status", status))
+                .take(candidateLimitForPagination(args.paginationOpts)),
         ),
       );
       return await filterSortPaginateEnrich(
@@ -1254,10 +1396,19 @@ export const list = query({
     }
 
     if (filters?.needsTeammates) {
-      const candidates = await ctx.db
-        .query("ideas")
-        .withIndex("by_needsTeammates", (q) => q.eq("needsTeammates", true))
-        .take(candidateLimitForPagination(args.paginationOpts));
+      const candidates = hackathon
+        ? await ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon_and_needsTeammates", (q) =>
+              q
+                .eq("hackathonId", hackathon._id)
+                .eq("needsTeammates", true),
+            )
+            .take(candidateLimitForPagination(args.paginationOpts))
+        : await ctx.db
+            .query("ideas")
+            .withIndex("by_needsTeammates", (q) => q.eq("needsTeammates", true))
+            .take(candidateLimitForPagination(args.paginationOpts));
       return await filterSortPaginateEnrich(
         ctx,
         candidates,
@@ -1269,12 +1420,21 @@ export const list = query({
     }
 
     if (filters?.needsResources) {
-      const candidates = await ctx.db
-        .query("ideas")
-        .withIndex("by_hasUnresolvedResources", (q) =>
-          q.eq("hasUnresolvedResources", true),
-        )
-        .take(candidateLimitForPagination(args.paginationOpts));
+      const candidates = hackathon
+        ? await ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon_and_hasUnresolvedResources", (q) =>
+              q
+                .eq("hackathonId", hackathon._id)
+                .eq("hasUnresolvedResources", true),
+            )
+            .take(candidateLimitForPagination(args.paginationOpts))
+        : await ctx.db
+            .query("ideas")
+            .withIndex("by_hasUnresolvedResources", (q) =>
+              q.eq("hasUnresolvedResources", true),
+            )
+            .take(candidateLimitForPagination(args.paginationOpts));
       return await filterSortPaginateEnrich(
         ctx,
         candidates,
@@ -1294,16 +1454,30 @@ export const list = query({
       if (categoryIds.length > 0) {
         const sets = await Promise.all(
           categoryIds.map((catId) =>
-            ctx.db
-              .query("ideas")
-              .withIndex("by_category", (q) => q.eq("categoryId", catId))
-              .take(candidateLimitForPagination(args.paginationOpts)),
+            hackathon
+              ? ctx.db
+                  .query("ideas")
+                  .withIndex("by_hackathon_and_category", (q) =>
+                    q.eq("hackathonId", hackathon._id).eq("categoryId", catId),
+                  )
+                  .take(candidateLimitForPagination(args.paginationOpts))
+              : ctx.db
+                  .query("ideas")
+                  .withIndex("by_category", (q) => q.eq("categoryId", catId))
+                  .take(candidateLimitForPagination(args.paginationOpts)),
           ),
         );
         candidates = sets.flat();
       }
       if (hasNone) {
-        const allIdeas = await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
+        const allIdeas = hackathon
+          ? await ctx.db
+              .query("ideas")
+              .withIndex("by_hackathon", (q) =>
+                q.eq("hackathonId", hackathon._id),
+              )
+              .take(MAX_CANDIDATE_IDEAS)
+          : await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
         candidates = [...candidates, ...allIdeas.filter((i) => !i.categoryId)];
       }
       return await filterSortPaginateEnrich(
@@ -1317,7 +1491,12 @@ export const list = query({
     }
 
     // Bounded fallback for roles-only / resourceTags-only / rare combos
-    const candidates = await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
+    const candidates = hackathon
+      ? await ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+          .take(MAX_CANDIDATE_IDEAS)
+      : await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
     return await filterSortPaginateEnrich(
       ctx,
       candidates,
@@ -1331,15 +1510,22 @@ export const list = query({
 
 export const count = query({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     filters: v.optional(ideaListFiltersValidator),
   },
-  handler: async (ctx, { filters }) => {
+  handler: async (ctx, { filters, hackathonId }) => {
     const userId = await getIdeaListViewerId(ctx);
     if (!userId) return 0;
-    await assertIdeasUnlocked(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathon?._id);
 
     const normalizedFilters = normalizeIdeaListFilters(filters);
-    const candidates = await ctx.db.query("ideas").collect();
+    const candidates = hackathon
+      ? await ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+          .collect()
+      : await ctx.db.query("ideas").collect();
     return candidates.filter((idea) =>
       rawIdeaMatchesFilters(idea, normalizedFilters),
     ).length;
@@ -1348,6 +1534,7 @@ export const count = query({
 
 export const listByCategory = query({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     categoryId: v.id("categories"),
     paginationOpts: paginationOptsValidator,
   },
@@ -1356,13 +1543,22 @@ export const listByCategory = query({
     if (!userId) {
       return { page: [], isDone: true, continueCursor: "" };
     }
-    await assertIdeasUnlocked(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertIdeasUnlocked(ctx, hackathon?._id);
 
-    const { page, isDone, continueCursor } = await ctx.db
-      .query("ideas")
-      .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
-      .order("desc")
-      .paginate(args.paginationOpts);
+    const { page, isDone, continueCursor } = hackathon
+      ? await ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon_and_category", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("categoryId", args.categoryId),
+          )
+          .order("desc")
+          .paginate(args.paginationOpts)
+      : await ctx.db
+          .query("ideas")
+          .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
+          .order("desc")
+          .paginate(args.paginationOpts);
 
     const enrichedPage = await buildIdeaListItems(ctx, page, userId);
     return { page: enrichedPage, isDone, continueCursor };
@@ -1370,13 +1566,17 @@ export const listByCategory = query({
 });
 
 export const get = query({
-  args: { ideaId: v.id("ideas") },
-  handler: async (ctx, { ideaId }) => {
+  args: {
+    ideaId: v.id("ideas"),
+    hackathonId: v.optional(v.id("hackathons")),
+  },
+  handler: async (ctx, { ideaId, hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    await assertIdeasUnlocked(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) return null;
+    await assertIdeaInHackathon(ctx, idea, hackathonId);
+    await assertIdeasUnlocked(ctx, idea.hackathonId ?? hackathonId);
 
     const owner = await ctx.db.get(idea.ownerId);
     const category = idea.categoryId ? await ctx.db.get(idea.categoryId) : null;
@@ -1447,7 +1647,7 @@ export const get = query({
     for (const r of reactionDocs) {
       reactionCounts[r.type] = (reactionCounts[r.type] || 0) + 1;
     }
-    const resourceNameMap = await getResourceNameMap(ctx);
+    const resourceNameMap = await getResourceNameMap(ctx, idea.hackathonId);
 
     const userReactions = reactionDocs
       .filter((r) => r.userId === userId)
@@ -1579,15 +1779,27 @@ export const get = query({
 export const getAdjacent = query({
   args: {
     ideaId: v.id("ideas"),
+    hackathonId: v.optional(v.id("hackathons")),
     filters: v.optional(ideaListFiltersValidator),
     sortBy: v.optional(ideaListSortValidator),
   },
-  handler: async (ctx, { ideaId, filters, sortBy }) => {
+  handler: async (ctx, { ideaId, hackathonId, filters, sortBy }) => {
     await getAuthenticatedUser(ctx);
-    await assertIdeasUnlocked(ctx);
+    const currentIdea = await ctx.db.get(ideaId);
+    if (!currentIdea) return { previous: null, next: null };
+    await assertIdeaInHackathon(ctx, currentIdea, hackathonId);
+    const scopedHackathonId = currentIdea.hackathonId ?? hackathonId;
+    await assertIdeasUnlocked(ctx, scopedHackathonId);
 
     const normalizedFilters = normalizeIdeaListFilters(filters);
-    const candidates = await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
+    const candidates = scopedHackathonId
+      ? await ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon", (q) =>
+            q.eq("hackathonId", scopedHackathonId),
+          )
+          .take(MAX_CANDIDATE_IDEAS)
+      : await ctx.db.query("ideas").take(MAX_CANDIDATE_IDEAS);
     const sortedIdeas = sortRawIdeas(
       candidates.filter((idea) =>
         rawIdeaMatchesFilters(idea, normalizedFilters),
@@ -1607,28 +1819,45 @@ export const getAdjacent = query({
 });
 
 export const getByOwner = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    await assertIdeasUnlocked(ctx);
-    return await ctx.db
-      .query("ideas")
-      .withIndex("by_owner", (q) => q.eq("ownerId", userId))
-      .collect();
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathon?._id);
+    return hackathon
+      ? await ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon_and_owner", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("ownerId", userId),
+          )
+          .collect()
+      : await ctx.db
+          .query("ideas")
+          .withIndex("by_owner", (q) => q.eq("ownerId", userId))
+          .collect();
   },
 });
 
 export const getBookmarked = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    await assertIdeasUnlocked(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathon?._id);
 
-    const bookmarks = await ctx.db
-      .query("ideaBookmarks")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .collect();
+    const bookmarks = hackathon
+      ? await ctx.db
+          .query("ideaBookmarks")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .order("desc")
+          .collect()
+      : await ctx.db
+          .query("ideaBookmarks")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .order("desc")
+          .collect();
 
     const ideas = await Promise.all(bookmarks.map((b) => ctx.db.get(b.ideaId)));
     const existingIdeas = ideas.filter((i): i is Doc<"ideas"> => i !== null);

@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 function formatTime(value?: number) {
   if (!value) return "Not started";
@@ -28,8 +29,13 @@ function formatTime(value?: number) {
 }
 
 export default function AdminVotingPage() {
-  const overview = useQuery(api.voting.adminOverview);
-  const results = useQuery(api.voting.results);
+  const hackathon = useSelectedHackathon();
+  const overview = useQuery(api.voting.adminOverview, {
+    hackathonId: hackathon?._id,
+  });
+  const results = useQuery(api.voting.results, {
+    hackathonId: hackathon?._id,
+  });
   const startVoting = useMutation(api.voting.start);
   const stopVoting = useMutation(api.voting.stop);
   const [saving, setSaving] = useState<"start" | "stop" | null>(null);
@@ -39,7 +45,7 @@ export default function AdminVotingPage() {
   const handleStart = async () => {
     setSaving("start");
     try {
-      const result = await startVoting();
+      const result = await startVoting({ hackathonId: hackathon?._id });
       toast.success(`Voting round ${result.currentRound} started`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to start");
@@ -51,7 +57,7 @@ export default function AdminVotingPage() {
   const handleStop = async () => {
     setSaving("stop");
     try {
-      await stopVoting();
+      await stopVoting({ hackathonId: hackathon?._id });
       toast.success("Voting stopped");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to stop");

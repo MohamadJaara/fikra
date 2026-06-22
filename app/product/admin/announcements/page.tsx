@@ -29,6 +29,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 import { AnimatePresence, motion } from "framer-motion";
 
 const TYPE_META: Record<
@@ -65,7 +66,10 @@ const TYPE_META: Record<
 };
 
 export default function AdminAnnouncementsPage() {
-  const announcements = useQuery(api.announcements.list);
+  const hackathon = useSelectedHackathon();
+  const announcements = useQuery(api.announcements.list, {
+    hackathonId: hackathon?._id,
+  });
   const createAnnouncement = useMutation(api.announcements.create);
   const removeAnnouncement = useMutation(api.announcements.remove);
   const updateAnnouncement = useMutation(api.announcements.update);
@@ -81,7 +85,12 @@ export default function AdminAnnouncementsPage() {
 
   const handleCreate = async () => {
     try {
-      await createAnnouncement({ title, message, type });
+      await createAnnouncement({
+        hackathonId: hackathon?._id,
+        title,
+        message,
+        type,
+      });
       toast.success("Announcement created");
       setTitle("");
       setMessage("");

@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 import { useQuery } from "convex/react";
 import Link from "next/link";
 import Image from "next/image";
@@ -122,7 +123,10 @@ function DiscoverBanner() {
 }
 
 export default function ThemesPage() {
-  const categories = useQuery(api.categories.listWithDetails);
+  const hackathon = useSelectedHackathon();
+  const categories = useQuery(api.categories.listWithDetails, {
+    hackathonId: hackathon?._id,
+  });
 
   return (
     <div className="min-h-screen">

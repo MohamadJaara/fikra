@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser } from "./lib";
+import { getAuthenticatedUser, getHackathonByIdOrCurrent } from "./lib";
 
 export const toggle = mutation({
   args: { ideaId: v.id("ideas") },
@@ -22,21 +22,34 @@ export const toggle = mutation({
       return false;
     }
 
-    await ctx.db.insert("ideaBookmarks", { ideaId, userId });
+    await ctx.db.insert("ideaBookmarks", {
+      hackathonId: idea.hackathonId,
+      ideaId,
+      userId,
+    });
     return true;
   },
 });
 
 export const getByUser = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const bookmarks = await ctx.db
-      .query("ideaBookmarks")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .collect();
+    const bookmarks = hackathon
+      ? await ctx.db
+          .query("ideaBookmarks")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .order("desc")
+          .collect()
+      : await ctx.db
+          .query("ideaBookmarks")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .order("desc")
+          .collect();
 
     const ideas = await Promise.all(
       bookmarks.map(async (b) => {
@@ -50,14 +63,22 @@ export const getByUser = query({
 });
 
 export const getBookmarkedIdeaIds = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const bookmarks = await ctx.db
-      .query("ideaBookmarks")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const bookmarks = hackathon
+      ? await ctx.db
+          .query("ideaBookmarks")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .collect()
+      : await ctx.db
+          .query("ideaBookmarks")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
 
     return new Set(bookmarks.map((b) => b.ideaId));
   },

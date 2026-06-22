@@ -15,6 +15,7 @@ import type { UnresolvedResource } from "@/lib/types";
 import { Lightbulb, Users, Heart, Package, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 type TabKey = "created" | "joined" | "interested" | "resources";
 
@@ -35,8 +36,11 @@ const statusAccentColors: Record<Status, string> = {
 
 export default function ActivityPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("created");
+  const hackathon = useSelectedHackathon();
 
-  const createdIdeas = useQuery(api.ideas.getByOwner) as
+  const createdIdeas = useQuery(api.ideas.getByOwner, {
+    hackathonId: hackathon?._id,
+  }) as
     | {
         _id: Id<"ideas">;
         title: string;
@@ -45,7 +49,9 @@ export default function ActivityPage() {
         _creationTime: number;
       }[]
     | undefined;
-  const joinedIdeas = useQuery(api.memberships.getByUser) as
+  const joinedIdeas = useQuery(api.memberships.getByUser, {
+    hackathonId: hackathon?._id,
+  }) as
     | ({
         _id: Id<"ideas">;
         title: string;
@@ -55,7 +61,9 @@ export default function ActivityPage() {
         memberRoles?: string[];
       } | null)[]
     | undefined;
-  const interestedIdeas = useQuery(api.interest.getByUser) as
+  const interestedIdeas = useQuery(api.interest.getByUser, {
+    hackathonId: hackathon?._id,
+  }) as
     | ({
         _id: Id<"ideas">;
         title: string;
@@ -64,9 +72,9 @@ export default function ActivityPage() {
         _creationTime: number;
       } | null)[]
     | undefined;
-  const unresolvedResources = useQuery(
-    api.resourceRequests.getAllUnresolved,
-  ) as UnresolvedResource[] | undefined;
+  const unresolvedResources = useQuery(api.resourceRequests.getAllUnresolved, {
+    hackathonId: hackathon?._id,
+  }) as UnresolvedResource[] | undefined;
 
   const counts: Record<TabKey, number> = {
     created: createdIdeas?.length ?? 0,

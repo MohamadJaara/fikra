@@ -17,6 +17,7 @@ import {
 import type { SortOption } from "@/lib/constants";
 import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { api } from "@/convex/_generated/api";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 import type { Id } from "@/convex/_generated/dataModel";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -90,8 +91,11 @@ function BrowseIdeasContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
+  const hackathon = useSelectedHackathon();
 
-  const categoryList = useQuery(api.categories.list);
+  const categoryList = useQuery(api.categories.list, {
+    hackathonId: hackathon?._id,
+  });
   const rolesList = useRolesList();
   const resourcesList = useResourcesList();
   const statusParamValues =
@@ -159,6 +163,7 @@ function BrowseIdeasContent() {
   } = usePaginatedQuery(
     api.ideas.list,
     {
+      hackathonId: hackathon?._id,
       filters: {
         search: filters.search,
         shelf: shelfView,
@@ -175,6 +180,7 @@ function BrowseIdeasContent() {
   );
   const ideaResults = ideas as IdeaListItem[];
   const ideaCount = useQuery(api.ideas.count, {
+    hackathonId: hackathon?._id,
     filters: {
       search: filters.search,
       shelf: shelfView,

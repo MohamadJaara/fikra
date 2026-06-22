@@ -1,8 +1,14 @@
-import { mutation, query, type QueryCtx } from "./_generated/server";
+import {
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAdminUser,
   getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
   getUserDisplayName,
   resolveTeamSize,
   STATUSES,
@@ -14,28 +20,68 @@ const IDEA_STATUS_SHELVED = "shelved";
 const MAX_BALLOT_IDEAS = 500;
 const MAX_ROUND_VOTES = 5000;
 
-async function getVotingSettings(ctx: QueryCtx) {
-  return await ctx.db
-    .query("votingSettings")
-    .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
-    .unique();
+async function getVotingSettings(
+  ctx: QueryCtx | MutationCtx,
+  hackathonId: Id<"hackathons"> | undefined,
+) {
+  if (!hackathonId) {
+    return await ctx.db
+      .query("votingSettings")
+      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
+      .unique();
+  }
+  return (
+    (await ctx.db
+      .query("votingSettings")
+      .withIndex("by_hackathon_and_key", (q) =>
+        q.eq("hackathonId", hackathonId).eq("key", SETTINGS_KEY),
+      )
+      .unique()) ??
+    (await ctx.db
+      .query("votingSettings")
+      .withIndex("by_hackathon_and_key", (q) =>
+        q.eq("hackathonId", undefined).eq("key", SETTINGS_KEY),
+      )
+      .first())
+  );
 }
 
-async function getRoundVoteRows(ctx: QueryCtx, round: number) {
+async function getRoundVoteRows(
+  ctx: QueryCtx,
+  round: number,
+  hackathonId: Id<"hackathons"> | undefined,
+) {
   if (round <= 0) return [];
-  return await ctx.db
-    .query("ideaVotes")
-    .withIndex("by_round", (q) => q.eq("round", round))
-    .take(MAX_ROUND_VOTES);
+  return hackathonId
+    ? await ctx.db
+        .query("ideaVotes")
+        .withIndex("by_hackathon_and_round", (q) =>
+          q.eq("hackathonId", hackathonId).eq("round", round),
+        )
+        .take(MAX_ROUND_VOTES)
+    : await ctx.db
+        .query("ideaVotes")
+        .withIndex("by_round", (q) => q.eq("round", round))
+        .take(MAX_ROUND_VOTES);
 }
 
-async function getActiveIdeas(ctx: QueryCtx) {
+async function getActiveIdeas(
+  ctx: QueryCtx,
+  hackathonId: Id<"hackathons"> | undefined,
+) {
   const batches = await Promise.all(
     STATUSES.filter((status) => status !== IDEA_STATUS_SHELVED).map((status) =>
-      ctx.db
-        .query("ideas")
-        .withIndex("by_status", (q) => q.eq("status", status))
-        .take(MAX_BALLOT_IDEAS),
+      hackathonId
+        ? ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon_and_status", (q) =>
+              q.eq("hackathonId", hackathonId).eq("status", status),
+            )
+            .take(MAX_BALLOT_IDEAS)
+        : ctx.db
+            .query("ideas")
+            .withIndex("by_status", (q) => q.eq("status", status))
+            .take(MAX_BALLOT_IDEAS),
     ),
   );
 
@@ -73,19 +119,30 @@ async function buildBallotIdea(
 }
 
 export const status = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    const settings = await getVotingSettings(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const settings = await getVotingSettings(ctx, hackathon?._id);
     const currentRound = settings?.currentRound ?? 0;
     const userVotes =
       currentRound > 0
-        ? await ctx.db
-            .query("ideaVotes")
-            .withIndex("by_user_and_round", (q) =>
-              q.eq("userId", userId).eq("round", currentRound),
-            )
-            .take(MAX_BALLOT_IDEAS)
+        ? hackathon
+          ? await ctx.db
+              .query("ideaVotes")
+              .withIndex("by_hackathon_and_user_and_round", (q) =>
+                q
+                  .eq("hackathonId", hackathon._id)
+                  .eq("userId", userId)
+                  .eq("round", currentRound),
+              )
+              .take(MAX_BALLOT_IDEAS)
+          : await ctx.db
+              .query("ideaVotes")
+              .withIndex("by_user_and_round", (q) =>
+                q.eq("userId", userId).eq("round", currentRound),
+              )
+              .take(MAX_BALLOT_IDEAS)
         : [];
 
     return {
@@ -99,20 +156,31 @@ export const status = query({
 });
 
 export const ballot = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    const settings = await getVotingSettings(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const settings = await getVotingSettings(ctx, hackathon?._id);
     if (!settings?.active || settings.currentRound <= 0) return [];
 
     const [ideas, votes] = await Promise.all([
-      getActiveIdeas(ctx),
-      ctx.db
-        .query("ideaVotes")
-        .withIndex("by_user_and_round", (q) =>
-          q.eq("userId", userId).eq("round", settings.currentRound),
-        )
-        .take(MAX_BALLOT_IDEAS),
+      getActiveIdeas(ctx, hackathon?._id),
+      hackathon
+        ? ctx.db
+            .query("ideaVotes")
+            .withIndex("by_hackathon_and_user_and_round", (q) =>
+              q
+                .eq("hackathonId", hackathon._id)
+                .eq("userId", userId)
+                .eq("round", settings.currentRound),
+            )
+            .take(MAX_BALLOT_IDEAS)
+        : ctx.db
+            .query("ideaVotes")
+            .withIndex("by_user_and_round", (q) =>
+              q.eq("userId", userId).eq("round", settings.currentRound),
+            )
+            .take(MAX_BALLOT_IDEAS),
     ]);
 
     const votedIdeaIds = new Set(votes.map((vote) => vote.ideaId));
@@ -123,13 +191,11 @@ export const ballot = query({
 });
 
 export const toggleVote = mutation({
-  args: { ideaId: v.id("ideas") },
-  handler: async (ctx, { ideaId }) => {
+  args: { ideaId: v.id("ideas"), hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { ideaId, hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    const settings = await ctx.db
-      .query("votingSettings")
-      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
-      .unique();
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const settings = await getVotingSettings(ctx, hackathon?._id);
 
     if (!settings?.active || settings.currentRound <= 0) {
       throw new Error("Voting is not open");
@@ -137,19 +203,37 @@ export const toggleVote = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    if (
+      hackathon?._id &&
+      idea.hackathonId !== undefined &&
+      idea.hackathonId !== hackathon._id
+    ) {
+      throw new Error("Idea does not belong to this hackathon");
+    }
     if (idea.status === IDEA_STATUS_SHELVED) {
       throw new Error("Shelved ideas are not on the voting ballot");
     }
 
-    const existing = await ctx.db
-      .query("ideaVotes")
-      .withIndex("by_idea_and_user_and_round", (q) =>
-        q
-          .eq("ideaId", ideaId)
-          .eq("userId", userId)
-          .eq("round", settings.currentRound),
-      )
-      .unique();
+    const existing = hackathon
+      ? await ctx.db
+          .query("ideaVotes")
+          .withIndex("by_hackathon_and_idea_and_user_and_round", (q) =>
+            q
+              .eq("hackathonId", hackathon._id)
+              .eq("ideaId", ideaId)
+              .eq("userId", userId)
+              .eq("round", settings.currentRound),
+          )
+          .unique()
+      : await ctx.db
+          .query("ideaVotes")
+          .withIndex("by_idea_and_user_and_round", (q) =>
+            q
+              .eq("ideaId", ideaId)
+              .eq("userId", userId)
+              .eq("round", settings.currentRound),
+          )
+          .unique();
 
     if (existing) {
       await ctx.db.delete(existing._id);
@@ -157,6 +241,7 @@ export const toggleVote = mutation({
     }
 
     await ctx.db.insert("ideaVotes", {
+      hackathonId: hackathon?._id ?? idea.hackathonId,
       ideaId,
       userId,
       round: settings.currentRound,
@@ -167,14 +252,15 @@ export const toggleVote = mutation({
 });
 
 export const adminOverview = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
-    const settings = await getVotingSettings(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const settings = await getVotingSettings(ctx, hackathon?._id);
     const currentRound = settings?.currentRound ?? 0;
     const [votes, ballotIdeas] = await Promise.all([
-      getRoundVoteRows(ctx, currentRound),
-      getActiveIdeas(ctx),
+      getRoundVoteRows(ctx, currentRound, hackathon?._id),
+      getActiveIdeas(ctx, hackathon?._id),
     ]);
     const voters = new Set(votes.map((vote) => vote.userId));
 
@@ -191,10 +277,11 @@ export const adminOverview = query({
 });
 
 export const results = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { user } = await getAuthenticatedUser(ctx);
-    const settings = await getVotingSettings(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const settings = await getVotingSettings(ctx, hackathon?._id);
     const currentRound = settings?.currentRound ?? 0;
     const votingEnded =
       currentRound > 0 &&
@@ -206,8 +293,8 @@ export const results = query({
     }
 
     const [votes, ideas] = await Promise.all([
-      getRoundVoteRows(ctx, currentRound),
-      getActiveIdeas(ctx),
+      getRoundVoteRows(ctx, currentRound, hackathon?._id),
+      getActiveIdeas(ctx, hackathon?._id),
     ]);
 
     const countsByIdea = new Map<Id<"ideas">, number>();
@@ -245,17 +332,16 @@ export const results = query({
 });
 
 export const start = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAdminUser(ctx);
-    const existing = await ctx.db
-      .query("votingSettings")
-      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
-      .unique();
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const existing = await getVotingSettings(ctx, hackathon?._id);
     const now = Date.now();
 
     if (!existing) {
       await ctx.db.insert("votingSettings", {
+        hackathonId: hackathon?._id,
         key: SETTINGS_KEY,
         active: true,
         currentRound: 1,
@@ -283,13 +369,11 @@ export const start = mutation({
 });
 
 export const stop = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAdminUser(ctx);
-    const existing = await ctx.db
-      .query("votingSettings")
-      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
-      .unique();
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const existing = await getVotingSettings(ctx, hackathon?._id);
     if (!existing) return { active: false };
 
     const now = Date.now();

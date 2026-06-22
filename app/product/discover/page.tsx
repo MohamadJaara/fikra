@@ -11,7 +11,10 @@ import { DiscoverIdeaCard } from "./idea-card";
 import type { DiscoverIdeaCardData } from "./idea-card";
 import { EmptyDiscoverState } from "./empty-state";
 import { DiscoverOnboarding } from "./discover-onboarding";
-import { useProductViewer } from "@/components/ProductLayoutClient";
+import {
+  useProductViewer,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 
@@ -24,13 +27,17 @@ type SwipeEntry = {
 
 export default function DiscoverPage() {
   const viewer = useProductViewer();
+  const hackathon = useSelectedHackathon();
   const [mode, setMode] = useState<Mode>("browse");
   const [swipedIds, setSwipedIds] = useState<Set<Id<"ideas">>>(() => new Set());
   const [swipeHistory, setSwipeHistory] = useState<SwipeEntry[]>([]);
   const [direction, setDirection] = useState<"left" | "right" | null>(null);
   const swipingRef = useRef(false);
 
-  const ideas = useQuery(api.discover.getDiscoverFeed, { mode });
+  const ideas = useQuery(api.discover.getDiscoverFeed, {
+    mode,
+    hackathonId: hackathon?._id,
+  });
   const dismiss = useMutation(api.discover.dismissIdea);
   const expressInterest = useMutation(api.interest.express);
   const removeInterest = useMutation(api.interest.remove);
@@ -110,14 +117,14 @@ export default function DiscoverPage() {
   const handleStartOver = useCallback(async () => {
     setIsResetting(true);
     try {
-      await resetDismissed();
+      await resetDismissed({ hackathonId: hackathon?._id });
       setSwipedIds(new Set());
       setSwipeHistory([]);
       setDirection(null);
     } finally {
       setIsResetting(false);
     }
-  }, [resetDismissed]);
+  }, [hackathon?._id, resetDismissed]);
 
   const userRoles = viewer.roles ?? [];
 

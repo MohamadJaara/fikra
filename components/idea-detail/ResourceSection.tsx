@@ -13,13 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useProductViewer } from "@/components/ProductLayoutClient";
+import {
+  useProductViewer,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { toast } from "sonner";
 import type { IdeaDetail } from "@/lib/types";
 
 export function ResourceSection({ idea }: { idea: IdeaDetail }) {
   const viewer = useProductViewer();
-  const resources = useQuery(api.resources.list);
+  const hackathon = useSelectedHackathon();
+  const resources = useQuery(api.resources.list, {
+    hackathonId: hackathon?._id,
+  });
   const addMutation = useMutation(api.resourceRequests.add);
   const resolveMutation = useMutation(api.resourceRequests.resolve);
   const unresolveMutation = useMutation(api.resourceRequests.unresolve);

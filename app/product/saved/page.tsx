@@ -31,9 +31,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export default function SavedIdeasPage() {
-  const bookmarkedIdeas = useQuery(api.ideas.getBookmarked) as
+  const hackathon = useSelectedHackathon();
+  const bookmarkedIdeas = useQuery(api.ideas.getBookmarked, {
+    hackathonId: hackathon?._id,
+  }) as
     | IdeaListItem[]
     | undefined;
   const [viewMode, setViewMode] = useState<"list" | "masonry">("masonry");

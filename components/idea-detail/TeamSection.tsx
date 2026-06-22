@@ -28,7 +28,10 @@ import {
 } from "@/components/ui/dialog";
 import { UserAvatar, UserLink } from "@/components/UserLink";
 import { FeatureTip } from "@/components/FeatureTip";
-import { useProductViewer } from "@/components/ProductLayoutClient";
+import {
+  useProductViewer,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { cn } from "@/lib/utils";
 import {
   PARTICIPATION_MODE_LABELS,
@@ -49,7 +52,8 @@ export function TeamSection({
   const joinMutation = useMutation(api.memberships.join);
   const leaveMutation = useMutation(api.memberships.leave);
   const requestOwnershipMutation = useMutation(api.ideas.requestOwnership);
-  const roles = useQuery(api.roles.list);
+  const hackathon = useSelectedHackathon();
+  const roles = useQuery(api.roles.list, { hackathonId: hackathon?._id });
   const viewer = useProductViewer();
   const roleLabels = useMemo(() => {
     if (!roles) return {} as Record<string, string>;

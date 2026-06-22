@@ -9,9 +9,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export default function AdminRolesPage() {
-  const roles = useQuery(api.roles.list);
+  const hackathon = useSelectedHackathon();
+  const roles = useQuery(api.roles.list, { hackathonId: hackathon?._id });
   const createManyMutation = useMutation(api.roles.createMany);
   const deleteMutation = useMutation(api.roles.remove);
   const [input, setInput] = useState("");
@@ -23,7 +25,10 @@ export default function AdminRolesPage() {
     if (!input.trim()) return;
     setIsCreating(true);
     try {
-      const result = await createManyMutation({ names: input });
+      const result = await createManyMutation({
+        hackathonId: hackathon?._id,
+        names: input,
+      });
       const parts: string[] = [];
       if (result.created.length > 0)
         parts.push(`Added ${result.created.join(", ")}`);

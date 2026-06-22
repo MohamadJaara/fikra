@@ -1,6 +1,6 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, REACTION_TYPES } from "./lib";
+import { assertHackathonWritable, getAuthenticatedUser, REACTION_TYPES } from "./lib";
 import { internal } from "./_generated/api";
 import { refreshIdeaReactionStats } from "./ideaStats";
 
@@ -10,7 +10,7 @@ export const toggle = mutation({
     type: v.string(),
   },
   handler: async (ctx, { ideaId, type }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     if (!REACTION_TYPES.includes(type as (typeof REACTION_TYPES)[number])) {
       throw new Error("Invalid reaction type");
@@ -18,6 +18,7 @@ export const toggle = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const existing = await ctx.db
       .query("reactions")
@@ -32,7 +33,12 @@ export const toggle = mutation({
       await ctx.db.delete(sameType._id);
       await refreshIdeaReactionStats(ctx, ideaId);
     } else {
-      await ctx.db.insert("reactions", { ideaId, userId, type });
+      await ctx.db.insert("reactions", {
+        hackathonId: idea.hackathonId,
+        ideaId,
+        userId,
+        type,
+      });
       await refreshIdeaReactionStats(ctx, ideaId);
       await ctx.runMutation(internal.notifications.create, {
         recipientId: idea.ownerId,

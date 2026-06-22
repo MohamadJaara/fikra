@@ -5,6 +5,14 @@ import { ContentDisclaimer } from "@/components/ContentDisclaimer";
 import { EventDateBanner } from "@/components/EventDateBanner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { api } from "@/convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { cn } from "@/lib/utils";
 import {
@@ -23,12 +31,15 @@ import {
   Sparkles,
   Bookmark,
   Vote,
+  CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useState } from "react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { useQuery } from "convex/react";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export type AppShellViewer = {
   firstName?: string;
@@ -40,12 +51,27 @@ export type AppShellViewer = {
   handle?: string;
 } | null;
 
+export type AppShellHackathon = {
+  _id: Id<"hackathons">;
+  slug: string;
+  title: string;
+  status: string;
+  startsAt: number;
+  endsAt?: number;
+  timezone: string;
+  location?: string;
+  note?: string;
+  completedAt?: number;
+} | null;
+
 export function AppShell({
   children,
   viewer,
+  hackathon,
 }: {
   children: ReactNode;
   viewer: AppShellViewer;
+  hackathon: AppShellHackathon;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -53,7 +79,7 @@ export function AppShell({
     <div className="flex min-h-screen w-full">
       <aside className="hidden md:flex w-56 flex-col border-r bg-muted/30">
         <div className="animate-slide-in-left">
-          <SidebarContent viewer={viewer} />
+          <SidebarContent viewer={viewer} hackathon={hackathon} />
         </div>
       </aside>
 
@@ -66,6 +92,7 @@ export function AppShell({
           <aside className="absolute left-0 top-0 bottom-0 w-56 bg-background border-r flex flex-col animate-slide-in-left">
             <SidebarContent
               viewer={viewer}
+              hackathon={hackathon}
               onClose={() => setMobileOpen(false)}
             />
           </aside>
@@ -89,7 +116,7 @@ export function AppShell({
           <div className="ml-auto">{viewer && <NotificationBell />}</div>
         </header>
         <AnnouncementBanner />
-        <EventDateBanner />
+        <EventDateBanner hackathon={hackathon} />
         <div className="border-b px-4 py-3 md:px-6">
           <ContentDisclaimer />
         </div>
@@ -101,17 +128,29 @@ export function AppShell({
 
 function SidebarContent({
   viewer,
+  hackathon,
   onClose,
 }: {
   viewer: AppShellViewer;
+  hackathon: AppShellHackathon;
   onClose?: () => void;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const hackathons = useQuery(api.hackathons.list, viewer ? {} : "skip");
+  const scopedBase =
+    hackathon && pathname.startsWith(`/product/h/${hackathon.slug}`)
+      ? `/product/h/${hackathon.slug}`
+      : "/product";
+  const productHref = (path = "") =>
+    scopedBase === "/product" ? `/product${path}` : `${scopedBase}${path}`;
+
   return (
     <>
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
           <Link
-            href="/product"
+            href={productHref()}
             className="flex items-center gap-2 font-bold text-lg group"
             onClick={onClose}
           >
@@ -125,74 +164,105 @@ function SidebarContent({
         <p className="text-xs text-muted-foreground mt-1">
           Hackathon Idea Board
         </p>
+        {hackathon && (
+          <div className="mt-3">
+            <Select
+              value={hackathon.slug}
+              onValueChange={(slug) => {
+                router.push(`/product/h/${slug}`);
+                onClose?.();
+              }}
+            >
+              <SelectTrigger className="h-auto min-h-9 w-full gap-2 rounded-md text-left">
+                <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(hackathons ?? [hackathon]).map((item) => (
+                  <SelectItem key={item._id} value={item.slug}>
+                    {item.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Link
+              href="/product/hackathons"
+              className="mt-1 inline-flex text-[11px] text-muted-foreground hover:text-foreground"
+              onClick={onClose}
+            >
+              View all hackathons
+            </Link>
+          </div>
+        )}
       </div>
 
       <nav className="flex-1 p-2 space-y-1">
         <NavLink
-          href="/product"
+          href={productHref()}
           icon={<Sparkles className="h-4 w-4" />}
+          exact
           onClick={onClose}
         >
           Themes
         </NavLink>
         <NavLink
-          href="/product/discover"
+          href={productHref("/discover")}
           icon={<Compass className="h-4 w-4" />}
           onClick={onClose}
         >
           Discover
         </NavLink>
         <NavLink
-          href="/product/ideas"
+          href={productHref("/ideas")}
           icon={<List className="h-4 w-4" />}
           onClick={onClose}
         >
           All Ideas
         </NavLink>
         <NavLink
-          href="/product/ideas/new"
+          href={productHref("/ideas/new")}
           icon={<PlusCircle className="h-4 w-4" />}
           onClick={onClose}
         >
           Create Idea
         </NavLink>
         <NavLink
-          href="/product/saved"
+          href={productHref("/saved")}
           icon={<Bookmark className="h-4 w-4" />}
           onClick={onClose}
         >
           Saved
         </NavLink>
         <NavLink
-          href="/product/voting"
+          href={productHref("/voting")}
           icon={<Vote className="h-4 w-4" />}
           onClick={onClose}
         >
           Voting
         </NavLink>
         <NavLink
-          href="/product/activity"
+          href={productHref("/activity")}
           icon={<Activity className="h-4 w-4" />}
           onClick={onClose}
         >
           My Activity
         </NavLink>
         <NavLink
-          href="/product/people"
+          href={productHref("/people")}
           icon={<Users className="h-4 w-4" />}
           onClick={onClose}
         >
           People
         </NavLink>
         <NavLink
-          href="/product/notifications"
+          href={productHref("/notifications")}
           icon={<Bell className="h-4 w-4" />}
           onClick={onClose}
         >
           Notifications
         </NavLink>
         <NavLink
-          href="/product/settings"
+          href={productHref("/settings")}
           icon={<Settings className="h-4 w-4" />}
           onClick={onClose}
         >
@@ -200,7 +270,7 @@ function SidebarContent({
         </NavLink>
         {viewer?.isAdmin && (
           <NavLink
-            href="/product/admin"
+            href={productHref("/admin")}
             icon={<Shield className="h-4 w-4" />}
             onClick={onClose}
           >
@@ -261,18 +331,23 @@ function NavLink({
   icon,
   children,
   onClick,
+  exact,
 }: {
   href: string;
   icon: ReactNode;
   children: ReactNode;
   onClick?: () => void;
+  exact?: boolean;
 }) {
   const pathname = usePathname();
+  const isIdeasIndex = href === "/product/ideas" || href.endsWith("/ideas");
   const isActive =
-    href === "/product"
+    exact
+      ? pathname === href
+      : href === "/product"
       ? pathname === "/product"
-      : href === "/product/ideas"
-        ? pathname === "/product/ideas"
+      : isIdeasIndex
+        ? pathname === href
         : pathname.startsWith(href);
 
   return (

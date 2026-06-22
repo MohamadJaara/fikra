@@ -1,8 +1,10 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
   getAdminUser,
   getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
   getUserDisplayName,
   validateStringLength,
 } from "./lib";
@@ -10,21 +12,46 @@ import {
 const ANNOUNCEMENT_TYPES = ["info", "urgent", "celebration"] as const;
 
 export const getActive = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const dismissed = await ctx.db
-      .query("dismissedAnnouncements")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const dismissed = hackathon
+      ? await ctx.db
+          .query("dismissedAnnouncements")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .collect()
+      : await ctx.db
+          .query("dismissedAnnouncements")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
     const dismissedIds = new Set(dismissed.map((d) => d.announcementId));
 
-    const active = await ctx.db
-      .query("announcements")
-      .withIndex("by_active", (q) => q.eq("active", true))
-      .order("desc")
-      .collect();
+    const active = hackathon
+      ? [
+          ...(await ctx.db
+            .query("announcements")
+            .withIndex("by_hackathon_and_active", (q) =>
+              q.eq("hackathonId", hackathon._id).eq("active", true),
+            )
+            .order("desc")
+            .collect()),
+          ...(await ctx.db
+            .query("announcements")
+            .withIndex("by_hackathon_and_active", (q) =>
+              q.eq("hackathonId", undefined).eq("active", true),
+            )
+            .order("desc")
+            .collect()),
+        ]
+      : await ctx.db
+          .query("announcements")
+          .withIndex("by_active", (q) => q.eq("active", true))
+          .order("desc")
+          .collect();
 
     return active
       .filter((announcement) => !dismissedIds.has(announcement._id))
@@ -33,14 +60,20 @@ export const getActive = query({
 });
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const announcements = await ctx.db
-      .query("announcements")
-      .order("desc")
-      .collect();
+    const announcements = hackathon
+      ? await ctx.db
+          .query("announcements")
+          .withIndex("by_hackathon", (q) =>
+            q.eq("hackathonId", hackathon._id),
+          )
+          .order("desc")
+          .collect()
+      : await ctx.db.query("announcements").order("desc").collect();
 
     return Promise.all(
       announcements.map(async (a) => {
@@ -66,16 +99,20 @@ export const list = query({
 
 export const create = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     title: v.string(),
     message: v.string(),
     type: v.union(...ANNOUNCEMENT_TYPES.map((t) => v.literal(t))),
   },
   handler: async (ctx, args) => {
-    const { userId } = await getAdminUser(ctx);
+    const { userId, user } = await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertHackathonWritable(ctx, hackathon?._id, user);
     const title = validateStringLength(args.title, 1, 120, "Title");
     const message = validateStringLength(args.message, 1, 1000, "Message");
 
     return await ctx.db.insert("announcements", {
+      hackathonId: hackathon?._id,
       title,
       message,
       type: args.type,
@@ -94,11 +131,12 @@ export const update = mutation({
     active: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
 
     const { announcementId, ...updates } = args;
     const announcement = await ctx.db.get(announcementId);
     if (!announcement) throw new Error("Announcement not found");
+    await assertHackathonWritable(ctx, announcement.hackathonId, user);
 
     const patch: Record<string, unknown> = {};
     if (updates.title !== undefined) {
@@ -119,7 +157,10 @@ export const update = mutation({
 export const remove = mutation({
   args: { announcementId: v.id("announcements") },
   handler: async (ctx, { announcementId }) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
+    const announcement = await ctx.db.get(announcementId);
+    if (!announcement) throw new Error("Announcement not found");
+    await assertHackathonWritable(ctx, announcement.hackathonId, user);
 
     const dismissed = await ctx.db
       .query("dismissedAnnouncements")
@@ -147,6 +188,8 @@ export const dismiss = mutation({
     if (existing) return;
 
     await ctx.db.insert("dismissedAnnouncements", {
+      hackathonId:
+        (await ctx.db.get(announcementId))?.hackathonId,
       announcementId,
       userId,
     });

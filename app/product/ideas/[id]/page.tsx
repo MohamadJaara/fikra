@@ -24,6 +24,7 @@ import { RelatedIdeasSection } from "@/components/idea-detail/RelatedIdeasSectio
 import { CommentSection } from "@/components/idea-detail/CommentSection";
 import { OwnerActions } from "@/components/idea-detail/OwnerActions";
 import { IdeaNavigation } from "@/components/idea-detail/IdeaNavigation";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 import { STATUS_DOT_COLORS, type Status } from "@/lib/constants";
 import type { SortOption } from "@/lib/constants";
 
@@ -52,6 +53,7 @@ export default function IdeaDetailPage({
 function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const ideaId = id as Id<"ideas">;
+  const hackathon = useSelectedHackathon();
   const searchParams = useSearchParams();
   const navigationParams = new URLSearchParams(searchParams.toString());
   navigationParams.delete("comment");
@@ -74,9 +76,13 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
     }),
     [searchParams, shelfView],
   );
-  const idea = useQuery(api.ideas.get, { ideaId });
+  const idea = useQuery(api.ideas.get, {
+    ideaId,
+    hackathonId: hackathon?._id,
+  });
   const navigation = useQuery(api.ideas.getAdjacent, {
     ideaId,
+    hackathonId: hackathon?._id,
     filters: navigationFilters,
     sortBy,
   });

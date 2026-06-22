@@ -4,6 +4,56 @@ import { v } from "convex/values";
 
 export default defineSchema({
   ...authTables,
+  hackathons: defineTable({
+    slug: v.string(),
+    title: v.string(),
+    startsAt: v.number(),
+    endsAt: v.optional(v.number()),
+    timezone: v.string(),
+    location: v.optional(v.string()),
+    note: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("upcoming"),
+      v.literal("active"),
+      v.literal("completed"),
+      v.literal("archived"),
+    ),
+    completedAt: v.optional(v.number()),
+    completedBy: v.optional(v.id("users")),
+    createdBy: v.id("users"),
+    updatedBy: v.id("users"),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_status", ["status"])
+    .index("by_startsAt", ["startsAt"])
+    .index("by_status_and_startsAt", ["status", "startsAt"]),
+
+  platformSettings: defineTable({
+    key: v.string(),
+    currentHackathonId: v.optional(v.id("hackathons")),
+    updatedBy: v.optional(v.id("users")),
+    updatedAt: v.number(),
+  }).index("by_key", ["key"]),
+
+  hackathonParticipants: defineTable({
+    hackathonId: v.id("hackathons"),
+    userId: v.id("users"),
+    roles: v.optional(v.array(v.string())),
+    participationMode: v.optional(
+      v.union(v.literal("onsite"), v.literal("remote")),
+    ),
+    onboardingComplete: v.optional(v.boolean()),
+    availabilityNote: v.optional(v.string()),
+    registeredAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_user", ["userId"])
+    .index("by_hackathon_and_user", ["hackathonId", "userId"])
+    .index("by_user_and_hackathon", ["userId", "hackathonId"]),
+
   users: defineTable({
     name: v.optional(v.string()),
     image: v.optional(v.string()),
@@ -31,6 +81,7 @@ export default defineSchema({
       filterFields: ["onboardingComplete"],
     }),
   categories: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     name: v.string(),
     slug: v.string(),
     description: v.optional(v.string()),
@@ -38,26 +89,36 @@ export default defineSchema({
     order: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_slug", ["hackathonId", "slug"])
+    .index("by_hackathon_and_order", ["hackathonId", "order"])
     .index("by_order", ["order"])
     .searchIndex("search_name", { searchField: "name" }),
 
   resources: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     name: v.string(),
     slug: v.string(),
   })
     .index("by_slug", ["slug"])
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_slug", ["hackathonId", "slug"])
     .searchIndex("search_name", { searchField: "name" }),
 
   roles: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     name: v.string(),
     slug: v.string(),
     aliasSlugs: v.optional(v.array(v.string())),
     deletedAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_slug", ["hackathonId", "slug"])
     .searchIndex("search_name", { searchField: "name" }),
 
   rooms: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     name: v.string(),
     type: v.string(),
     assignmentLimit: v.optional(v.number()),
@@ -65,10 +126,13 @@ export default defineSchema({
     directions: v.optional(v.string()),
     mapsLink: v.optional(v.string()),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_type", ["hackathonId", "type"])
     .index("by_type", ["type"])
     .searchIndex("search_name", { searchField: "name" }),
 
   ideas: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     title: v.string(),
     pitch: v.string(),
     problem: v.string(),
@@ -124,6 +188,29 @@ export default defineSchema({
     ),
     trendingScore: v.optional(v.number()),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_owner", ["hackathonId", "ownerId"])
+    .index("by_hackathon_and_status", ["hackathonId", "status"])
+    .index("by_hackathon_and_category", ["hackathonId", "categoryId"])
+    .index("by_hackathon_and_room", ["hackathonId", "roomId"])
+    .index("by_hackathon_and_teamFormationStatus", [
+      "hackathonId",
+      "teamFormationStatus",
+    ])
+    .index("by_hackathon_and_roomRequestStatus", [
+      "hackathonId",
+      "roomRequestStatus",
+    ])
+    .index("by_hackathon_and_interestCount", ["hackathonId", "interestCount"])
+    .index("by_hackathon_and_reactionTotal", ["hackathonId", "reactionTotal"])
+    .index("by_hackathon_and_needsTeammates", [
+      "hackathonId",
+      "needsTeammates",
+    ])
+    .index("by_hackathon_and_hasUnresolvedResources", [
+      "hackathonId",
+      "hasUnresolvedResources",
+    ])
     .index("by_owner", ["ownerId"])
     .index("by_status", ["status"])
     .index("by_category", ["categoryId"])
@@ -135,57 +222,102 @@ export default defineSchema({
     .index("by_needsTeammates", ["needsTeammates"])
     .index("by_hasUnresolvedResources", ["hasUnresolvedResources"])
     .searchIndex("search_title", { searchField: "title" })
-    .searchIndex("search_pitch", { searchField: "pitch" }),
+    .searchIndex("search_pitch", { searchField: "pitch" })
+    .searchIndex("search_title_by_hackathon", {
+      searchField: "title",
+      filterFields: ["hackathonId"],
+    })
+    .searchIndex("search_pitch_by_hackathon", {
+      searchField: "pitch",
+      filterFields: ["hackathonId"],
+    }),
 
   ideaMembers: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     userId: v.id("users"),
     role: v.optional(v.string()),
     memberRoles: v.optional(v.array(v.string())),
     joinedAsOwner: v.optional(v.boolean()),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_idea", ["hackathonId", "ideaId"])
+    .index("by_hackathon_and_user", ["hackathonId", "userId"])
+    .index("by_hackathon_and_idea_and_user", [
+      "hackathonId",
+      "ideaId",
+      "userId",
+    ])
     .index("by_idea", ["ideaId"])
     .index("by_user", ["userId"])
     .index("by_idea_and_user", ["ideaId", "userId"]),
 
   ideaInterest: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     userId: v.id("users"),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_idea", ["hackathonId", "ideaId"])
+    .index("by_hackathon_and_user", ["hackathonId", "userId"])
+    .index("by_hackathon_and_idea_and_user", [
+      "hackathonId",
+      "ideaId",
+      "userId",
+    ])
     .index("by_idea", ["ideaId"])
     .index("by_user", ["userId"])
     .index("by_idea_and_user", ["ideaId", "userId"]),
 
   comments: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     userId: v.id("users"),
     content: v.string(),
     parentId: v.optional(v.id("comments")),
     mentionedUserIds: v.optional(v.array(v.id("users"))),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_idea", ["hackathonId", "ideaId"])
+    .index("by_hackathon_and_parent", ["hackathonId", "parentId"])
     .index("by_idea", ["ideaId"])
     .index("by_parent", ["parentId"]),
 
   reactions: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     userId: v.id("users"),
     type: v.string(),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_idea", ["hackathonId", "ideaId"])
+    .index("by_hackathon_and_user", ["hackathonId", "userId"])
+    .index("by_hackathon_and_idea_and_user", [
+      "hackathonId",
+      "ideaId",
+      "userId",
+    ])
     .index("by_idea", ["ideaId"])
     .index("by_user", ["userId"])
     .index("by_idea_and_user", ["ideaId", "userId"]),
 
   resourceRequests: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     tag: v.string(),
     notes: v.optional(v.string()),
     resolved: v.boolean(),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_idea", ["hackathonId", "ideaId"])
+    .index("by_hackathon_and_tag", ["hackathonId", "tag"])
+    .index("by_hackathon_and_resolved", ["hackathonId", "resolved"])
     .index("by_idea", ["ideaId"])
     .index("by_tag", ["tag"])
     .index("by_resolved", ["resolved"]),
 
   ownershipTransferRequests: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     requesterId: v.id("users"),
     recipientId: v.id("users"),
@@ -193,12 +325,30 @@ export default defineSchema({
     status: v.string(),
     respondedAt: v.optional(v.number()),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_idea", ["hackathonId", "ideaId"])
+    .index("by_hackathon_and_idea_and_status", [
+      "hackathonId",
+      "ideaId",
+      "status",
+    ])
+    .index("by_hackathon_and_recipient_and_status", [
+      "hackathonId",
+      "recipientId",
+      "status",
+    ])
+    .index("by_hackathon_and_requester_and_status", [
+      "hackathonId",
+      "requesterId",
+      "status",
+    ])
     .index("by_idea", ["ideaId"])
     .index("by_idea_and_status", ["ideaId", "status"])
     .index("by_recipient_and_status", ["recipientId", "status"])
     .index("by_requester_and_status", ["requesterId", "status"]),
 
   relatedIdeas: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaIdA: v.id("ideas"),
     ideaIdB: v.id("ideas"),
     markedByUserId: v.id("users"),
@@ -206,6 +356,20 @@ export default defineSchema({
     mergeRequestedById: v.optional(v.id("users")),
     mergeStatus: v.optional(v.string()),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_ideaA", ["hackathonId", "ideaIdA"])
+    .index("by_hackathon_and_ideaB", ["hackathonId", "ideaIdB"])
+    .index("by_hackathon_and_ideaA_and_type", [
+      "hackathonId",
+      "ideaIdA",
+      "relationType",
+    ])
+    .index("by_hackathon_and_ideaB_and_type", [
+      "hackathonId",
+      "ideaIdB",
+      "relationType",
+    ])
+    .index("by_hackathon_and_merge_status", ["hackathonId", "mergeStatus"])
     .index("by_ideaA", ["ideaIdA"])
     .index("by_ideaB", ["ideaIdB"])
     .index("by_ideaA_and_type", ["ideaIdA", "relationType"])
@@ -213,21 +377,39 @@ export default defineSchema({
     .index("by_merge_status", ["mergeStatus"]),
 
   dismissedIdeas: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     userId: v.id("users"),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_user", ["hackathonId", "userId"])
+    .index("by_hackathon_and_idea_and_user", [
+      "hackathonId",
+      "ideaId",
+      "userId",
+    ])
     .index("by_user", ["userId"])
     .index("by_idea_and_user", ["ideaId", "userId"]),
 
   ideaBookmarks: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     userId: v.id("users"),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_user", ["hackathonId", "userId"])
+    .index("by_hackathon_and_idea", ["hackathonId", "ideaId"])
+    .index("by_hackathon_and_idea_and_user", [
+      "hackathonId",
+      "ideaId",
+      "userId",
+    ])
     .index("by_user", ["userId"])
     .index("by_idea", ["ideaId"])
     .index("by_idea_and_user", ["ideaId", "userId"]),
 
   votingSettings: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     key: v.string(),
     active: v.boolean(),
     currentRound: v.number(),
@@ -235,20 +417,43 @@ export default defineSchema({
     endedAt: v.optional(v.number()),
     updatedBy: v.id("users"),
     updatedAt: v.number(),
-  }).index("by_key", ["key"]),
+  })
+    .index("by_key", ["key"])
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_key", ["hackathonId", "key"]),
 
   ideaVotes: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     ideaId: v.id("ideas"),
     userId: v.id("users"),
     round: v.number(),
     createdAt: v.number(),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_round", ["hackathonId", "round"])
+    .index("by_hackathon_and_user_and_round", [
+      "hackathonId",
+      "userId",
+      "round",
+    ])
+    .index("by_hackathon_and_idea_and_round", [
+      "hackathonId",
+      "ideaId",
+      "round",
+    ])
+    .index("by_hackathon_and_idea_and_user_and_round", [
+      "hackathonId",
+      "ideaId",
+      "userId",
+      "round",
+    ])
     .index("by_round", ["round"])
     .index("by_user_and_round", ["userId", "round"])
     .index("by_idea_and_round", ["ideaId", "round"])
     .index("by_idea_and_user_and_round", ["ideaId", "userId", "round"]),
 
   notifications: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     recipientId: v.id("users"),
     actorId: v.id("users"),
     ideaId: v.id("ideas"),
@@ -256,17 +461,29 @@ export default defineSchema({
     read: v.boolean(),
     commentId: v.optional(v.id("comments")),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_recipient", ["hackathonId", "recipientId"])
+    .index("by_hackathon_and_recipient_and_read", [
+      "hackathonId",
+      "recipientId",
+      "read",
+    ])
+    .index("by_hackathon_and_idea", ["hackathonId", "ideaId"])
     .index("by_recipient", ["recipientId"])
     .index("by_recipient_and_read", ["recipientId", "read"])
     .index("by_idea", ["ideaId"]),
 
   announcements: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     title: v.string(),
     message: v.string(),
     type: v.string(),
     active: v.boolean(),
     createdBy: v.id("users"),
-  }).index("by_active", ["active"]),
+  })
+    .index("by_active", ["active"])
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_active", ["hackathonId", "active"]),
 
   eventSettings: defineTable({
     key: v.string(),
@@ -284,6 +501,7 @@ export default defineSchema({
   }).index("by_key", ["key"]),
 
   ideaSubmissionSettings: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     key: v.string(),
     deadlineAt: v.number(),
     timezone: v.string(),
@@ -291,12 +509,23 @@ export default defineSchema({
     active: v.boolean(),
     updatedBy: v.id("users"),
     updatedAt: v.number(),
-  }).index("by_key", ["key"]),
+  })
+    .index("by_key", ["key"])
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_key", ["hackathonId", "key"]),
 
   dismissedAnnouncements: defineTable({
+    hackathonId: v.optional(v.id("hackathons")),
     announcementId: v.id("announcements"),
     userId: v.id("users"),
   })
+    .index("by_hackathon", ["hackathonId"])
+    .index("by_hackathon_and_announcement_and_user", [
+      "hackathonId",
+      "announcementId",
+      "userId",
+    ])
+    .index("by_hackathon_and_user", ["hackathonId", "userId"])
     .index("by_announcement_and_user", ["announcementId", "userId"])
     .index("by_user", ["userId"]),
 });

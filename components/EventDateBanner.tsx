@@ -1,7 +1,6 @@
 "use client";
 
-import { api } from "@/convex/_generated/api";
-import { useQuery } from "convex/react";
+import type { AppShellHackathon } from "@/components/AppShell";
 import { motion } from "framer-motion";
 import { CalendarClock, CheckCircle2, MapPin, Timer } from "lucide-react";
 
@@ -88,21 +87,24 @@ function getRelativeLabel(
   return `${days} day${days === 1 ? "" : "s"}`;
 }
 
-export function EventDateBanner() {
-  const event = useQuery(api.event.getCurrent);
-
-  if (event === undefined || event === null) return null;
+export function EventDateBanner({
+  hackathon,
+}: {
+  hackathon: AppShellHackathon;
+}) {
+  if (hackathon === null) return null;
 
   const formattedDate = formatEventRange(
-    event.startsAt,
-    event.endsAt,
-    event.timezone,
+    hackathon.startsAt,
+    hackathon.endsAt,
+    hackathon.timezone,
   );
-  const isComplete = event.completedAt !== undefined;
+  const isComplete =
+    hackathon.completedAt !== undefined || hackathon.status === "completed";
   const relativeLabel = getRelativeLabel(
-    event.startsAt,
-    event.endsAt,
-    event.completedAt,
+    hackathon.startsAt,
+    hackathon.endsAt,
+    hackathon.completedAt,
   );
   const StatusIcon = isComplete ? CheckCircle2 : Timer;
 
@@ -129,23 +131,23 @@ export function EventDateBanner() {
             </p>
             <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
               <h2 className="truncate text-base font-semibold leading-tight">
-                {event.title}
+                {hackathon.title}
               </h2>
               <span className="hidden h-1 w-1 rounded-full bg-muted-foreground/40 sm:block" />
               <p className="text-sm font-medium text-foreground/80">
                 {formattedDate}
               </p>
             </div>
-            {(event.location || event.note) && (
+            {(hackathon.location || hackathon.note) && (
               <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {event.location && (
+                {hackathon.location && (
                   <span className="inline-flex min-w-0 items-center gap-1">
                     <MapPin className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{event.location}</span>
+                    <span className="truncate">{hackathon.location}</span>
                   </span>
                 )}
-                {event.note && (
-                  <span className="break-words">{event.note}</span>
+                {hackathon.note && (
+                  <span className="break-words">{hackathon.note}</span>
                 )}
               </div>
             )}

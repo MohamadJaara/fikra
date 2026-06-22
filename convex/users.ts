@@ -5,6 +5,7 @@ import { v } from "convex/values";
 import {
   getAuthenticatedUser,
   generateUniqueHandle,
+  getHackathonByIdOrCurrent,
   getUserDisplayName,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
@@ -12,7 +13,53 @@ import {
   PARTICIPATION_MODES,
   isEmailAllowed,
 } from "./lib";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+
+async function upsertHackathonParticipant(
+  ctx: MutationCtx,
+  hackathonId: Id<"hackathons"> | undefined,
+  userId: Id<"users">,
+  values: {
+    roles?: string[];
+    participationMode?: string;
+    onboardingComplete?: boolean;
+    availabilityNote?: string;
+  },
+) {
+  if (!hackathonId) return;
+  const existing = await ctx.db
+    .query("hackathonParticipants")
+    .withIndex("by_hackathon_and_user", (q) =>
+      q.eq("hackathonId", hackathonId).eq("userId", userId),
+    )
+    .unique();
+  const now = Date.now();
+  const participationMode =
+    values.participationMode === "onsite" || values.participationMode === "remote"
+      ? values.participationMode
+      : undefined;
+  if (existing) {
+    await ctx.db.patch(existing._id, {
+      roles: values.roles,
+      participationMode,
+      onboardingComplete: values.onboardingComplete,
+      availabilityNote: values.availabilityNote,
+      updatedAt: now,
+    });
+    return;
+  }
+  await ctx.db.insert("hackathonParticipants", {
+    hackathonId,
+    userId,
+    roles: values.roles,
+    participationMode,
+    onboardingComplete: values.onboardingComplete,
+    availabilityNote: values.availabilityNote,
+    registeredAt: now,
+    updatedAt: now,
+  });
+}
 
 function pickPublicFields(user: Doc<"users">) {
   return {
@@ -111,13 +158,18 @@ export const search = query({
 
 export const completeOnboarding = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     firstName: v.string(),
     lastName: v.string(),
     roles: v.array(v.string()),
     participationMode: v.optional(v.string()),
   },
-  handler: async (ctx, { firstName, lastName, roles, participationMode }) => {
+  handler: async (
+    ctx,
+    { firstName, lastName, roles, participationMode, hackathonId },
+  ) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
     if (trimmedFirst.length === 0) {
@@ -132,7 +184,7 @@ export const completeOnboarding = mutation({
     const handle = user.email
       ? await generateUniqueHandle(ctx, user.email, userId)
       : undefined;
-    await validateRoleSlugs(ctx, roles);
+    await validateRoleSlugs(ctx, roles, hackathon?._id);
     if (
       participationMode !== undefined &&
       !PARTICIPATION_MODES.includes(
@@ -149,6 +201,11 @@ export const completeOnboarding = mutation({
       onboardingComplete: true,
       handle,
       participationMode,
+    });
+    await upsertHackathonParticipant(ctx, hackathon?._id, userId, {
+      roles,
+      participationMode,
+      onboardingComplete: true,
     });
   },
 });
@@ -234,13 +291,18 @@ export const listAll = query({
 
 export const updateProfile = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     firstName: v.string(),
     lastName: v.string(),
     roles: v.array(v.string()),
     participationMode: v.optional(v.string()),
   },
-  handler: async (ctx, { firstName, lastName, roles, participationMode }) => {
+  handler: async (
+    ctx,
+    { firstName, lastName, roles, participationMode, hackathonId },
+  ) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
     if (trimmedFirst.length === 0) {
@@ -252,7 +314,7 @@ export const updateProfile = mutation({
     if (trimmedLast.length > 100) {
       throw new Error("Last name must be at most 100 characters");
     }
-    await validateRoleSlugs(ctx, roles);
+    await validateRoleSlugs(ctx, roles, hackathon?._id);
     if (
       participationMode !== undefined &&
       !PARTICIPATION_MODES.includes(
@@ -268,13 +330,22 @@ export const updateProfile = mutation({
       name: `${trimmedFirst} ${trimmedLast}`.trim(),
       participationMode,
     });
+    await upsertHackathonParticipant(ctx, hackathon?._id, userId, {
+      roles,
+      participationMode,
+      onboardingComplete: true,
+    });
   },
 });
 
 export const setParticipationMode = mutation({
-  args: { mode: v.optional(v.string()) },
-  handler: async (ctx, { mode }) => {
+  args: {
+    hackathonId: v.optional(v.id("hackathons")),
+    mode: v.optional(v.string()),
+  },
+  handler: async (ctx, { mode, hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
     if (
       mode !== undefined &&
       !PARTICIPATION_MODES.includes(
@@ -285,6 +356,10 @@ export const setParticipationMode = mutation({
     }
     await ctx.db.patch(userId, {
       participationMode: mode,
+    });
+    await upsertHackathonParticipant(ctx, hackathon?._id, userId, {
+      participationMode: mode,
+      onboardingComplete: true,
     });
   },
 });

@@ -9,9 +9,13 @@ import { ArrowLeft, Loader2, Package, PlusCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export default function AdminResourcesPage() {
-  const resources = useQuery(api.resources.list);
+  const hackathon = useSelectedHackathon();
+  const resources = useQuery(api.resources.list, {
+    hackathonId: hackathon?._id,
+  });
   const createManyMutation = useMutation(api.resources.createMany);
   const deleteMutation = useMutation(api.resources.remove);
   const [input, setInput] = useState("");
@@ -24,7 +28,10 @@ export default function AdminResourcesPage() {
 
     setIsCreating(true);
     try {
-      const result = await createManyMutation({ names: input });
+      const result = await createManyMutation({
+        hackathonId: hackathon?._id,
+        names: input,
+      });
       const parts: string[] = [];
       if (result.created.length > 0) {
         parts.push(`Added ${result.created.join(", ")}`);

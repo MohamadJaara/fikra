@@ -2,6 +2,7 @@ import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
+  assertHackathonWritable,
   getAuthenticatedUser,
   getUserDisplayName,
   sanitizeText,
@@ -36,10 +37,11 @@ export const create = mutation({
     parentId: v.optional(v.id("comments")),
   },
   handler: async (ctx, { ideaId, content, parentId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     if (parentId) {
       const parent = await ctx.db.get(parentId);
@@ -55,6 +57,7 @@ export const create = mutation({
     const mentionedUserIds = await resolveMentions(ctx, sanitized);
 
     const commentId = await ctx.db.insert("comments", {
+      hackathonId: idea.hackathonId,
       ideaId,
       userId,
       content: sanitized,
@@ -110,12 +113,13 @@ export const update = mutation({
     content: v.string(),
   },
   handler: async (ctx, { commentId, content }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const comment = await ctx.db.get(commentId);
     if (!comment) throw new Error("Comment not found");
     if (comment.userId !== userId)
       throw new Error("Can only edit your own comments");
+    await assertHackathonWritable(ctx, comment.hackathonId, user);
 
     const sanitized = sanitizeText(
       validateStringLength(content, 1, 2000, "Comment"),
@@ -134,10 +138,11 @@ export const update = mutation({
 export const remove = mutation({
   args: { commentId: v.id("comments") },
   handler: async (ctx, { commentId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const comment = await ctx.db.get(commentId);
     if (!comment) throw new Error("Comment not found");
+    await assertHackathonWritable(ctx, comment.hackathonId, user);
 
     const idea = await ctx.db.get(comment.ideaId);
     const isOwner = idea?.ownerId === userId;

@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -45,7 +46,10 @@ function formatDeadline(value: string, timezone: string) {
 }
 
 export default function AdminIdeaDeadlinePage() {
-  const setting = useQuery(api.ideaSubmissions.getForAdmin);
+  const hackathon = useSelectedHackathon();
+  const setting = useQuery(api.ideaSubmissions.getForAdmin, {
+    hackathonId: hackathon?._id,
+  });
   const saveSetting = useMutation(api.ideaSubmissions.save);
   const clearSetting = useMutation(api.ideaSubmissions.clear);
   const browserTimezone = useMemo(
@@ -106,6 +110,7 @@ export default function AdminIdeaDeadlinePage() {
     setSaving(true);
     try {
       await saveSetting({
+        hackathonId: hackathon?._id,
         deadlineAt: parsedDeadline,
         timezone,
         active,
@@ -122,7 +127,7 @@ export default function AdminIdeaDeadlinePage() {
   const handleResume = async () => {
     setResuming(true);
     try {
-      await clearSetting();
+      await clearSetting({ hackathonId: hackathon?._id });
       const defaultDeadline = Date.now() + 24 * 60 * 60 * 1000;
       setDeadlineAt(toDateTimeLocal(defaultDeadline));
       setTimezone(browserTimezone);

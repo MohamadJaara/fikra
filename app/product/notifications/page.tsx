@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationSkeleton } from "@/components/Skeleton";
 import Link from "next/link";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 const TYPE_LABELS: Record<string, string> = {
   member_joined: "joined your idea",
@@ -33,7 +34,10 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function NotificationsPage() {
-  const notifications = useQuery(api.notifications.list);
+  const hackathon = useSelectedHackathon();
+  const notifications = useQuery(api.notifications.list, {
+    hackathonId: hackathon?._id,
+  });
   const unreadCount = useQuery(api.notifications.unreadCount);
   const markRead = useMutation(api.notifications.markRead);
   const markAllRead = useMutation(api.notifications.markAllRead);

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import {
   getAdminUser,
+  getHackathonByIdOrCurrent,
   getUserDisplayName,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
@@ -26,13 +27,26 @@ function increment(map: Record<string, number>, key: string, by = 1) {
   map[key] = (map[key] ?? 0) + by;
 }
 
+async function scopedResults<T>(
+  hackathonId: Id<"hackathons"> | undefined,
+  scoped: (hackathonId: Id<"hackathons">) => Promise<T[]>,
+  legacy: () => Promise<T[]>,
+  global: () => Promise<T[]>,
+) {
+  if (!hackathonId) return await global();
+  return [...(await scoped(hackathonId)), ...(await legacy())];
+}
+
 export const stats = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const scopedHackathonId = hackathon?._id;
 
     const [
       users,
+      participants,
       ideas,
       comments,
       reactions,
@@ -44,24 +58,152 @@ export const stats = query({
       rooms,
     ] = await Promise.all([
       ctx.db.query("users").collect(),
-      ctx.db.query("ideas").collect(),
-      ctx.db.query("comments").collect(),
-      ctx.db.query("reactions").collect(),
-      ctx.db.query("ideaInterest").collect(),
-      ctx.db.query("ideaMembers").collect(),
-      ctx.db.query("resourceRequests").collect(),
-      ctx.db.query("resources").collect(),
-      ctx.db.query("roles").collect(),
-      ctx.db.query("rooms").collect(),
+      scopedHackathonId
+        ? ctx.db
+            .query("hackathonParticipants")
+            .withIndex("by_hackathon", (q) =>
+              q.eq("hackathonId", scopedHackathonId),
+            )
+            .collect()
+        : Promise.resolve([]),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("ideas").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("comments")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("comments")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("comments").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("reactions")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("reactions")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("reactions").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("ideaInterest")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("ideaInterest")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("ideaInterest").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("ideaMembers")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("ideaMembers")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("ideaMembers").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("resourceRequests")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("resourceRequests")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("resourceRequests").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("resources")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("resources")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("resources").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("roles")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("roles")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("roles").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("rooms")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("rooms")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("rooms").collect(),
+      ),
     ]);
 
-    const onboardedUsers = users.filter((u) => u.onboardingComplete).length;
-    const onsiteUsers = users.filter(
-      (u) => u.participationMode === "onsite",
-    ).length;
-    const remoteUsers = users.filter(
-      (u) => u.participationMode === "remote",
-    ).length;
+    const hasParticipants = participants.length > 0;
+    const onboardedUsers = hasParticipants
+      ? participants.filter((p) => p.onboardingComplete).length
+      : users.filter((u) => u.onboardingComplete).length;
+    const onsiteUsers = hasParticipants
+      ? participants.filter((p) => p.participationMode === "onsite").length
+      : users.filter((u) => u.participationMode === "onsite").length;
+    const remoteUsers = hasParticipants
+      ? participants.filter((p) => p.participationMode === "remote").length
+      : users.filter((u) => u.participationMode === "remote").length;
 
     const ideasByStatus: Record<string, number> = {};
     const resourceNameBySlug: Record<string, string> = Object.fromEntries(
@@ -108,8 +250,9 @@ export const stats = query({
       interestCount: number;
     }> = [];
 
-    for (const user of users) {
-      for (const role of user.roles ?? []) {
+    const roleSources = hasParticipants ? participants : users;
+    for (const source of roleSources) {
+      for (const role of source.roles ?? []) {
         increment(roleSupply, role);
       }
     }
@@ -255,7 +398,7 @@ export const stats = query({
       .slice(0, 6);
 
     return {
-      totalUsers: users.length,
+      totalUsers: hasParticipants ? participants.length : users.length,
       onboardedUsers,
       onsiteUsers,
       remoteUsers,
@@ -276,9 +419,11 @@ export const stats = query({
 });
 
 export const ideasReport = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const scopedHackathonId = hackathon?._id;
 
     const [
       ideas,
@@ -290,14 +435,105 @@ export const ideasReport = query({
       memberships,
       resourceRequests,
     ] = await Promise.all([
-      ctx.db.query("ideas").collect(),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("ideas").collect(),
+      ),
       ctx.db.query("users").collect(),
-      ctx.db.query("rooms").collect(),
-      ctx.db.query("comments").collect(),
-      ctx.db.query("reactions").collect(),
-      ctx.db.query("ideaInterest").collect(),
-      ctx.db.query("ideaMembers").collect(),
-      ctx.db.query("resourceRequests").collect(),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("rooms")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("rooms")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("rooms").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("comments")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("comments")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("comments").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("reactions")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("reactions")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("reactions").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("ideaInterest")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("ideaInterest")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("ideaInterest").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("ideaMembers")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("ideaMembers")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("ideaMembers").collect(),
+      ),
+      scopedResults(
+        scopedHackathonId,
+        (id) =>
+          ctx.db
+            .query("resourceRequests")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+            .collect(),
+        () =>
+          ctx.db
+            .query("resourceRequests")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect(),
+        () => ctx.db.query("resourceRequests").collect(),
+      ),
     ]);
 
     const userById = new Map(users.map((user) => [user._id, user]));
@@ -501,27 +737,93 @@ export const updateIdeaStatus = mutation({
 });
 
 export const listUsers = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const scopedHackathonId = hackathon?._id;
 
-    const users = await ctx.db.query("users").collect();
+    const [users, participants] = await Promise.all([
+      ctx.db.query("users").collect(),
+      scopedHackathonId
+        ? ctx.db
+            .query("hackathonParticipants")
+            .withIndex("by_hackathon", (q) =>
+              q.eq("hackathonId", scopedHackathonId),
+            )
+            .collect()
+        : Promise.resolve([]),
+    ]);
+    const participantByUser = new Map(
+      participants.map((participant) => [participant.userId, participant]),
+    );
 
     const withCounts = await Promise.all(
       users.map(async (user) => {
         const [ownedIdeas, memberships, interest] = await Promise.all([
-          ctx.db
-            .query("ideas")
-            .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-            .collect(),
-          ctx.db
-            .query("ideaMembers")
-            .withIndex("by_user", (q) => q.eq("userId", user._id))
-            .collect(),
-          ctx.db
-            .query("ideaInterest")
-            .withIndex("by_user", (q) => q.eq("userId", user._id))
-            .collect(),
+          scopedResults(
+            scopedHackathonId,
+            (id) =>
+              ctx.db
+                .query("ideas")
+                .withIndex("by_hackathon_and_owner", (q) =>
+                  q.eq("hackathonId", id).eq("ownerId", user._id),
+                )
+                .collect(),
+            () =>
+              ctx.db
+                .query("ideas")
+                .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+                .filter((q) => q.eq(q.field("hackathonId"), undefined))
+                .collect(),
+            () =>
+              ctx.db
+                .query("ideas")
+                .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
+                .collect(),
+          ),
+          scopedResults(
+            scopedHackathonId,
+            (id) =>
+              ctx.db
+                .query("ideaMembers")
+                .withIndex("by_hackathon_and_user", (q) =>
+                  q.eq("hackathonId", id).eq("userId", user._id),
+                )
+                .collect(),
+            () =>
+              ctx.db
+                .query("ideaMembers")
+                .withIndex("by_user", (q) => q.eq("userId", user._id))
+                .filter((q) => q.eq(q.field("hackathonId"), undefined))
+                .collect(),
+            () =>
+              ctx.db
+                .query("ideaMembers")
+                .withIndex("by_user", (q) => q.eq("userId", user._id))
+                .collect(),
+          ),
+          scopedResults(
+            scopedHackathonId,
+            (id) =>
+              ctx.db
+                .query("ideaInterest")
+                .withIndex("by_hackathon_and_user", (q) =>
+                  q.eq("hackathonId", id).eq("userId", user._id),
+                )
+                .collect(),
+            () =>
+              ctx.db
+                .query("ideaInterest")
+                .withIndex("by_user", (q) => q.eq("userId", user._id))
+                .filter((q) => q.eq(q.field("hackathonId"), undefined))
+                .collect(),
+            () =>
+              ctx.db
+                .query("ideaInterest")
+                .withIndex("by_user", (q) => q.eq("userId", user._id))
+                .collect(),
+          ),
         ]);
 
         const effectiveMemberships = (
@@ -534,6 +836,7 @@ export const listUsers = query({
             }),
           )
         ).filter((membership) => membership !== null);
+        const participant = participantByUser.get(user._id);
 
         return {
           _id: user._id,
@@ -543,10 +846,13 @@ export const listUsers = query({
           lastName: user.lastName,
           email: user.email,
           image: user.image,
-          roles: user.roles,
+          roles: participant?.roles ?? user.roles,
           handle: user.handle,
           isAdmin: user.isAdmin,
-          onboardingComplete: user.onboardingComplete,
+          onboardingComplete:
+            participant?.onboardingComplete ?? user.onboardingComplete,
+          participationMode:
+            participant?.participationMode ?? user.participationMode,
           ownedIdeasCount: ownedIdeas.length,
           membershipsCount: effectiveMemberships.length,
           interestCount: interest.length,
@@ -559,11 +865,26 @@ export const listUsers = query({
 });
 
 export const listIdeas = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const scopedHackathonId = hackathon?._id;
 
-    const ideas = await ctx.db.query("ideas").collect();
+    const ideas = await scopedResults(
+      scopedHackathonId,
+      (id) =>
+        ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+          .collect(),
+      () =>
+        ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+          .collect(),
+      () => ctx.db.query("ideas").collect(),
+    );
 
     const withDetails = await Promise.all(
       ideas.map(async (idea) => {
@@ -632,11 +953,26 @@ export const listIdeas = query({
 });
 
 export const listComments = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const scopedHackathonId = hackathon?._id;
 
-    const comments = await ctx.db.query("comments").collect();
+    const comments = await scopedResults(
+      scopedHackathonId,
+      (id) =>
+        ctx.db
+          .query("comments")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
+          .collect(),
+      () =>
+        ctx.db
+          .query("comments")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+          .collect(),
+      () => ctx.db.query("comments").collect(),
+    );
 
     const withDetails = await Promise.all(
       comments.map(async (comment) => {

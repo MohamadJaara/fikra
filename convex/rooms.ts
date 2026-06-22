@@ -1,7 +1,9 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
   getAdminUser,
+  getHackathonByIdOrCurrent,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   resolveTeamSize,
@@ -91,18 +93,33 @@ async function getRoomReadiness(
 }
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const rooms = await ctx.db.query("rooms").collect();
+    const rooms = hackathon
+      ? await ctx.db
+          .query("rooms")
+          .withIndex("by_hackathon", (q) =>
+            q.eq("hackathonId", hackathon._id),
+          )
+          .collect()
+      : await ctx.db.query("rooms").collect();
 
     const withDetails = await Promise.all(
       rooms.map(async (room) => {
-        const assignedIdeas = await ctx.db
-          .query("ideas")
-          .withIndex("by_room", (q) => q.eq("roomId", room._id))
-          .collect();
+        const assignedIdeas = room.hackathonId
+          ? await ctx.db
+              .query("ideas")
+              .withIndex("by_hackathon_and_room", (q) =>
+                q.eq("hackathonId", room.hackathonId!).eq("roomId", room._id),
+              )
+              .collect()
+          : await ctx.db
+              .query("ideas")
+              .withIndex("by_room", (q) => q.eq("roomId", room._id))
+              .collect();
 
         return {
           _id: room._id,
@@ -125,6 +142,7 @@ export const list = query({
 
 export const create = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     name: v.string(),
     type: v.string(),
     assignmentLimit: v.optional(v.number()),
@@ -133,7 +151,9 @@ export const create = mutation({
     mapsLink: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertHackathonWritable(ctx, hackathon?._id, user);
 
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Room name is required");
@@ -150,6 +170,7 @@ export const create = mutation({
     );
 
     return await ctx.db.insert("rooms", {
+      hackathonId: hackathon?._id,
       name,
       type: args.type,
       assignmentLimit,
@@ -161,11 +182,18 @@ export const create = mutation({
 });
 
 export const queueFullIdeasForRooms = mutation({
-  args: {},
-  handler: async (ctx) => {
-    await getAdminUser(ctx);
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
+    const { user } = await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    await assertHackathonWritable(ctx, hackathon?._id, user);
 
-    const ideas = await ctx.db.query("ideas").collect();
+    const ideas = hackathon
+      ? await ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+          .collect()
+      : await ctx.db.query("ideas").collect();
 
     let queuedCount = 0;
     let checkedCount = 0;
@@ -199,10 +227,11 @@ export const queueFullIdeasForRooms = mutation({
 export const markIdeaNeedsRoom = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
     if (idea.roomId) throw new Error("This idea already has a room");
 
     const readiness = await getRoomReadiness(ctx, idea);
@@ -230,7 +259,7 @@ export const update = mutation({
     mapsLink: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
 
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Room name is required");
@@ -248,6 +277,7 @@ export const update = mutation({
 
     const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Room not found");
+    await assertHackathonWritable(ctx, room.hackathonId, user);
 
     if (args.type === "team" && room.type !== "team") {
       const assignedIdeas = await ctx.db
@@ -277,10 +307,11 @@ export const remove = mutation({
     roomId: v.id("rooms"),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
 
     const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Room not found");
+    await assertHackathonWritable(ctx, room.hackathonId, user);
 
     const assignedIdeas = await ctx.db
       .query("ideas")
@@ -312,9 +343,17 @@ export const assignToIdea = mutation({
 
     const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Room not found");
+    await assertHackathonWritable(ctx, room.hackathonId, { isAdmin: true });
 
     const idea = await ctx.db.get(args.ideaId);
     if (!idea) throw new Error("Idea not found");
+    if (
+      room.hackathonId !== undefined &&
+      idea.hackathonId !== undefined &&
+      room.hackathonId !== idea.hackathonId
+    ) {
+      throw new Error("Room and idea belong to different hackathons");
+    }
 
     const assignedIdeas = await ctx.db
       .query("ideas")
@@ -363,10 +402,11 @@ export const unassignFromIdea = mutation({
     ideaId: v.id("ideas"),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
 
     const idea = await ctx.db.get(args.ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     await ctx.db.patch(args.ideaId, {
       roomId: undefined,

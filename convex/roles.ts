@@ -1,8 +1,10 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
   getAuthenticatedUser,
   getAdminUser,
+  getHackathonByIdOrCurrent,
   mergeUniqueStringArrays,
   sanitizeText,
 } from "./lib";
@@ -11,7 +13,12 @@ import type { Doc } from "./_generated/dataModel";
 
 const BATCH = 64;
 
-const PHASES = ["users", "ideas", "ideaMembers"] as const;
+const PHASES = [
+  "users",
+  "hackathonParticipants",
+  "ideas",
+  "ideaMembers",
+] as const;
 
 function nextPhase(p: (typeof PHASES)[number]): (typeof PHASES)[number] | null {
   const i = PHASES.indexOf(p);
@@ -23,23 +30,27 @@ export const batchMigrateRoleSlug = internalMutation({
     roleId: v.id("roles"),
     oldSlug: v.string(),
     newSlug: v.optional(v.string()),
+    hackathonId: v.optional(v.id("hackathons")),
     phase: v.union(
       v.literal("users"),
+      v.literal("hackathonParticipants"),
       v.literal("ideas"),
       v.literal("ideaMembers"),
     ),
     cursor: v.union(v.string(), v.null()),
   },
   handler: async (ctx, args) => {
-    const { roleId, oldSlug, newSlug, phase } = args;
+    const { roleId, oldSlug, newSlug, phase, hackathonId } = args;
     const isRename = newSlug !== undefined;
 
     const query =
       phase === "users"
         ? ctx.db.query("users")
-        : phase === "ideas"
-          ? ctx.db.query("ideas")
-          : ctx.db.query("ideaMembers");
+        : phase === "hackathonParticipants"
+          ? ctx.db.query("hackathonParticipants")
+          : phase === "ideas"
+            ? ctx.db.query("ideas")
+            : ctx.db.query("ideaMembers");
 
     const result = await query.paginate({
       cursor: args.cursor,
@@ -56,7 +67,20 @@ export const batchMigrateRoleSlug = internalMutation({
               : roles.filter((r: string) => r !== oldSlug),
           });
         }
+      } else if (phase === "hackathonParticipants") {
+        const participant = doc as Doc<"hackathonParticipants">;
+        if (hackathonId && participant.hackathonId !== hackathonId) continue;
+        const roles = participant.roles;
+        if (roles?.includes(oldSlug)) {
+          await ctx.db.patch(doc._id, {
+            roles: isRename
+              ? roles.map((r: string) => (r === oldSlug ? newSlug : r))
+              : roles.filter((r: string) => r !== oldSlug),
+          });
+        }
       } else if (phase === "ideas") {
+        const idea = doc as Doc<"ideas">;
+        if (hackathonId && idea.hackathonId !== hackathonId) continue;
         const lfr = (doc as Doc<"ideas">).lookingForRoles;
         if (lfr?.includes(oldSlug)) {
           await ctx.db.patch(doc._id, {
@@ -67,6 +91,7 @@ export const batchMigrateRoleSlug = internalMutation({
         }
       } else {
         const membership = doc as Doc<"ideaMembers">;
+        if (hackathonId && membership.hackathonId !== hackathonId) continue;
         const currentRoles =
           mergeUniqueStringArrays(
             membership.memberRoles,
@@ -98,6 +123,7 @@ export const batchMigrateRoleSlug = internalMutation({
           roleId,
           oldSlug,
           newSlug,
+          hackathonId,
           phase: next,
           cursor: null,
         });
@@ -121,41 +147,72 @@ export const batchMigrateRoleSlug = internalMutation({
 });
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAuthenticatedUser(ctx);
-    const all = await ctx.db.query("roles").order("asc").collect();
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const all = hackathon
+      ? [
+          ...(await ctx.db
+            .query("roles")
+            .withIndex("by_hackathon", (q) =>
+              q.eq("hackathonId", hackathon._id),
+            )
+            .collect()),
+          ...(await ctx.db
+            .query("roles")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .collect()),
+        ]
+      : await ctx.db.query("roles").order("asc").collect();
     return all.filter((r) => !r.deletedAt);
   },
 });
 
 export const create = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertHackathonWritable(ctx, hackathon?._id, user);
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Role name is required");
     const slug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^-|-$/g, "");
-    const allRoles = await ctx.db.query("roles").collect();
+    const allRoles = hackathon
+      ? await ctx.db
+          .query("roles")
+          .withIndex("by_hackathon", (q) =>
+            q.eq("hackathonId", hackathon._id),
+          )
+          .collect()
+      : await ctx.db.query("roles").collect();
     const conflict = allRoles.find(
       (r) => r.slug === slug || r.aliasSlugs?.includes(slug),
     );
     if (conflict) throw new Error("Role already exists");
-    return await ctx.db.insert("roles", { name, slug });
+    return await ctx.db.insert("roles", {
+      hackathonId: hackathon?._id,
+      name,
+      slug,
+    });
   },
 });
 
 export const createMany = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     names: v.string(),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertHackathonWritable(ctx, hackathon?._id, user);
     const items = args.names
       .split(",")
       .map((s) => sanitizeText(s))
@@ -163,7 +220,14 @@ export const createMany = mutation({
     if (items.length === 0) throw new Error("No valid names provided");
     const created: string[] = [];
     const skipped: string[] = [];
-    const allRoles = await ctx.db.query("roles").collect();
+    const allRoles = hackathon
+      ? await ctx.db
+          .query("roles")
+          .withIndex("by_hackathon", (q) =>
+            q.eq("hackathonId", hackathon._id),
+          )
+          .collect()
+      : await ctx.db.query("roles").collect();
     for (const name of items) {
       const slug = name
         .toLowerCase()
@@ -175,7 +239,11 @@ export const createMany = mutation({
       if (conflict) {
         skipped.push(name);
       } else {
-        const docId = await ctx.db.insert("roles", { name, slug });
+        const docId = await ctx.db.insert("roles", {
+          hackathonId: hackathon?._id,
+          name,
+          slug,
+        });
         allRoles.push({
           _id: docId,
           _creationTime: Date.now(),
@@ -195,29 +263,44 @@ export const update = mutation({
     name: v.string(),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Role name is required");
     const slug = name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "_")
       .replace(/^-|-$/g, "");
-    const existing = await ctx.db
-      .query("roles")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .first();
+    const oldRole = await ctx.db.get(args.roleId);
+    if (!oldRole) throw new Error("Role not found");
+    await assertHackathonWritable(ctx, oldRole.hackathonId, user);
+    const existing = oldRole.hackathonId
+      ? await ctx.db
+          .query("roles")
+          .withIndex("by_hackathon_and_slug", (q) =>
+            q.eq("hackathonId", oldRole.hackathonId).eq("slug", slug),
+          )
+          .first()
+      : await ctx.db
+          .query("roles")
+          .withIndex("by_slug", (q) => q.eq("slug", slug))
+          .first();
     if (existing && existing._id !== args.roleId) {
       throw new Error("Role already exists");
     }
     if (!existing) {
-      const allRoles = await ctx.db.query("roles").collect();
+      const allRoles = oldRole.hackathonId
+        ? await ctx.db
+            .query("roles")
+            .withIndex("by_hackathon", (q) =>
+              q.eq("hackathonId", oldRole.hackathonId),
+            )
+            .collect()
+        : await ctx.db.query("roles").collect();
       const aliasConflict = allRoles.find(
         (r) => r.aliasSlugs?.includes(slug) && r._id !== args.roleId,
       );
       if (aliasConflict) throw new Error("Role already exists");
     }
-    const oldRole = await ctx.db.get(args.roleId);
-    if (!oldRole) throw new Error("Role not found");
     if (oldRole.slug !== slug) {
       await ctx.db.patch(args.roleId, {
         name,
@@ -228,6 +311,7 @@ export const update = mutation({
         roleId: args.roleId,
         oldSlug: oldRole.slug,
         newSlug: slug,
+        hackathonId: oldRole.hackathonId,
         phase: "users",
         cursor: null,
       });
@@ -242,12 +326,14 @@ export const remove = mutation({
     roleId: v.id("roles"),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
     const role = await ctx.db.get(args.roleId);
     if (!role) throw new Error("Role not found");
+    await assertHackathonWritable(ctx, role.hackathonId, user);
     await ctx.scheduler.runAfter(0, internal.roles.batchMigrateRoleSlug, {
       roleId: args.roleId,
       oldSlug: role.slug,
+      hackathonId: role.hackathonId,
       phase: "users",
       cursor: null,
     });

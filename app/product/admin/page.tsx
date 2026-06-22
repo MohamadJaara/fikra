@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarDays,
   CalendarClock,
   CalendarX2,
   CheckCircle2,
@@ -32,6 +33,7 @@ import {
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 import {
   ROOM_REQUEST_LABELS,
   STATUSES,
@@ -52,7 +54,12 @@ function widthPercent(value: number, total: number) {
 }
 
 export default function AdminDashboard() {
-  const stats = useQuery(api.admin.stats);
+  const hackathon = useSelectedHackathon();
+  const hackathonId = hackathon?._id;
+  const adminBase = hackathon
+    ? `/product/h/${hackathon.slug}/admin`
+    : "/product/admin";
+  const stats = useQuery(api.admin.stats, hackathonId ? { hackathonId } : {});
 
   if (stats === undefined) {
     return (
@@ -68,7 +75,7 @@ export default function AdminDashboard() {
       title: "Teams Need Rooms",
       value: stats.roomOverview.queuedRoomRequests,
       subtitle: `${stats.roomOverview.assignedIdeas} already assigned`,
-      href: "/product/admin/ideas",
+      href: `${adminBase}/ideas`,
       icon: <DoorOpen className="h-4 w-4" />,
       tone: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200",
     },
@@ -76,7 +83,7 @@ export default function AdminDashboard() {
       title: "Ready, Not Queued",
       value: stats.roomOverview.readyTeamsMissingRoom,
       subtitle: "Formed teams without a room request",
-      href: "/product/admin/ideas",
+      href: `${adminBase}/ideas`,
       icon: <AlertTriangle className="h-4 w-4" />,
       tone: "border-orange-300 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200",
     },
@@ -84,7 +91,7 @@ export default function AdminDashboard() {
       title: "Resource Blockers",
       value: stats.unresolvedResources,
       subtitle: `${stats.resourceNeeds.length} resource types requested`,
-      href: "/product/admin/resources",
+      href: `${adminBase}/resources`,
       icon: <Package className="h-4 w-4" />,
       tone: "border-cyan-300 bg-cyan-50 text-cyan-800 dark:border-cyan-800 dark:bg-cyan-950 dark:text-cyan-200",
     },
@@ -92,7 +99,7 @@ export default function AdminDashboard() {
       title: "Still Forming",
       value: stats.teamFormation.forming,
       subtitle: `${formatPercent(stats.teamFormation.formed, totalTeams)} teams formed`,
-      href: "/product/admin/ideas",
+      href: `${adminBase}/ideas`,
       icon: <UserPlus className="h-4 w-4" />,
       tone: "border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200",
     },
@@ -151,70 +158,77 @@ export default function AdminDashboard() {
 
   const navItems = [
     {
-      href: "/product/admin/users",
+      href: `${adminBase}/users`,
       icon: <UserCheck className="h-5 w-5 text-blue-600" />,
       bg: "bg-blue-50 dark:bg-blue-950",
       title: "Manage Users",
       subtitle: `${stats.totalUsers} users registered`,
     },
     {
-      href: "/product/admin/ideas",
+      href: `${adminBase}/ideas`,
       icon: <Sparkles className="h-5 w-5 text-yellow-600" />,
       bg: "bg-yellow-50 dark:bg-yellow-950",
       title: "Ideas & Rooms",
       subtitle: `${stats.totalIdeas} ideas · ${stats.roomOverview.totalRooms} rooms`,
     },
     {
-      href: "/product/admin/categories",
+      href: `${adminBase}/categories`,
       icon: <Tags className="h-5 w-5 text-purple-600" />,
       bg: "bg-purple-50 dark:bg-purple-950",
       title: "Manage Categories",
       subtitle: "Idea categories",
     },
     {
-      href: "/product/admin/roles",
+      href: `${adminBase}/roles`,
       icon: <ShieldCheck className="h-5 w-5 text-orange-600" />,
       bg: "bg-orange-50 dark:bg-orange-950",
       title: "Manage Roles",
       subtitle: "User and team roles",
     },
     {
-      href: "/product/admin/resources",
+      href: `${adminBase}/resources`,
       icon: <Package className="h-5 w-5 text-cyan-600" />,
       bg: "bg-cyan-50 dark:bg-cyan-950",
       title: "Manage Resources",
       subtitle: "Resource request options",
     },
     {
-      href: "/product/admin/comments",
+      href: `${adminBase}/comments`,
       icon: <MessageSquare className="h-5 w-5 text-green-600" />,
       bg: "bg-green-50 dark:bg-green-950",
       title: "Moderate Comments",
       subtitle: `${stats.totalComments} comments`,
     },
     {
-      href: "/product/admin/announcements",
+      href: `${adminBase}/announcements`,
       icon: <Megaphone className="h-5 w-5 text-fuchsia-600" />,
       bg: "bg-fuchsia-50 dark:bg-fuchsia-950",
       title: "Announcements",
       subtitle: "Broadcast to all users",
     },
     {
-      href: "/product/admin/event",
+      href: `${adminBase}/hackathons`,
+      icon: <CalendarDays className="h-5 w-5 text-sky-600" />,
+      bg: "bg-sky-50 dark:bg-sky-950",
+      title: "Hackathons",
+      subtitle: "Create and manage events",
+    },
+    {
+      href: `${adminBase}/event`,
       icon: <CalendarClock className="h-5 w-5 text-emerald-600" />,
       bg: "bg-emerald-50 dark:bg-emerald-950",
       title: "Event Date",
       subtitle: "Set the visible hackathon date",
     },
     {
-      href: "/product/admin/idea-deadline",
+      href: `${adminBase}/idea-deadline`,
       icon: <CalendarX2 className="h-5 w-5 text-amber-600" />,
       bg: "bg-amber-50 dark:bg-amber-950",
       title: "Idea Deadline",
       subtitle: "Close or reopen new submissions",
     },
     {
-      href: "/product/admin/voting",
+      href: `${adminBase}/voting`,
       icon: <Vote className="h-5 w-5 text-rose-600" />,
       bg: "bg-rose-50 dark:bg-rose-950",
       title: "Voting",

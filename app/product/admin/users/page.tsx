@@ -20,9 +20,12 @@ import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useRolesMap } from "@/lib/hooks";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export default function AdminUsersPage() {
-  const users = useQuery(api.admin.listUsers);
+  const hackathon = useSelectedHackathon();
+  const hackathonId = hackathon?._id;
+  const users = useQuery(api.admin.listUsers, hackathonId ? { hackathonId } : {});
   const setUserAdmin = useMutation(api.admin.setUserAdmin);
   const roleLabels = useRolesMap();
   const [search, setSearch] = useState("");

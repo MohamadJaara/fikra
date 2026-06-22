@@ -65,6 +65,7 @@ import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -288,8 +289,11 @@ function statusFilterLabel(statuses: Status[]) {
 
 export default function AdminIdeasPage() {
   const convex = useConvex();
-  const ideas = useQuery(api.admin.listIdeas);
-  const rooms = useQuery(api.rooms.list);
+  const hackathon = useSelectedHackathon();
+  const hackathonId = hackathon?._id;
+  const hackathonArgs = hackathonId ? { hackathonId } : {};
+  const ideas = useQuery(api.admin.listIdeas, hackathonArgs);
+  const rooms = useQuery(api.rooms.list, hackathonArgs);
   const deleteIdea = useMutation(api.admin.deleteIdea);
   const updateIdeaStatus = useMutation(api.admin.updateIdeaStatus);
   const updateIdeaOnsiteOnly = useMutation(api.admin.updateIdeaOnsiteOnly);
@@ -491,7 +495,7 @@ export default function AdminIdeasPage() {
   const handleCheckFullIdeas = async () => {
     setIsCheckingFullIdeas(true);
     try {
-      const result = await queueFullIdeas({});
+      const result = await queueFullIdeas(hackathonArgs);
       toast.success(
         result.queuedCount === 0
           ? `Checked ${result.checkedCount} ready teams. Nothing new to queue.`
@@ -509,7 +513,7 @@ export default function AdminIdeasPage() {
   const handleGenerateReport = async () => {
     setIsGeneratingReport(true);
     try {
-      const report = await convex.query(api.admin.ideasReport, {});
+      const report = await convex.query(api.admin.ideasReport, hackathonArgs);
       const markdown = buildIdeasReportMarkdown(report);
       const blob = new Blob([markdown], {
         type: "text/markdown;charset=utf-8",
@@ -539,6 +543,7 @@ export default function AdminIdeasPage() {
     setIsCreating(true);
     try {
       await createRoom({
+        ...(hackathonId ? { hackathonId } : {}),
         name,
         type,
         assignmentLimit: parseSharedLimit(assignmentLimit, type),

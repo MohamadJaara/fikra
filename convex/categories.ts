@@ -1,6 +1,13 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, getAdminUser, sanitizeText } from "./lib";
+import {
+  assertHackathonWritable,
+  getAuthenticatedUser,
+  getAdminUser,
+  getHackathonByIdOrCurrent,
+  sanitizeText,
+} from "./lib";
+import type { Id } from "./_generated/dataModel";
 
 function createCategorySlug(name: string) {
   const slug = name
@@ -18,10 +25,11 @@ function createCategorySlug(name: string) {
 }
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAuthenticatedUser(ctx);
-    const categories = await ctx.db.query("categories").order("asc").collect();
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const categories = await getScopedCategories(ctx, hackathon?._id);
     return categories.sort(
       (a, b) => (a.order ?? Infinity) - (b.order ?? Infinity),
     );
@@ -29,14 +37,20 @@ export const list = query({
 });
 
 export const listWithDetails = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAuthenticatedUser(ctx);
-    const categories = await ctx.db.query("categories").order("asc").collect();
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const categories = await getScopedCategories(ctx, hackathon?._id);
     const sorted = categories.sort(
       (a, b) => (a.order ?? Infinity) - (b.order ?? Infinity),
     );
-    const ideas = await ctx.db.query("ideas").collect();
+    const ideas = hackathon
+      ? await ctx.db
+          .query("ideas")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+          .collect()
+      : await ctx.db.query("ideas").collect();
 
     const countByCategory: Record<string, number> = {};
     for (const idea of ideas) {
@@ -62,13 +76,27 @@ export const listWithDetails = query({
 });
 
 export const getBySlug = query({
-  args: { slug: v.string() },
-  handler: async (ctx, { slug }) => {
+  args: { slug: v.string(), hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { slug, hackathonId }) => {
     await getAuthenticatedUser(ctx);
-    const category = await ctx.db
-      .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .unique();
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const category = hackathon
+      ? (await ctx.db
+          .query("categories")
+          .withIndex("by_hackathon_and_slug", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("slug", slug),
+          )
+          .first()) ??
+        (await ctx.db
+          .query("categories")
+          .withIndex("by_hackathon_and_slug", (q) =>
+            q.eq("hackathonId", undefined).eq("slug", slug),
+          )
+          .first())
+      : await ctx.db
+          .query("categories")
+          .withIndex("by_slug", (q) => q.eq("slug", slug))
+          .unique();
     if (!category) return null;
     const imageUrl = category.imageId
       ? await ctx.storage.getUrl(category.imageId)
@@ -87,24 +115,35 @@ export const generateUploadUrl = mutation({
 
 export const create = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     name: v.string(),
     description: v.optional(v.string()),
     imageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertHackathonWritable(ctx, hackathon?._id, user);
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Category name is required");
     const slug = createCategorySlug(name);
-    const existing = await ctx.db
-      .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .first();
+    const existing = hackathon
+      ? await ctx.db
+          .query("categories")
+          .withIndex("by_hackathon_and_slug", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("slug", slug),
+          )
+          .first()
+      : await ctx.db
+          .query("categories")
+          .withIndex("by_slug", (q) => q.eq("slug", slug))
+          .first();
     if (existing) throw new Error("Category already exists");
     const description = args.description
       ? sanitizeText(args.description)
       : undefined;
     return await ctx.db.insert("categories", {
+      hackathonId: hackathon?._id,
       name,
       slug,
       description,
@@ -116,10 +155,13 @@ export const create = mutation({
 
 export const createMany = mutation({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     names: v.string(),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    await assertHackathonWritable(ctx, hackathon?._id, user);
     const items = args.names
       .split(",")
       .map((s) => sanitizeText(s))
@@ -129,14 +171,26 @@ export const createMany = mutation({
     const skipped: string[] = [];
     for (const name of items) {
       const slug = createCategorySlug(name);
-      const existing = await ctx.db
-        .query("categories")
-        .withIndex("by_slug", (q) => q.eq("slug", slug))
-        .first();
+      const existing = hackathon
+        ? await ctx.db
+            .query("categories")
+            .withIndex("by_hackathon_and_slug", (q) =>
+              q.eq("hackathonId", hackathon._id).eq("slug", slug),
+            )
+            .first()
+        : await ctx.db
+            .query("categories")
+            .withIndex("by_slug", (q) => q.eq("slug", slug))
+            .first();
       if (existing) {
         skipped.push(name);
       } else {
-        await ctx.db.insert("categories", { name, slug, order: Date.now() });
+        await ctx.db.insert("categories", {
+          hackathonId: hackathon?._id,
+          name,
+          slug,
+          order: Date.now(),
+        });
         created.push(name);
       }
     }
@@ -152,7 +206,7 @@ export const update = mutation({
     imageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
     const category = await ctx.db.get(args.categoryId);
     if (!category) {
       if (args.imageId) {
@@ -160,6 +214,7 @@ export const update = mutation({
       }
       throw new Error("Category not found");
     }
+    await assertHackathonWritable(ctx, category.hackathonId, user);
     const cleanupReplacementImage = async () => {
       if (args.imageId && args.imageId !== category.imageId) {
         await ctx.storage.delete(args.imageId);
@@ -177,10 +232,17 @@ export const update = mutation({
       await cleanupReplacementImage();
       throw error;
     }
-    const existing = await ctx.db
-      .query("categories")
-      .withIndex("by_slug", (q) => q.eq("slug", slug))
-      .first();
+    const existing = category.hackathonId
+      ? await ctx.db
+          .query("categories")
+          .withIndex("by_hackathon_and_slug", (q) =>
+            q.eq("hackathonId", category.hackathonId).eq("slug", slug),
+          )
+          .first()
+      : await ctx.db
+          .query("categories")
+          .withIndex("by_slug", (q) => q.eq("slug", slug))
+          .first();
     if (existing && existing._id !== args.categoryId) {
       await cleanupReplacementImage();
       throw new Error("Category already exists");
@@ -205,9 +267,10 @@ export const remove = mutation({
     categoryId: v.id("categories"),
   },
   handler: async (ctx, args) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
     const category = await ctx.db.get(args.categoryId);
     if (!category) throw new Error("Category not found");
+    await assertHackathonWritable(ctx, category.hackathonId, user);
     const ideasWithCategory = await ctx.db
       .query("ideas")
       .withIndex("by_category", (q) => q.eq("categoryId", args.categoryId))
@@ -227,9 +290,29 @@ export const reorder = mutation({
     orderedIds: v.array(v.id("categories")),
   },
   handler: async (ctx, { orderedIds }) => {
-    await getAdminUser(ctx);
+    const { user } = await getAdminUser(ctx);
     for (let i = 0; i < orderedIds.length; i++) {
+      const category = await ctx.db.get(orderedIds[i]);
+      if (category) await assertHackathonWritable(ctx, category.hackathonId, user);
       await ctx.db.patch(orderedIds[i], { order: i });
     }
   },
 });
+
+async function getScopedCategories(
+  ctx: Parameters<typeof getAuthenticatedUser>[0],
+  hackathonId: Id<"hackathons"> | undefined,
+) {
+  if (!hackathonId) return await ctx.db.query("categories").order("asc").collect();
+  const [scoped, legacy] = await Promise.all([
+    ctx.db
+      .query("categories")
+      .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathonId))
+      .collect(),
+    ctx.db
+      .query("categories")
+      .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+      .collect(),
+  ]);
+  return [...scoped, ...legacy];
+}

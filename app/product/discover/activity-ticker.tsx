@@ -5,9 +5,13 @@ import { useQuery } from "convex/react";
 import { UserPlus, Lightbulb } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export function ActivityTicker() {
-  const items = useQuery(api.discover.getActivityTicker);
+  const hackathon = useSelectedHackathon();
+  const items = useQuery(api.discover.getActivityTicker, {
+    hackathonId: hackathon?._id,
+  });
 
   if (!items || items.length === 0) return null;
 

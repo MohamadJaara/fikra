@@ -6,7 +6,11 @@ import {
   type QueryCtx,
 } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, getUserDisplayName } from "./lib";
+import {
+  getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
+  getUserDisplayName,
+} from "./lib";
 import type { Id } from "./_generated/dataModel";
 
 async function countUnreadForRecipient(
@@ -67,7 +71,9 @@ export const create = internalMutation({
       throw new Error("Invalid notification type");
     }
 
+    const idea = await ctx.db.get(args.ideaId);
     const notificationId = await ctx.db.insert("notifications", {
+      hackathonId: idea?.hackathonId,
       recipientId: args.recipientId,
       actorId: args.actorId,
       ideaId: args.ideaId,
@@ -122,15 +128,24 @@ export const deleteForIdea = internalMutation({
 });
 
 export const list = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const notifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient", (q) => q.eq("recipientId", userId))
-      .order("desc")
-      .take(50);
+    const notifications = hackathon
+      ? await ctx.db
+          .query("notifications")
+          .withIndex("by_hackathon_and_recipient", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("recipientId", userId),
+          )
+          .order("desc")
+          .take(50)
+      : await ctx.db
+          .query("notifications")
+          .withIndex("by_recipient", (q) => q.eq("recipientId", userId))
+          .order("desc")
+          .take(50);
 
     return await Promise.all(
       notifications.map(async (n) => {

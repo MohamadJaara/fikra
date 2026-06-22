@@ -2,6 +2,7 @@ import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import {
   getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
   getUserDisplayName,
   isEffectiveIdeaMember,
   resolveTeamSize,
@@ -85,26 +86,49 @@ async function enrichDiscoverIdea(
 
 export const getDiscoverFeed = query({
   args: {
+    hackathonId: v.optional(v.id("hackathons")),
     mode: v.optional(v.union(v.literal("browse"), v.literal("findTeam"))),
   },
   handler: async (ctx, args) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
     const mode = args.mode ?? "browse";
     const userRoles = user.roles ?? [];
 
     const [memberships, interests, dismissed] = await Promise.all([
-      ctx.db
-        .query("ideaMembers")
-        .withIndex("by_user", (q) => q.eq("userId", userId))
-        .collect(),
-      ctx.db
-        .query("ideaInterest")
-        .withIndex("by_user", (q) => q.eq("userId", userId))
-        .collect(),
-      ctx.db
-        .query("dismissedIdeas")
-        .withIndex("by_user", (q) => q.eq("userId", userId))
-        .collect(),
+      hackathon
+        ? ctx.db
+            .query("ideaMembers")
+            .withIndex("by_hackathon_and_user", (q) =>
+              q.eq("hackathonId", hackathon._id).eq("userId", userId),
+            )
+            .collect()
+        : ctx.db
+            .query("ideaMembers")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .collect(),
+      hackathon
+        ? ctx.db
+            .query("ideaInterest")
+            .withIndex("by_hackathon_and_user", (q) =>
+              q.eq("hackathonId", hackathon._id).eq("userId", userId),
+            )
+            .collect()
+        : ctx.db
+            .query("ideaInterest")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .collect(),
+      hackathon
+        ? ctx.db
+            .query("dismissedIdeas")
+            .withIndex("by_hackathon_and_user", (q) =>
+              q.eq("hackathonId", hackathon._id).eq("userId", userId),
+            )
+            .collect()
+        : ctx.db
+            .query("dismissedIdeas")
+            .withIndex("by_user", (q) => q.eq("userId", userId))
+            .collect(),
     ]);
 
     const effectiveMemberships = await Promise.all(
@@ -125,16 +149,30 @@ export const getDiscoverFeed = query({
     let candidates: Doc<"ideas">[] = [];
 
     if (mode === "findTeam") {
-      const teamCandidates = await ctx.db
-        .query("ideas")
-        .withIndex("by_needsTeammates", (q) => q.eq("needsTeammates", true))
-        .take(200);
+      const teamCandidates = hackathon
+        ? await ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon_and_needsTeammates", (q) =>
+              q
+                .eq("hackathonId", hackathon._id)
+                .eq("needsTeammates", true),
+            )
+            .take(200)
+        : await ctx.db
+            .query("ideas")
+            .withIndex("by_needsTeammates", (q) => q.eq("needsTeammates", true))
+            .take(200);
 
       candidates = teamCandidates.filter(
         (idea) => idea.status === "exploring" || idea.status === "forming_team",
       );
     } else {
-      candidates = await ctx.db.query("ideas").take(200);
+      candidates = hackathon
+        ? await ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+            .take(200)
+        : await ctx.db.query("ideas").take(200);
     }
 
     const filtered = candidates.filter((idea) => {
@@ -193,6 +231,8 @@ export const dismissIdea = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
 
     const existing = await ctx.db
       .query("dismissedIdeas")
@@ -202,7 +242,11 @@ export const dismissIdea = mutation({
       .first();
     if (existing) return;
 
-    await ctx.db.insert("dismissedIdeas", { ideaId, userId });
+    await ctx.db.insert("dismissedIdeas", {
+      hackathonId: idea.hackathonId,
+      ideaId,
+      userId,
+    });
   },
 });
 
@@ -224,28 +268,51 @@ export const undoDismissIdea = mutation({
 });
 
 export const resetDismissedIdeas = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const dismissed = await ctx.db
-      .query("dismissedIdeas")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const dismissed = hackathon
+      ? await ctx.db
+          .query("dismissedIdeas")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .collect()
+      : await ctx.db
+          .query("dismissedIdeas")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
 
     await Promise.all(dismissed.map((d) => ctx.db.delete(d._id)));
   },
 });
 
 export const getActivityTicker = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId: _userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
     const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
 
     const [recentMembers, recentIdeas] = await Promise.all([
-      ctx.db.query("ideaMembers").order("desc").take(20),
-      ctx.db.query("ideas").order("desc").take(10),
+      hackathon
+        ? ctx.db
+            .query("ideaMembers")
+            .withIndex("by_hackathon", (q) =>
+              q.eq("hackathonId", hackathon._id),
+            )
+            .order("desc")
+            .take(20)
+        : ctx.db.query("ideaMembers").order("desc").take(20),
+      hackathon
+        ? ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+            .order("desc")
+            .take(10)
+        : ctx.db.query("ideas").order("desc").take(10),
     ]);
 
     const recentMemberActivity = recentMembers

@@ -3,7 +3,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useProductViewer } from "@/components/ProductLayoutClient";
+import {
+  useProductViewer,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { STATUS_LABELS, TEAM_SIZE_LABELS, type Status } from "@/lib/constants";
@@ -38,11 +41,12 @@ type BallotIdea = {
 
 export default function VotingPage() {
   const viewer = useProductViewer();
-  const status = useQuery(api.voting.status);
-  const ballot = useQuery(api.voting.ballot);
+  const hackathon = useSelectedHackathon();
+  const status = useQuery(api.voting.status, { hackathonId: hackathon?._id });
+  const ballot = useQuery(api.voting.ballot, { hackathonId: hackathon?._id });
   const adminOverview = useQuery(
     api.voting.adminOverview,
-    viewer.isAdmin ? {} : "skip",
+    viewer.isAdmin ? { hackathonId: hackathon?._id } : "skip",
   );
   const showFinalResults =
     status !== undefined &&
@@ -51,7 +55,7 @@ export default function VotingPage() {
     status.endedAt !== undefined;
   const results = useQuery(
     api.voting.results,
-    viewer.isAdmin || showFinalResults ? {} : "skip",
+    viewer.isAdmin || showFinalResults ? { hackathonId: hackathon?._id } : "skip",
   );
   const toggleVote = useMutation(api.voting.toggleVote);
   const stopVoting = useMutation(api.voting.stop);
@@ -76,7 +80,10 @@ export default function VotingPage() {
   const handleVote = async (idea: BallotIdea) => {
     setPendingIdeaId(idea._id);
     try {
-      const result = await toggleVote({ ideaId: idea._id });
+      const result = await toggleVote({
+        ideaId: idea._id,
+        hackathonId: hackathon?._id,
+      });
       toast.success(result.voted ? "Vote added" : "Vote removed");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Vote failed");
@@ -88,7 +95,7 @@ export default function VotingPage() {
   const handleStopVoting = async () => {
     setStopping(true);
     try {
-      await stopVoting();
+      await stopVoting({ hackathonId: hackathon?._id });
       toast.success("Voting stopped");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to stop");

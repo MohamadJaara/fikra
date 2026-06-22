@@ -10,6 +10,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export default function EditIdeaPage({
   params,
@@ -17,7 +18,12 @@ export default function EditIdeaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = useParamsSync(params);
-  const idea = useQuery(api.ideas.get, { ideaId: id as Id<"ideas"> });
+  const hackathon = useSelectedHackathon();
+  const productBase = hackathon ? `/product/h/${hackathon.slug}` : "/product";
+  const idea = useQuery(api.ideas.get, {
+    ideaId: id as Id<"ideas">,
+    hackathonId: hackathon?._id,
+  });
   const updateMutation = useMutation(api.ideas.update);
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,7 +46,7 @@ export default function EditIdeaPage({
         <div className="text-center py-16">
           <p className="text-lg font-medium mb-2">Idea not found</p>
           <Link
-            href="/product"
+            href={productBase}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             Back to Browse
@@ -67,7 +73,7 @@ export default function EditIdeaPage({
         onsiteOnly: data.onsiteOnly,
       });
       toast.success("Idea updated!");
-      router.push(`/product/ideas/${id}`);
+      router.push(`${productBase}/ideas/${id}`);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to update idea",
@@ -83,7 +89,7 @@ export default function EditIdeaPage({
 
       <div className="mb-10 animate-fade-in">
         <Link
-          href={`/product/ideas/${id}`}
+          href={`${productBase}/ideas/${id}`}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
         >
           <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />

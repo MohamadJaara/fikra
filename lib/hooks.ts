@@ -3,9 +3,13 @@
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useMemo } from "react";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export function useRolesMap() {
-  const roles = useQuery(api.roles.list);
+  const hackathon = useSelectedHackathon();
+  const roles = useQuery(api.roles.list, {
+    hackathonId: hackathon?._id,
+  });
   return useMemo(() => {
     if (!roles) return {} as Record<string, string>;
     const map: Record<string, string> = {};
@@ -17,7 +21,10 @@ export function useRolesMap() {
 }
 
 export function useRolesList() {
-  const roles = useQuery(api.roles.list);
+  const hackathon = useSelectedHackathon();
+  const roles = useQuery(api.roles.list, {
+    hackathonId: hackathon?._id,
+  });
   return useMemo(() => {
     if (!roles) return [] as { slug: string; name: string }[];
     return roles.map((r) => ({ slug: r.slug, name: r.name }));
@@ -25,7 +32,10 @@ export function useRolesList() {
 }
 
 export function useResourcesMap() {
-  const resources = useQuery(api.resources.list);
+  const hackathon = useSelectedHackathon();
+  const resources = useQuery(api.resources.list, {
+    hackathonId: hackathon?._id,
+  });
   return useMemo(() => {
     if (!resources) return {} as Record<string, string>;
     const map: Record<string, string> = {};
@@ -37,7 +47,10 @@ export function useResourcesMap() {
 }
 
 export function useResourcesList() {
-  const resources = useQuery(api.resources.list);
+  const hackathon = useSelectedHackathon();
+  const resources = useQuery(api.resources.list, {
+    hackathonId: hackathon?._id,
+  });
   return useMemo(() => {
     if (!resources) return [] as { slug: string; name: string }[];
     return resources.map((resource) => ({

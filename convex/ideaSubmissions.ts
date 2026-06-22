@@ -3,8 +3,10 @@ import { v } from "convex/values";
 import {
   getAdminUser,
   getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
   validateStringLength,
 } from "./lib";
+import type { Id } from "./_generated/dataModel";
 
 const IDEA_SUBMISSION_SETTING_KEY = "main";
 const DEFAULT_CLOSED_MESSAGE =
@@ -39,6 +41,27 @@ async function getIdeaSubmissionSetting(ctx: IdeaSubmissionSettingCtx) {
     .unique();
 }
 
+async function getIdeaSubmissionSettingForHackathon(
+  ctx: IdeaSubmissionSettingCtx,
+  hackathonId?: Id<"hackathons">,
+) {
+  if (!hackathonId) return await getIdeaSubmissionSetting(ctx);
+  return (
+    (await ctx.db
+      .query("ideaSubmissionSettings")
+      .withIndex("by_hackathon_and_key", (q) =>
+        q.eq("hackathonId", hackathonId).eq("key", IDEA_SUBMISSION_SETTING_KEY),
+      )
+      .unique()) ??
+    (await ctx.db
+      .query("ideaSubmissionSettings")
+      .withIndex("by_hackathon_and_key", (q) =>
+        q.eq("hackathonId", undefined).eq("key", IDEA_SUBMISSION_SETTING_KEY),
+      )
+      .first())
+  );
+}
+
 function formatDeadline(deadlineAt: number, timezone: string) {
   try {
     return new Intl.DateTimeFormat("en-US", {
@@ -57,8 +80,11 @@ function formatDeadline(deadlineAt: number, timezone: string) {
   }
 }
 
-export async function assertIdeaSubmissionsOpen(ctx: IdeaSubmissionSettingCtx) {
-  const setting = await getIdeaSubmissionSetting(ctx);
+export async function assertIdeaSubmissionsOpen(
+  ctx: IdeaSubmissionSettingCtx,
+  hackathonId?: Id<"hackathons">,
+) {
+  const setting = await getIdeaSubmissionSettingForHackathon(ctx, hackathonId);
   if (!setting?.active || setting.deadlineAt > Date.now()) return;
 
   throw new Error(
@@ -68,11 +94,15 @@ export async function assertIdeaSubmissionsOpen(ctx: IdeaSubmissionSettingCtx) {
 }
 
 export const getCurrent = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAuthenticatedUser(ctx);
 
-    const setting = await getIdeaSubmissionSetting(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const setting = await getIdeaSubmissionSettingForHackathon(
+      ctx,
+      hackathon?._id,
+    );
     if (!setting?.active) {
       return {
         isOpen: true,
@@ -92,17 +122,19 @@ export const getCurrent = query({
 });
 
 export const getForAdmin = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
 
-    return await getIdeaSubmissionSetting(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    return await getIdeaSubmissionSettingForHackathon(ctx, hackathon?._id);
   },
 });
 
 export const save = mutation({
   args: {
     deadlineAt: v.number(),
+    hackathonId: v.optional(v.id("hackathons")),
     timezone: v.string(),
     message: v.optional(v.string()),
     active: v.boolean(),
@@ -117,8 +149,13 @@ export const save = mutation({
     const timezone = validateTimezone(args.timezone);
     const message = optionalMessage(args.message);
     const now = Date.now();
-    const existing = await getIdeaSubmissionSetting(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    const existing = await getIdeaSubmissionSettingForHackathon(
+      ctx,
+      hackathon?._id,
+    );
     const setting = {
+      hackathonId: hackathon?._id,
       key: IDEA_SUBMISSION_SETTING_KEY,
       deadlineAt: args.deadlineAt,
       timezone,
@@ -138,11 +175,15 @@ export const save = mutation({
 });
 
 export const clear = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     await getAdminUser(ctx);
 
-    const existing = await getIdeaSubmissionSetting(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    const existing = await getIdeaSubmissionSettingForHackathon(
+      ctx,
+      hackathon?._id,
+    );
     if (existing) {
       await ctx.db.delete(existing._id);
     }

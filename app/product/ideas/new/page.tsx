@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 function formatDeadline(deadlineAt: number | null, timezone: string | null) {
   if (!deadlineAt) return null;
@@ -47,10 +48,15 @@ export default function CreateIdeaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const submissionStatus = useQuery(api.ideaSubmissions.getCurrent);
+  const hackathon = useSelectedHackathon();
+  const submissionStatus = useQuery(api.ideaSubmissions.getCurrent, {
+    hackathonId: hackathon?._id,
+  });
 
   const preselectedCategoryId = searchParams.get("categoryId") || undefined;
-  const categories = useQuery(api.categories.list);
+  const categories = useQuery(api.categories.list, {
+    hackathonId: hackathon?._id,
+  });
   const selectedCategory = categories?.find(
     (c) => c._id === preselectedCategoryId,
   );
@@ -64,6 +70,7 @@ export default function CreateIdeaPage() {
     setIsSubmitting(true);
     try {
       const ideaId = await createMutation({
+        hackathonId: hackathon?._id,
         title: data.title,
         pitch: data.pitch,
         problem: data.problem,

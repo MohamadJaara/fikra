@@ -1,7 +1,10 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
   getAuthenticatedUser,
+  getParticipant,
+  getHackathonByIdOrCurrent,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   normalizeOptionalStringArray,
@@ -20,6 +23,7 @@ export const join = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const existing = await ctx.db
       .query("ideaMembers")
@@ -31,7 +35,11 @@ export const join = mutation({
       throw new Error("Already a member");
     }
 
-    if (idea.onsiteOnly && user.participationMode !== "onsite") {
+    const participant = idea.hackathonId
+      ? await getParticipant(ctx, idea.hackathonId, userId)
+      : null;
+    const participationMode = participant?.participationMode ?? user.participationMode;
+    if (idea.onsiteOnly && participationMode !== "onsite") {
       throw new Error(
         "This team is limited to on-site participants only. Update your participation mode to on-site in settings to join.",
       );
@@ -39,7 +47,7 @@ export const join = mutation({
 
     const roles = normalizeOptionalStringArray(memberRoles);
     if (roles) {
-      await validateRoleSlugs(ctx, roles);
+      await validateRoleSlugs(ctx, roles, idea.hackathonId);
     }
 
     if (existing) {
@@ -49,6 +57,7 @@ export const join = mutation({
       });
     } else {
       await ctx.db.insert("ideaMembers", {
+        hackathonId: idea.hackathonId,
         ideaId,
         userId,
         memberRoles: roles,
@@ -71,10 +80,11 @@ export const join = mutation({
 export const leave = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const membership = await ctx.db
       .query("ideaMembers")
@@ -96,12 +106,13 @@ export const updateMemberRoles = mutation({
     memberRoles: v.optional(v.array(v.string())),
   },
   handler: async (ctx, { ideaId, targetUserId, memberRoles }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId)
       throw new Error("Only the idea owner can update member roles");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const membership = await ctx.db
       .query("ideaMembers")
@@ -113,7 +124,7 @@ export const updateMemberRoles = mutation({
 
     const roles = normalizeOptionalStringArray(memberRoles);
     if (roles) {
-      await validateRoleSlugs(ctx, roles);
+      await validateRoleSlugs(ctx, roles, idea.hackathonId);
     }
 
     await ctx.db.patch(membership._id, {
@@ -125,14 +136,22 @@ export const updateMemberRoles = mutation({
 });
 
 export const getByUser = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const memberships = await ctx.db
-      .query("ideaMembers")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const memberships = hackathon
+      ? await ctx.db
+          .query("ideaMembers")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .collect()
+      : await ctx.db
+          .query("ideaMembers")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
 
     const ideas = await Promise.all(
       memberships.map(async (m) => {

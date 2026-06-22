@@ -23,9 +23,13 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export default function AdminCategoriesPage() {
-  const categories = useQuery(api.categories.list);
+  const hackathon = useSelectedHackathon();
+  const categories = useQuery(api.categories.list, {
+    hackathonId: hackathon?._id,
+  });
   const createMutation = useMutation(api.categories.create);
   const updateMutation = useMutation(api.categories.update);
   const deleteMutation = useMutation(api.categories.remove);
@@ -198,7 +202,10 @@ export default function AdminCategoriesPage() {
           if (!input.trim()) return;
           setIsCreating(true);
           try {
-            await createMutation({ name: input.trim() });
+            await createMutation({
+              hackathonId: hackathon?._id,
+              name: input.trim(),
+            });
             toast.success(`Added ${input.trim()}`);
             setInput("");
           } catch (error) {

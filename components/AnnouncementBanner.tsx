@@ -1,6 +1,7 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +40,10 @@ const TYPE_CONFIG = {
 type AnnouncementType = keyof typeof TYPE_CONFIG;
 
 export function AnnouncementBanner() {
-  const announcements = useQuery(api.announcements.getActive);
+  const hackathon = useSelectedHackathon();
+  const announcements = useQuery(api.announcements.getActive, {
+    hackathonId: hackathon?._id,
+  });
   const dismiss = useMutation(api.announcements.dismiss);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
   const [open, setOpen] = useState(false);

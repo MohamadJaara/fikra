@@ -23,8 +23,11 @@ import { Loader2, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import type { Id } from "@/convex/_generated/dataModel";
 
 export type IdeaFormData = {
+  hackathonId?: Id<"hackathons">;
   title: string;
   pitch: string;
   problem: string;
@@ -90,7 +93,10 @@ export function IdeaForm({
   const [onsiteOnly, setOnsiteOnly] = useState(
     initialData?.onsiteOnly || false,
   );
-  const categories = useQuery(api.categories.list);
+  const hackathon = useSelectedHackathon();
+  const categories = useQuery(api.categories.list, {
+    hackathonId: hackathon?._id,
+  });
   const roles = useRolesList();
   const resources = useResourcesList();
   const statusOptions = isEditing
@@ -116,6 +122,7 @@ export function IdeaForm({
       .map((s) => s.trim())
       .filter(Boolean);
     await onSubmit({
+      hackathonId: hackathon?._id,
       title,
       pitch,
       problem,

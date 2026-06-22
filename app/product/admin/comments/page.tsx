@@ -17,9 +17,15 @@ import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 export default function AdminCommentsPage() {
-  const comments = useQuery(api.admin.listComments);
+  const hackathon = useSelectedHackathon();
+  const hackathonId = hackathon?._id;
+  const comments = useQuery(
+    api.admin.listComments,
+    hackathonId ? { hackathonId } : {},
+  );
   const deleteComment = useMutation(api.admin.deleteComment);
   const [search, setSearch] = useState("");
 

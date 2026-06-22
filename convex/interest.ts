@@ -1,16 +1,21 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser } from "./lib";
+import {
+  assertHackathonWritable,
+  getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
+} from "./lib";
 import { internal } from "./_generated/api";
 import { refreshIdeaInterestStats } from "./ideaStats";
 
 export const express = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const existing = await ctx.db
       .query("ideaInterest")
@@ -20,7 +25,11 @@ export const express = mutation({
       .first();
     if (existing) throw new Error("Already expressed interest");
 
-    await ctx.db.insert("ideaInterest", { ideaId, userId });
+    await ctx.db.insert("ideaInterest", {
+      hackathonId: idea.hackathonId,
+      ideaId,
+      userId,
+    });
     await refreshIdeaInterestStats(ctx, ideaId);
 
     await ctx.runMutation(internal.notifications.create, {
@@ -35,7 +44,9 @@ export const express = mutation({
 export const remove = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId } = await getAuthenticatedUser(ctx);
+    const { userId, user } = await getAuthenticatedUser(ctx);
+    const idea = await ctx.db.get(ideaId);
+    if (idea) await assertHackathonWritable(ctx, idea.hackathonId, user);
 
     const interest = await ctx.db
       .query("ideaInterest")
@@ -51,14 +62,22 @@ export const remove = mutation({
 });
 
 export const getByUser = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const interests = await ctx.db
-      .query("ideaInterest")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .collect();
+    const interests = hackathon
+      ? await ctx.db
+          .query("ideaInterest")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .collect()
+      : await ctx.db
+          .query("ideaInterest")
+          .withIndex("by_user", (q) => q.eq("userId", userId))
+          .collect();
 
     const ideas = await Promise.all(
       interests.map(async (i) => {

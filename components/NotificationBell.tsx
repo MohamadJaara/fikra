@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 const TYPE_LABELS: Record<string, string> = {
   member_joined: "joined your idea",
@@ -40,10 +41,14 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export function NotificationBell() {
+  const hackathon = useSelectedHackathon();
   const unreadCount = useQuery(api.notifications.unreadCount);
-  const notifications = useQuery(api.notifications.list);
+  const notifications = useQuery(api.notifications.list, {
+    hackathonId: hackathon?._id,
+  });
   const markRead = useMutation(api.notifications.markRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
+  const productBase = hackathon ? `/product/h/${hackathon.slug}` : "/product";
 
   const count = unreadCount ?? 0;
 
@@ -97,6 +102,7 @@ export function NotificationBell() {
                 <NotificationItem
                   key={n._id}
                   notification={n}
+                  productBase={productBase}
                   onRead={() => void markRead({ notificationId: n._id })}
                 />
               ))}
@@ -105,7 +111,7 @@ export function NotificationBell() {
         </ScrollArea>
         <div className="border-t px-4 py-2">
           <Link
-            href="/product/notifications"
+            href={`${productBase}/notifications`}
             className="text-xs text-primary hover:underline"
           >
             View all notifications
@@ -118,6 +124,7 @@ export function NotificationBell() {
 
 function NotificationItem({
   notification,
+  productBase,
   onRead,
 }: {
   notification: {
@@ -130,6 +137,7 @@ function NotificationItem({
     read: boolean;
     _creationTime: number;
   };
+  productBase: string;
   onRead: () => void;
 }) {
   const label = TYPE_LABELS[notification.type] || notification.type;
@@ -137,7 +145,7 @@ function NotificationItem({
 
   return (
     <Link
-      href={`/product/ideas/${notification.ideaId}`}
+      href={`${productBase}/ideas/${notification.ideaId}`}
       onClick={onRead}
       className={`flex items-start gap-3 px-4 py-3 hover:bg-muted/50 transition-colors ${
         !notification.read ? "bg-muted/30" : ""

@@ -26,6 +26,7 @@ import {
   Loader2,
 } from "lucide-react";
 import type { IdeaListItem } from "@/lib/types";
+import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
 const PAGE_SIZE = 20;
 
@@ -40,14 +41,20 @@ const GRADIENTS = [
 
 export default function CategoryDetailPage() {
   const params = useParams<{ slug: string }>();
-  const category = useQuery(api.categories.getBySlug, { slug: params.slug });
+  const hackathon = useSelectedHackathon();
+  const category = useQuery(api.categories.getBySlug, {
+    slug: params.slug,
+    hackathonId: hackathon?._id,
+  });
   const {
     results: ideas,
     status: ideasStatus,
     loadMore,
   } = usePaginatedQuery(
     api.ideas.listByCategory,
-    category?._id ? { categoryId: category._id } : "skip",
+    category?._id
+      ? { categoryId: category._id, hackathonId: hackathon?._id }
+      : "skip",
     { initialNumItems: PAGE_SIZE },
   );
   const [viewMode, setViewMode] = useState<"list" | "masonry">("masonry");
