@@ -17,7 +17,10 @@ import {
 import type { SortOption } from "@/lib/constants";
 import { useResourcesList, useRolesList } from "@/lib/hooks";
 import { api } from "@/convex/_generated/api";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import type { Id } from "@/convex/_generated/dataModel";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -92,6 +95,7 @@ function BrowseIdeasContent() {
   const router = useRouter();
   const pathname = usePathname();
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
 
   const categoryList = useQuery(api.categories.list, {
     hackathonId: hackathon?._id,
@@ -224,7 +228,9 @@ function BrowseIdeasContent() {
   }, [filters, shelfView, sortBy, viewMode]);
 
   const ideaDetailHref = (ideaId: Id<"ideas">) =>
-    `/product/ideas/${ideaId}?${browseContextQuery}`;
+    browseContextQuery
+      ? `${productBase}/ideas/${ideaId}?${browseContextQuery}`
+      : `${productBase}/ideas/${ideaId}`;
 
   const toggleStringFilter = (
     key: "statuses" | "roles" | "resourceTags",
@@ -277,7 +283,7 @@ function BrowseIdeasContent() {
               : `${ideaCount} ${shelfView === "shelved" ? "shelved " : ""}idea${ideaCount !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <Link href="/product/ideas/new">
+        <Link href={`${productBase}/ideas/new`}>
           <Button>
             <PlusCircle className="h-4 w-4 mr-2" />
             New Idea
@@ -605,7 +611,7 @@ function BrowseIdeasContent() {
             {shelfView === "active" &&
               activeFilterCount === 0 &&
               !filters.search && (
-                <Link href="/product/ideas/new">
+                <Link href={`${productBase}/ideas/new`}>
                   <Button variant="outline">
                     <PlusCircle className="h-4 w-4 mr-2" />
                     Add the First Idea

@@ -167,9 +167,18 @@ export const remove = mutation({
 });
 
 export const list = query({
-  args: { ideaId: v.id("ideas") },
-  handler: async (ctx, { ideaId }) => {
+  args: {
+    ideaId: v.id("ideas"),
+    hackathonId: v.optional(v.id("hackathons")),
+  },
+  handler: async (ctx, { ideaId, hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) return [];
+    if (hackathonId && idea.hackathonId && idea.hackathonId !== hackathonId) {
+      return [];
+    }
 
     const comments = await ctx.db
       .query("comments")

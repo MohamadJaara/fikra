@@ -31,10 +31,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 export default function SavedIdeasPage() {
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const bookmarkedIdeas = useQuery(api.ideas.getBookmarked, {
     hackathonId: hackathon?._id,
   }) as
@@ -158,7 +162,7 @@ export default function SavedIdeasPage() {
           <p className="text-sm text-muted-foreground mb-4">
             Bookmark ideas you want to revisit later. They&apos;ll show up here.
           </p>
-          <Link href="/product/ideas">
+          <Link href={`${productBase}/ideas`}>
             <Button>
               <Sparkles className="h-4 w-4 mr-2" />
               Browse Ideas
@@ -174,7 +178,10 @@ export default function SavedIdeasPage() {
                   key={idea._id}
                   className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                 >
-                  <IdeaMasonryItem idea={idea} />
+                  <IdeaMasonryItem
+                    idea={idea}
+                    href={`${productBase}/ideas/${idea._id}`}
+                  />
                 </div>
               ))}
             </div>
@@ -185,7 +192,10 @@ export default function SavedIdeasPage() {
                   key={idea._id}
                   className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                 >
-                  <IdeaExpandedRow idea={idea} />
+                  <IdeaExpandedRow
+                    idea={idea}
+                    href={`${productBase}/ideas/${idea._id}`}
+                  />
                 </div>
               ))}
             </div>

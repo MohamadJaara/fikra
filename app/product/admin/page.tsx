@@ -33,7 +33,10 @@ import {
   Wrench,
 } from "lucide-react";
 import Link from "next/link";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import {
   ROOM_REQUEST_LABELS,
   STATUSES,
@@ -56,9 +59,8 @@ function widthPercent(value: number, total: number) {
 export default function AdminDashboard() {
   const hackathon = useSelectedHackathon();
   const hackathonId = hackathon?._id;
-  const adminBase = hackathon
-    ? `/product/h/${hackathon.slug}/admin`
-    : "/product/admin";
+  const productBase = useProductBase();
+  const adminBase = `${productBase}/admin`;
   const stats = useQuery(api.admin.stats, hackathonId ? { hackathonId } : {});
 
   if (stats === undefined) {
@@ -249,7 +251,7 @@ export default function AdminDashboard() {
           </p>
         </div>
         <Button asChild size="sm" className="gap-2 sm:mt-1">
-          <Link href="/product/admin/ideas">
+          <Link href={`${adminBase}/ideas`}>
             <DoorOpen className="h-4 w-4" />
             Ideas & Rooms
           </Link>
@@ -313,7 +315,7 @@ export default function AdminDashboard() {
               <h2 className="text-sm font-semibold">Teams And Rooms</h2>
             </div>
             <Button asChild variant="outline" size="sm" className="gap-2">
-              <Link href="/product/admin/ideas">
+              <Link href={`${adminBase}/ideas`}>
                 <ClipboardList className="h-4 w-4" />
                 Manage
               </Link>
@@ -369,7 +371,7 @@ export default function AdminDashboard() {
               stats.topIdeasNeedingRooms.map((idea) => (
                 <Link
                   key={idea._id}
-                  href={`/product/ideas/${idea._id}`}
+                  href={`${productBase}/ideas/${idea._id}`}
                   className="flex flex-col gap-3 border-b p-4 transition-colors last:border-b-0 hover:bg-muted/50 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
@@ -422,7 +424,7 @@ export default function AdminDashboard() {
               <h2 className="text-sm font-semibold">Role Pressure</h2>
             </div>
             <Button asChild variant="outline" size="sm" className="gap-2">
-              <Link href="/product/admin/roles">
+              <Link href={`${adminBase}/roles`}>
                 <ShieldCheck className="h-4 w-4" />
                 Roles
               </Link>
@@ -480,7 +482,7 @@ export default function AdminDashboard() {
               <h2 className="text-sm font-semibold">Resource Needs</h2>
             </div>
             <Button asChild variant="outline" size="sm" className="gap-2">
-              <Link href="/product/admin/resources">
+              <Link href={`${adminBase}/resources`}>
                 <PackageCheck className="h-4 w-4" />
                 Resources
               </Link>

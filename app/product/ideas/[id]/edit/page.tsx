@@ -10,7 +10,10 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 export default function EditIdeaPage({
   params,
@@ -19,7 +22,7 @@ export default function EditIdeaPage({
 }) {
   const { id } = useParamsSync(params);
   const hackathon = useSelectedHackathon();
-  const productBase = hackathon ? `/product/h/${hackathon.slug}` : "/product";
+  const productBase = useProductBase();
   const idea = useQuery(api.ideas.get, {
     ideaId: id as Id<"ideas">,
     hackathonId: hackathon?._id,

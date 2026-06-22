@@ -11,15 +11,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ArrowLeft, Search, Users, Loader2 } from "lucide-react";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 const PAGE_SIZE = 50;
 
 export default function PeoplePage() {
+  const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const {
     results: users,
     status,
     loadMore,
-  } = usePaginatedQuery(api.users.listAll, {}, { initialNumItems: PAGE_SIZE });
+  } = usePaginatedQuery(
+    api.users.listAll,
+    { hackathonId: hackathon?._id },
+    { initialNumItems: PAGE_SIZE },
+  );
   const roles = useRolesList();
   const roleLabels = useRolesMap();
   const [search, setSearch] = useState("");
@@ -52,7 +62,7 @@ export default function PeoplePage() {
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <Link
-        href="/product"
+        href={productBase}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-4"
       >
         <ArrowLeft className="h-4 w-4" />

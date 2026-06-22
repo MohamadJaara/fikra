@@ -12,6 +12,7 @@ import type { DiscoverIdeaCardData } from "./idea-card";
 import { EmptyDiscoverState } from "./empty-state";
 import { DiscoverOnboarding } from "./discover-onboarding";
 import {
+  useProductBase,
   useProductViewer,
   useSelectedHackathon,
 } from "@/components/ProductLayoutClient";
@@ -28,6 +29,7 @@ type SwipeEntry = {
 export default function DiscoverPage() {
   const viewer = useProductViewer();
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const [mode, setMode] = useState<Mode>("browse");
   const [swipedIds, setSwipedIds] = useState<Set<Id<"ideas">>>(() => new Set());
   const [swipeHistory, setSwipeHistory] = useState<SwipeEntry[]>([]);
@@ -226,7 +228,7 @@ export default function DiscoverPage() {
                     onSwipe={handleSwipe}
                     onTap={() => {
                       window.open(
-                        `/product/ideas/${currentIdea._id}`,
+                        `${productBase}/ideas/${currentIdea._id}`,
                         "_blank",
                       );
                     }}

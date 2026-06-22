@@ -15,7 +15,10 @@ import type { UnresolvedResource } from "@/lib/types";
 import { Lightbulb, Users, Heart, Package, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 type TabKey = "created" | "joined" | "interested" | "resources";
 
@@ -37,6 +40,7 @@ const statusAccentColors: Record<Status, string> = {
 export default function ActivityPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("created");
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
 
   const createdIdeas = useQuery(api.ideas.getByOwner, {
     hackathonId: hackathon?._id,
@@ -168,15 +172,19 @@ export default function ActivityPage() {
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
           >
             {activeTab === "resources" ? (
-              <ResourceList resources={unresolvedResources} />
+              <ResourceList
+                productBase={productBase}
+                resources={unresolvedResources}
+              />
             ) : activeTab === "created" ? (
               <IdeaList
+                productBase={productBase}
                 ideas={createdIdeas}
                 emptyMessage="No ideas created yet"
                 emptyDescription="Start by sharing a concept that excites you."
                 emptyAction={
                   <Link
-                    href="/product/ideas/new"
+                    href={`${productBase}/ideas/new`}
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-foreground/70 transition-colors group"
                   >
                     Create your first idea
@@ -186,12 +194,13 @@ export default function ActivityPage() {
               />
             ) : activeTab === "joined" ? (
               <IdeaList
+                productBase={productBase}
                 ideas={joinedIdeas}
                 emptyMessage="No teams joined yet"
                 emptyDescription="Discover ideas and join teams that match your skills."
                 emptyAction={
                   <Link
-                    href="/product"
+                    href={productBase}
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-foreground/70 transition-colors group"
                   >
                     Browse ideas
@@ -201,12 +210,13 @@ export default function ActivityPage() {
               />
             ) : (
               <IdeaList
+                productBase={productBase}
                 ideas={interestedIdeas}
                 emptyMessage="No interest expressed yet"
                 emptyDescription="Explore ideas and indicate which ones catch your eye."
                 emptyAction={
                   <Link
-                    href="/product"
+                    href={`${productBase}/discover`}
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground hover:text-foreground/70 transition-colors group"
                   >
                     Discover ideas
@@ -223,11 +233,13 @@ export default function ActivityPage() {
 }
 
 function IdeaList({
+  productBase,
   ideas,
   emptyMessage,
   emptyDescription,
   emptyAction,
 }: {
+  productBase: string;
   ideas:
     | ({
         _id: Id<"ideas">;
@@ -281,7 +293,7 @@ function IdeaList({
             }}
           >
             <Link
-              href={`/product/ideas/${idea._id}`}
+              href={`${productBase}/ideas/${idea._id}`}
               className={`group flex items-start gap-4 py-4 pl-4 border-l-2 ${borderColor} hover:bg-muted/30 transition-colors duration-150`}
             >
               <div className="flex-1 min-w-0 pt-0.5">
@@ -314,8 +326,10 @@ function IdeaList({
 }
 
 function ResourceList({
+  productBase,
   resources,
 }: {
+  productBase: string;
   resources: UnresolvedResource[] | undefined;
 }) {
   if (resources === undefined) {
@@ -350,7 +364,7 @@ function ResourceList({
           }}
         >
           <Link
-            href={`/product/ideas/${req.ideaId}`}
+            href={`${productBase}/ideas/${req.ideaId}`}
             className="group flex items-start gap-4 py-4 pl-4 border-l-2 border-l-orange-400 dark:border-l-orange-500 hover:bg-muted/30 transition-colors duration-150"
           >
             <div className="flex-1 min-w-0 pt-0.5">

@@ -14,7 +14,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 const TYPE_LABELS: Record<string, string> = {
   member_joined: "joined your idea",
@@ -42,13 +45,12 @@ const TYPE_LABELS: Record<string, string> = {
 
 export function NotificationBell() {
   const hackathon = useSelectedHackathon();
-  const unreadCount = useQuery(api.notifications.unreadCount);
-  const notifications = useQuery(api.notifications.list, {
-    hackathonId: hackathon?._id,
-  });
+  const productBase = useProductBase();
+  const notificationArgs = { hackathonId: hackathon?._id };
+  const unreadCount = useQuery(api.notifications.unreadCount, notificationArgs);
+  const notifications = useQuery(api.notifications.list, notificationArgs);
   const markRead = useMutation(api.notifications.markRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
-  const productBase = hackathon ? `/product/h/${hackathon.slug}` : "/product";
 
   const count = unreadCount ?? 0;
 
@@ -70,7 +72,7 @@ export function NotificationBell() {
           <h4 className="text-sm font-semibold">Notifications</h4>
           {count > 0 && (
             <button
-              onClick={() => void markAllRead()}
+              onClick={() => void markAllRead(notificationArgs)}
               className="text-xs text-primary hover:underline"
             >
               Mark all read

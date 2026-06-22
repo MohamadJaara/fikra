@@ -16,7 +16,22 @@ import type { Id } from "./_generated/dataModel";
 async function countUnreadForRecipient(
   ctx: QueryCtx | MutationCtx,
   recipientId: Id<"users">,
+  hackathonId?: Id<"hackathons">,
 ) {
+  if (hackathonId) {
+    return (
+      await ctx.db
+        .query("notifications")
+        .withIndex("by_hackathon_and_recipient_and_read", (q) =>
+          q
+            .eq("hackathonId", hackathonId)
+            .eq("recipientId", recipientId)
+            .eq("read", false),
+        )
+        .collect()
+    ).length;
+  }
+
   return (
     await ctx.db
       .query("notifications")
@@ -163,9 +178,14 @@ export const list = query({
 });
 
 export const unreadCount = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+
+    if (hackathon) {
+      return await countUnreadForRecipient(ctx, userId, hackathon._id);
+    }
 
     if (typeof user.unreadNotificationCount === "number") {
       return user.unreadNotificationCount;
@@ -210,20 +230,33 @@ export const markRead = mutation({
 });
 
 export const markAllRead = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { hackathonId: v.optional(v.id("hackathons")) },
+  handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
-    const unread = await ctx.db
-      .query("notifications")
-      .withIndex("by_recipient_and_read", (q) =>
-        q.eq("recipientId", userId).eq("read", false),
-      )
-      .collect();
+    const unread = hackathon
+      ? await ctx.db
+          .query("notifications")
+          .withIndex("by_hackathon_and_recipient_and_read", (q) =>
+            q
+              .eq("hackathonId", hackathon._id)
+              .eq("recipientId", userId)
+              .eq("read", false),
+          )
+          .collect()
+      : await ctx.db
+          .query("notifications")
+          .withIndex("by_recipient_and_read", (q) =>
+            q.eq("recipientId", userId).eq("read", false),
+          )
+          .collect();
 
     for (const n of unread) {
       await ctx.db.patch(n._id, { read: true });
     }
-    await ctx.db.patch(userId, { unreadNotificationCount: 0 });
+    await ctx.db.patch(userId, {
+      unreadNotificationCount: await countUnreadForRecipient(ctx, userId),
+    });
   },
 });

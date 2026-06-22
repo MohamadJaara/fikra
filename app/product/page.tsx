@@ -2,7 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { api } from "@/convex/_generated/api";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { useQuery } from "convex/react";
 import Link from "next/link";
 import Image from "next/image";
@@ -45,6 +48,7 @@ const ORNAMENT_PATTERNS = [
 const STORAGE_KEY = "fikra_discover_onboarding_seen";
 
 function DiscoverBanner() {
+  const productBase = useProductBase();
   const [visible, setVisible] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -94,7 +98,7 @@ function DiscoverBanner() {
               Not your vibe? Swipe left. Find your next hackathon project.
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              <Link href="/product/discover">
+              <Link href={`${productBase}/discover`}>
                 <Button
                   size="sm"
                   className="gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white border-0"
@@ -124,6 +128,7 @@ function DiscoverBanner() {
 
 export default function ThemesPage() {
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const categories = useQuery(api.categories.listWithDetails, {
     hackathonId: hackathon?._id,
   });
@@ -138,7 +143,7 @@ export default function ThemesPage() {
             </h1>
             <div className="h-[2px] w-16 bg-foreground/20 mt-3 animate-line-grow" />
           </div>
-          <Link href="/product/ideas">
+          <Link href={`${productBase}/ideas`}>
             <Button
               variant="outline"
               className="gap-2 text-xs tracking-wider uppercase rounded-none"
@@ -208,7 +213,7 @@ export default function ThemesPage() {
             return (
               <Link
                 key={cat._id}
-                href={`/product/categories/${cat.slug}`}
+                href={`${productBase}/categories/${cat.slug}`}
                 className={`group relative block animate-scale-reveal stagger-${Math.min(i + 1, 9)}`}
               >
                 <div className="relative aspect-[16/10] overflow-hidden">

@@ -19,6 +19,7 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
+import { useProductBase } from "@/components/ProductLayoutClient";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -81,6 +82,7 @@ function formatPreview(startValue: string, endValue: string, timezone: string) {
 }
 
 export default function AdminEventPage() {
+  const productBase = useProductBase();
   const event = useQuery(api.event.getForAdmin);
   const saveEvent = useMutation(api.event.save);
   const markDone = useMutation(api.event.markDone);
@@ -227,7 +229,7 @@ export default function AdminEventPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link
-            href="/product/admin"
+            href={`${productBase}/admin`}
             className="text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-5 w-5" />

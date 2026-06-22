@@ -30,6 +30,21 @@ export function useSelectedHackathon() {
   return use(ProductHackathonContext);
 }
 
+export function productBaseForHackathon(
+  hackathon: ProductHackathon | null,
+  pathname?: string,
+) {
+  if (hackathon && pathname?.startsWith(`/product/h/${hackathon.slug}`)) {
+    return `/product/h/${hackathon.slug}`;
+  }
+  return "/product";
+}
+
+export function useProductBase() {
+  const pathname = usePathname();
+  return productBaseForHackathon(useSelectedHackathon(), pathname);
+}
+
 function hackathonSlugFromPathname(pathname: string) {
   const parts = pathname.split("/").filter(Boolean);
   const hIndex = parts.indexOf("h");
@@ -58,7 +73,7 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
     api.voting.status,
     viewer && selectedHackathon
       ? { hackathonId: selectedHackathon._id }
-      : viewer && selectedHackathon === null
+      : viewer && !hackathonSlug && selectedHackathon === null
         ? {}
         : "skip",
   );
@@ -84,7 +99,9 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
       !viewer.isAdmin &&
       !onVotingPage
     ) {
-      router.replace("/product/voting");
+      router.replace(
+        `${productBaseForHackathon(selectedHackathon, pathname)}/voting`,
+      );
     }
   }, [viewer, selectedHackathon, votingStatus, pathname, router]);
 

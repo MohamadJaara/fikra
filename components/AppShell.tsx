@@ -288,7 +288,7 @@ function SidebarContent({
           href={
             viewer?.handle
               ? `/product/profile/${viewer.handle}`
-              : "/product/settings"
+              : productHref("/settings")
           }
           className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-muted/50 transition-colors"
           onClick={onClose}

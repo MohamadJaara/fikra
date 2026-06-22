@@ -9,10 +9,14 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 export default function AdminRolesPage() {
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const roles = useQuery(api.roles.list, { hackathonId: hackathon?._id });
   const createManyMutation = useMutation(api.roles.createMany);
   const deleteMutation = useMutation(api.roles.remove);
@@ -73,7 +77,7 @@ export default function AdminRolesPage() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href="/product/admin"
+          href={`${productBase}/admin`}
           className="text-muted-foreground hover:text-primary"
         >
           <ArrowLeft className="h-5 w-5" />

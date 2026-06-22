@@ -26,7 +26,10 @@ import {
   Loader2,
 } from "lucide-react";
 import type { IdeaListItem } from "@/lib/types";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 const PAGE_SIZE = 20;
 
@@ -42,6 +45,7 @@ const GRADIENTS = [
 export default function CategoryDetailPage() {
   const params = useParams<{ slug: string }>();
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const category = useQuery(api.categories.getBySlug, {
     slug: params.slug,
     hackathonId: hackathon?._id,
@@ -82,7 +86,7 @@ export default function CategoryDetailPage() {
         <p className="text-sm text-muted-foreground mb-4">
           This theme doesn&apos;t exist or has been removed.
         </p>
-        <Link href="/product">
+        <Link href={productBase}>
           <Button variant="outline">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Themes
@@ -98,7 +102,7 @@ export default function CategoryDetailPage() {
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto">
       <Link
-        href="/product"
+        href={productBase}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -143,7 +147,7 @@ export default function CategoryDetailPage() {
                   : `${ideas.length} ${ideas.length === 1 ? "idea" : "ideas"}`}
               </Badge>
             </div>
-            <Link href={`/product/ideas/new?categoryId=${category._id}`}>
+            <Link href={`${productBase}/ideas/new?categoryId=${category._id}`}>
               <Button>
                 <PlusCircle className="h-4 w-4 mr-2" />
                 New Idea
@@ -217,7 +221,7 @@ export default function CategoryDetailPage() {
             <span className="font-medium text-foreground">{category.name}</span>
             .
           </p>
-          <Link href={`/product/ideas/new?categoryId=${category._id}`}>
+          <Link href={`${productBase}/ideas/new?categoryId=${category._id}`}>
             <Button>
               <PlusCircle className="h-4 w-4 mr-2" />
               Create the First Idea
@@ -233,7 +237,10 @@ export default function CategoryDetailPage() {
                   key={idea._id}
                   className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                 >
-                  <IdeaMasonryItem idea={idea} />
+                  <IdeaMasonryItem
+                    idea={idea}
+                    href={`${productBase}/ideas/${idea._id}`}
+                  />
                 </div>
               ))}
             </div>
@@ -244,7 +251,10 @@ export default function CategoryDetailPage() {
                   key={idea._id}
                   className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                 >
-                  <IdeaExpandedRow idea={idea} />
+                  <IdeaExpandedRow
+                    idea={idea}
+                    href={`${productBase}/ideas/${idea._id}`}
+                  />
                 </div>
               ))}
             </div>

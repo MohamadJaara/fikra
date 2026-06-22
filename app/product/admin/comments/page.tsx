@@ -17,11 +17,15 @@ import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 export default function AdminCommentsPage() {
   const hackathon = useSelectedHackathon();
   const hackathonId = hackathon?._id;
+  const productBase = useProductBase();
   const comments = useQuery(
     api.admin.listComments,
     hackathonId ? { hackathonId } : {},
@@ -63,7 +67,7 @@ export default function AdminCommentsPage() {
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href="/product/admin"
+          href={`${productBase}/admin`}
           className="text-muted-foreground hover:text-primary"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -131,7 +135,7 @@ export default function AdminCommentsPage() {
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/product/ideas/${comment.ideaId}`}
+                      href={`${productBase}/ideas/${comment.ideaId}`}
                       className="text-sm text-primary hover:underline line-clamp-1"
                     >
                       {comment.ideaTitle}

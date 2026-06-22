@@ -16,7 +16,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 function formatDeadline(deadlineAt: number | null, timezone: string | null) {
   if (!deadlineAt) return null;
@@ -49,6 +52,7 @@ export default function CreateIdeaPage() {
   const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const submissionStatus = useQuery(api.ideaSubmissions.getCurrent, {
     hackathonId: hackathon?._id,
   });
@@ -85,7 +89,7 @@ export default function CreateIdeaPage() {
         onsiteOnly: data.onsiteOnly,
       });
       toast.success("Idea created!");
-      router.push(`/product/ideas/${ideaId}`);
+      router.push(`${productBase}/ideas/${ideaId}`);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to create idea",
@@ -107,7 +111,7 @@ export default function CreateIdeaPage() {
       <div className="mb-10 animate-fade-in">
         {selectedCategory ? (
           <Link
-            href={`/product/categories/${selectedCategory.slug}`}
+            href={`${productBase}/categories/${selectedCategory.slug}`}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
@@ -115,7 +119,7 @@ export default function CreateIdeaPage() {
           </Link>
         ) : (
           <Link
-            href="/product"
+            href={productBase}
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
           >
             <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
@@ -188,13 +192,13 @@ export default function CreateIdeaPage() {
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild>
-                <Link href="/product/discover">
+                <Link href={`${productBase}/discover`}>
                   <Sparkles className="mr-2 h-4 w-4" />
                   Find a team
                 </Link>
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/product/ideas">
+                <Link href={`${productBase}/ideas`}>
                   <Lightbulb className="mr-2 h-4 w-4" />
                   Browse ideas
                 </Link>

@@ -46,6 +46,7 @@ import {
   memberToTransferCandidate,
   userToTransferCandidate,
 } from "./shared";
+import { useProductBase } from "@/components/ProductLayoutClient";
 
 function CandidateAvatar({ candidate }: { candidate: TransferCandidate }) {
   return (
@@ -389,6 +390,7 @@ function TransferOwnershipDialog({
 
 export function OwnerActions({ idea }: { idea: IdeaDetail }) {
   const ideaId = idea._id;
+  const productBase = useProductBase();
   const deleteMutation = useMutation(api.ideas.remove);
   const shelveMutation = useMutation(api.ideas.shelve);
   const unshelveMutation = useMutation(api.ideas.unshelve);
@@ -404,7 +406,7 @@ export function OwnerActions({ idea }: { idea: IdeaDetail }) {
     try {
       await deleteMutation({ ideaId });
       toast.success("Idea deleted");
-      router.push("/product");
+      router.push(productBase);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to delete");
     }
@@ -518,7 +520,7 @@ export function OwnerActions({ idea }: { idea: IdeaDetail }) {
           Mark formed
         </Button>
       )}
-      <Link href={`/product/ideas/${ideaId}/edit`}>
+      <Link href={`${productBase}/ideas/${ideaId}/edit`}>
         <Button variant="outline" size="sm">
           <Edit className="h-4 w-4 mr-1" />
           Edit

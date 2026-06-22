@@ -62,6 +62,20 @@ async function getIdeaSubmissionSettingForHackathon(
   );
 }
 
+async function getExactIdeaSubmissionSettingForHackathon(
+  ctx: IdeaSubmissionSettingCtx,
+  hackathonId?: Id<"hackathons">,
+) {
+  if (!hackathonId) return await getIdeaSubmissionSetting(ctx);
+
+  return await ctx.db
+    .query("ideaSubmissionSettings")
+    .withIndex("by_hackathon_and_key", (q) =>
+      q.eq("hackathonId", hackathonId).eq("key", IDEA_SUBMISSION_SETTING_KEY),
+    )
+    .unique();
+}
+
 function formatDeadline(deadlineAt: number, timezone: string) {
   try {
     return new Intl.DateTimeFormat("en-US", {
@@ -150,7 +164,7 @@ export const save = mutation({
     const message = optionalMessage(args.message);
     const now = Date.now();
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    const existing = await getIdeaSubmissionSettingForHackathon(
+    const existing = await getExactIdeaSubmissionSettingForHackathon(
       ctx,
       hackathon?._id,
     );
@@ -177,15 +191,33 @@ export const save = mutation({
 export const clear = mutation({
   args: { hackathonId: v.optional(v.id("hackathons")) },
   handler: async (ctx, { hackathonId }) => {
-    await getAdminUser(ctx);
+    const { userId } = await getAdminUser(ctx);
 
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    const existing = await getIdeaSubmissionSettingForHackathon(
+    const existing = await getExactIdeaSubmissionSettingForHackathon(
       ctx,
       hackathon?._id,
     );
     if (existing) {
       await ctx.db.delete(existing._id);
+      return;
+    }
+
+    const inherited = await getIdeaSubmissionSettingForHackathon(
+      ctx,
+      hackathon?._id,
+    );
+    if (hackathon && inherited?.active) {
+      await ctx.db.insert("ideaSubmissionSettings", {
+        hackathonId: hackathon._id,
+        key: IDEA_SUBMISSION_SETTING_KEY,
+        deadlineAt: inherited.deadlineAt,
+        timezone: inherited.timezone,
+        message: inherited.message,
+        active: false,
+        updatedBy: userId,
+        updatedAt: Date.now(),
+      });
     }
   },
 });

@@ -65,7 +65,10 @@ import Link from "next/link";
 import { useState, useMemo } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -291,6 +294,7 @@ export default function AdminIdeasPage() {
   const convex = useConvex();
   const hackathon = useSelectedHackathon();
   const hackathonId = hackathon?._id;
+  const productBase = useProductBase();
   const hackathonArgs = hackathonId ? { hackathonId } : {};
   const ideas = useQuery(api.admin.listIdeas, hackathonArgs);
   const rooms = useQuery(api.rooms.list, hackathonArgs);
@@ -627,7 +631,7 @@ export default function AdminIdeasPage() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
           <Link
-            href="/product/admin"
+            href={`${productBase}/admin`}
             className="mt-1 text-muted-foreground hover:text-primary"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -841,7 +845,7 @@ export default function AdminIdeasPage() {
                       <TableRow key={idea._id}>
                         <TableCell>
                           <Link
-                            href={`/product/ideas/${idea._id}`}
+                            href={`${productBase}/ideas/${idea._id}`}
                             className="font-medium text-sm hover:underline"
                           >
                             {idea.title}
@@ -1373,7 +1377,7 @@ export default function AdminIdeasPage() {
                               className="flex items-center justify-between gap-2 text-xs"
                             >
                               <Link
-                                href={`/product/ideas/${ideaId}`}
+                                href={`${productBase}/ideas/${ideaId}`}
                                 className="truncate text-muted-foreground hover:text-foreground hover:underline"
                               >
                                 {room.assignedIdeaTitles[idx]}

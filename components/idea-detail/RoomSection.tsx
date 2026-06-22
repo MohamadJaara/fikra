@@ -18,8 +18,11 @@ import {
   type TeamFormationSource,
 } from "@/lib/constants";
 import type { IdeaDetail } from "@/lib/types";
+import { useProductBase } from "@/components/ProductLayoutClient";
 
 export function RoomSection({ idea }: { idea: IdeaDetail }) {
+  const productBase = useProductBase();
+
   if (!idea.room && idea.teamFormationStatus !== "formed") return null;
 
   const hasLocationInfo =
@@ -92,7 +95,7 @@ export function RoomSection({ idea }: { idea: IdeaDetail }) {
                 <span key={shared._id} className="inline-flex items-center">
                   {i > 0 && <span className="mr-1.5">,</span>}
                   <Link
-                    href={`/product/ideas/${shared._id}`}
+                    href={`${productBase}/ideas/${shared._id}`}
                     className="text-primary hover:underline font-medium"
                   >
                     {shared.title}

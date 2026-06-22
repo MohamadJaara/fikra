@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { NotificationSkeleton } from "@/components/Skeleton";
 import Link from "next/link";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 const TYPE_LABELS: Record<string, string> = {
   member_joined: "joined your idea",
@@ -35,10 +38,10 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function NotificationsPage() {
   const hackathon = useSelectedHackathon();
-  const notifications = useQuery(api.notifications.list, {
-    hackathonId: hackathon?._id,
-  });
-  const unreadCount = useQuery(api.notifications.unreadCount);
+  const productBase = useProductBase();
+  const notificationArgs = { hackathonId: hackathon?._id };
+  const notifications = useQuery(api.notifications.list, notificationArgs);
+  const unreadCount = useQuery(api.notifications.unreadCount, notificationArgs);
   const markRead = useMutation(api.notifications.markRead);
   const markAllRead = useMutation(api.notifications.markAllRead);
 
@@ -50,7 +53,7 @@ export default function NotificationsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => void markAllRead()}
+            onClick={() => void markAllRead(notificationArgs)}
           >
             Mark all read
           </Button>
@@ -70,7 +73,7 @@ export default function NotificationsPage() {
             you&apos;ll see it here.
           </p>
           <Link
-            href="/product"
+            href={productBase}
             className="text-sm text-primary hover:underline"
           >
             Browse ideas
@@ -84,7 +87,7 @@ export default function NotificationsPage() {
             return (
               <Link
                 key={n._id}
-                href={`/product/ideas/${n.ideaId}${n.commentId ? `?comment=${n.commentId}` : ""}`}
+                href={`${productBase}/ideas/${n.ideaId}${n.commentId ? `?comment=${n.commentId}` : ""}`}
                 onClick={() => {
                   if (!n.read) void markRead({ notificationId: n._id });
                 }}

@@ -11,16 +11,18 @@ type Direction = "previous" | "next";
 function IdeaNavigationLink({
   direction,
   item,
+  productBase,
   query,
 }: {
   direction: Direction;
   item: NonNullable<IdeaNavigationType[Direction]>;
+  productBase: string;
   query: string;
 }) {
   const isNext = direction === "next";
   const label = isNext ? "Next idea" : "Previous idea";
   const Icon = isNext ? ArrowRight : ArrowLeft;
-  const href = `/product/ideas/${item._id}${query ? `?${query}` : ""}`;
+  const href = `${productBase}/ideas/${item._id}${query ? `?${query}` : ""}`;
 
   return (
     <Link
@@ -70,9 +72,11 @@ function EmptySlot({ direction }: { direction: Direction }) {
 
 export function IdeaNavigation({
   navigation,
+  productBase = "/product",
   query = "",
 }: {
   navigation: IdeaNavigationType | undefined;
+  productBase?: string;
   query?: string;
 }) {
   if (navigation === undefined) {
@@ -96,6 +100,7 @@ export function IdeaNavigation({
           <IdeaNavigationLink
             direction="previous"
             item={navigation.previous}
+            productBase={productBase}
             query={query}
           />
         ) : (
@@ -104,7 +109,12 @@ export function IdeaNavigation({
       </div>
       <div className="min-w-0 pl-0 sm:pl-4">
         {navigation.next ? (
-          <IdeaNavigationLink direction="next" item={navigation.next} query={query} />
+          <IdeaNavigationLink
+            direction="next"
+            item={navigation.next}
+            productBase={productBase}
+            query={query}
+          />
         ) : (
           <EmptySlot direction="next" />
         )}

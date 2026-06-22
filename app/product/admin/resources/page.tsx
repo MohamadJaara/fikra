@@ -9,10 +9,14 @@ import { ArrowLeft, Loader2, Package, PlusCircle, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 export default function AdminResourcesPage() {
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const resources = useQuery(api.resources.list, {
     hackathonId: hackathon?._id,
   });
@@ -78,7 +82,7 @@ export default function AdminResourcesPage() {
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href="/product/admin"
+          href={`${productBase}/admin`}
           className="text-muted-foreground hover:text-primary"
         >
           <ArrowLeft className="h-5 w-5" />

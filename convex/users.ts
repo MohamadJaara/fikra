@@ -271,9 +271,41 @@ export const getProfile = query({
 });
 
 export const listAll = query({
-  args: { paginationOpts: paginationOptsValidator },
-  handler: async (ctx, { paginationOpts }) => {
+  args: {
+    hackathonId: v.optional(v.id("hackathons")),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { hackathonId, paginationOpts }) => {
     await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+
+    if (hackathon) {
+      const result = await ctx.db
+        .query("hackathonParticipants")
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", hackathon._id),
+        )
+        .paginate(paginationOpts);
+
+      const page = await Promise.all(
+        result.page.map(async (participant) => {
+          if (participant.onboardingComplete === false) return null;
+          const user = await ctx.db.get(participant.userId);
+          if (!user || !user.onboardingComplete) return null;
+          return {
+            ...pickPublicFields(user),
+            roles: participant.roles ?? user.roles,
+            participationMode:
+              participant.participationMode ?? user.participationMode,
+          };
+        }),
+      );
+
+      return {
+        ...result,
+        page: page.filter((user) => user !== null),
+      };
+    }
 
     const result = await ctx.db
       .query("users")

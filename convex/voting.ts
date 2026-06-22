@@ -46,6 +46,25 @@ async function getVotingSettings(
   );
 }
 
+async function getExactVotingSettings(
+  ctx: QueryCtx | MutationCtx,
+  hackathonId: Id<"hackathons"> | undefined,
+) {
+  if (!hackathonId) {
+    return await ctx.db
+      .query("votingSettings")
+      .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
+      .unique();
+  }
+
+  return await ctx.db
+    .query("votingSettings")
+    .withIndex("by_hackathon_and_key", (q) =>
+      q.eq("hackathonId", hackathonId).eq("key", SETTINGS_KEY),
+    )
+    .unique();
+}
+
 async function getRoundVoteRows(
   ctx: QueryCtx,
   round: number,
@@ -336,7 +355,7 @@ export const start = mutation({
   handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    const existing = await getVotingSettings(ctx, hackathon?._id);
+    const existing = await getExactVotingSettings(ctx, hackathon?._id);
     const now = Date.now();
 
     if (!existing) {
@@ -373,10 +392,25 @@ export const stop = mutation({
   handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    const existing = await getVotingSettings(ctx, hackathon?._id);
-    if (!existing) return { active: false };
-
     const now = Date.now();
+    const existing = await getExactVotingSettings(ctx, hackathon?._id);
+    if (!existing) {
+      const inherited = await getVotingSettings(ctx, hackathon?._id);
+      if (hackathon && inherited?.active) {
+        await ctx.db.insert("votingSettings", {
+          hackathonId: hackathon._id,
+          key: SETTINGS_KEY,
+          active: false,
+          currentRound: inherited.currentRound,
+          startedAt: inherited.startedAt,
+          endedAt: now,
+          updatedBy: userId,
+          updatedAt: now,
+        });
+      }
+      return { active: false };
+    }
+
     await ctx.db.patch(existing._id, {
       active: false,
       endedAt: now,

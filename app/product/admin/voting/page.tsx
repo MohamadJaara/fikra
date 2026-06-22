@@ -18,7 +18,10 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 function formatTime(value?: number) {
   if (!value) return "Not started";
@@ -30,6 +33,7 @@ function formatTime(value?: number) {
 
 export default function AdminVotingPage() {
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const overview = useQuery(api.voting.adminOverview, {
     hackathonId: hackathon?._id,
   });
@@ -71,7 +75,7 @@ export default function AdminVotingPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <Link
-            href="/product/admin"
+            href={`${productBase}/admin`}
             className="mt-1 text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -205,7 +209,7 @@ export default function AdminVotingPage() {
                 results.map((idea, index) => (
                   <Link
                     key={idea._id}
-                    href={`/product/ideas/${idea._id}`}
+                    href={`${productBase}/ideas/${idea._id}`}
                     className="block border-b p-4 transition-colors last:border-b-0 hover:bg-muted/50"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

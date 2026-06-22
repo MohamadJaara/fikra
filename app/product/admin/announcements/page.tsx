@@ -29,7 +29,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { AnimatePresence, motion } from "framer-motion";
 
 const TYPE_META: Record<
@@ -67,6 +70,7 @@ const TYPE_META: Record<
 
 export default function AdminAnnouncementsPage() {
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const announcements = useQuery(api.announcements.list, {
     hackathonId: hackathon?._id,
   });
@@ -129,10 +133,10 @@ export default function AdminAnnouncementsPage() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link
-            href="/product/admin"
-            className="text-muted-foreground hover:text-primary"
-          >
+        <Link
+          href={`${productBase}/admin`}
+          className="text-muted-foreground hover:text-primary"
+        >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>

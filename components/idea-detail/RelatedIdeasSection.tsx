@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/select";
 import { STATUS_LABELS, type Status } from "@/lib/constants";
 import { toast } from "sonner";
+import { useProductBase } from "@/components/ProductLayoutClient";
 
 type RelatedIdea = {
   _id: string;
@@ -72,6 +73,7 @@ export function RelatedIdeasSection({
   ideaId: Id<"ideas">;
   isOwner: boolean;
 }) {
+  const productBase = useProductBase();
   const relations = useQuery(api.relatedIdeas.listForIdea, { ideaId });
   const duplicates = useQuery(
     api.relatedIdeas.searchPotentialDuplicates,
@@ -230,7 +232,7 @@ export function RelatedIdeasSection({
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
                             <Link
-                              href={`/product/ideas/${dup._id}`}
+                              href={`${productBase}/ideas/${dup._id}`}
                               className="text-sm font-medium hover:underline"
                               target="_blank"
                             >
@@ -374,6 +376,7 @@ export function RelatedIdeasSection({
               relation={rel}
               isOwner={isOwner}
               actionLoading={actionLoading}
+              productBase={productBase}
               onRemove={handleRemove}
               onRequestMerge={handleRequestMerge}
               onAcceptMerge={handleAcceptMerge}
@@ -394,6 +397,7 @@ export function RelatedIdeasSection({
               relation={rel}
               isOwner={isOwner}
               actionLoading={actionLoading}
+              productBase={productBase}
               onRemove={handleRemove}
               onRequestMerge={handleRequestMerge}
               onAcceptMerge={handleAcceptMerge}
@@ -417,6 +421,7 @@ function RelatedIdeaCard({
   relation,
   isOwner,
   actionLoading,
+  productBase,
   onRemove,
   onRequestMerge,
   onAcceptMerge,
@@ -425,6 +430,7 @@ function RelatedIdeaCard({
   relation: RelatedIdea;
   isOwner: boolean;
   actionLoading: string | null;
+  productBase: string;
   onRemove: (id: string) => void;
   onRequestMerge: (id: string) => void;
   onAcceptMerge: (id: string) => void;
@@ -444,7 +450,7 @@ function RelatedIdeaCard({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <Link
-            href={`/product/ideas/${relation.otherIdeaId}`}
+            href={`${productBase}/ideas/${relation.otherIdeaId}`}
             className="font-medium hover:underline truncate"
           >
             {relation.otherIdeaTitle}

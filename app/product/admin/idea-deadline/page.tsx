@@ -18,7 +18,10 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -47,6 +50,7 @@ function formatDeadline(value: string, timezone: string) {
 
 export default function AdminIdeaDeadlinePage() {
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const setting = useQuery(api.ideaSubmissions.getForAdmin, {
     hackathonId: hackathon?._id,
   });
@@ -145,7 +149,7 @@ export default function AdminIdeaDeadlinePage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Link
-            href="/product/admin"
+            href={`${productBase}/admin`}
             className="text-muted-foreground transition-colors hover:text-primary"
           >
             <ArrowLeft className="h-5 w-5" />

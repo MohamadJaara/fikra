@@ -2,7 +2,10 @@
 
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useProductViewer } from "@/components/ProductLayoutClient";
+import {
+  useProductViewer,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { useState } from "react";
 import { useRolesList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
@@ -25,6 +28,7 @@ const section = {
 
 export default function SettingsPage() {
   const viewer = useProductViewer();
+  const hackathon = useSelectedHackathon();
   const updateProfile = useMutation(api.users.updateProfile);
   const roles = useRolesList();
 
@@ -69,6 +73,7 @@ export default function SettingsPage() {
     setIsSubmitting(true);
     try {
       await updateProfile({
+        hackathonId: hackathon?._id,
         firstName: form.firstName,
         lastName: form.lastName,
         roles: form.selectedRoles,

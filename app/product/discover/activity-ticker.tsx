@@ -5,10 +5,14 @@ import { useQuery } from "convex/react";
 import { UserPlus, Lightbulb } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 export function ActivityTicker() {
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const items = useQuery(api.discover.getActivityTicker, {
     hackathonId: hackathon?._id,
   });
@@ -21,7 +25,7 @@ export function ActivityTicker() {
         {items.map((item) => (
           <Link
             key={`${item.type}-${item.ideaId}-${item.time}`}
-            href={`/product/ideas/${item.ideaId}`}
+            href={`${productBase}/ideas/${item.ideaId}`}
             className="flex items-center gap-2 rounded-full border bg-muted/50 px-3 py-1.5 text-xs whitespace-nowrap hover:bg-muted transition-colors shrink-0"
           >
             {item.type === "member_joined" ? (

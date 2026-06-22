@@ -27,6 +27,7 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 import { toast, Toaster } from "sonner";
+import { useProductBase } from "@/components/ProductLayoutClient";
 
 const STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
@@ -52,6 +53,7 @@ const DEFAULT_START_AT = toLocalInputValue(
 );
 
 export default function AdminHackathonsPage() {
+  const productBase = useProductBase();
   const hackathons = useQuery(api.hackathons.getForAdmin, {});
   const createHackathon = useMutation(api.hackathons.create);
   const activateHackathon = useMutation(api.hackathons.activate);
@@ -155,7 +157,7 @@ export default function AdminHackathonsPage() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href="/product/admin"
+          href={`${productBase}/admin`}
           className="text-muted-foreground hover:text-primary"
         >
           <ArrowLeft className="h-5 w-5" />

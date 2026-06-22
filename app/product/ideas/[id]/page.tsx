@@ -24,7 +24,10 @@ import { RelatedIdeasSection } from "@/components/idea-detail/RelatedIdeasSectio
 import { CommentSection } from "@/components/idea-detail/CommentSection";
 import { OwnerActions } from "@/components/idea-detail/OwnerActions";
 import { IdeaNavigation } from "@/components/idea-detail/IdeaNavigation";
-import { useSelectedHackathon } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { STATUS_DOT_COLORS, type Status } from "@/lib/constants";
 import type { SortOption } from "@/lib/constants";
 
@@ -54,6 +57,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const ideaId = id as Id<"ideas">;
   const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const searchParams = useSearchParams();
   const navigationParams = new URLSearchParams(searchParams.toString());
   navigationParams.delete("comment");
@@ -86,7 +90,10 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
     filters: navigationFilters,
     sortBy,
   });
-  const comments = useQuery(api.comments.list, { ideaId });
+  const comments = useQuery(api.comments.list, {
+    ideaId,
+    hackathonId: hackathon?._id,
+  });
   const commentId = searchParams.get("comment");
 
   useEffect(() => {
@@ -116,7 +123,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
         <div className="text-center py-20">
           <p className="text-lg font-medium mb-2">Idea not found</p>
           <Link
-            href="/product"
+            href={productBase}
             className="text-sm text-muted-foreground hover:text-primary"
           >
             Back to Browse
@@ -137,7 +144,9 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
       <div className="flex items-center justify-between mb-4 animate-fade-in">
         <Link
           href={
-            browseQuery ? `/product/ideas?${browseQuery}` : "/product/ideas"
+            browseQuery
+              ? `${productBase}/ideas?${browseQuery}`
+              : `${productBase}/ideas`
           }
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors group"
         >
@@ -157,7 +166,11 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
       </div>
 
       <div className="animate-reveal-up stagger-1">
-        <IdeaNavigation navigation={navigation} query={browseQuery} />
+        <IdeaNavigation
+          navigation={navigation}
+          productBase={productBase}
+          query={browseQuery}
+        />
       </div>
 
       <div className="animate-reveal-up stagger-2">

@@ -3,6 +3,7 @@
 import { Lightbulb, RotateCcw, Users } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useProductBase } from "@/components/ProductLayoutClient";
 
 export function EmptyDiscoverState({
   mode,
@@ -13,6 +14,8 @@ export function EmptyDiscoverState({
   onStartOver: () => void;
   isResetting: boolean;
 }) {
+  const productBase = useProductBase();
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
       {mode === "browse" ? (
@@ -37,7 +40,7 @@ export function EmptyDiscoverState({
               {isResetting ? "Resetting..." : "Start Over"}
             </Button>
             <Link
-              href="/product/ideas/new"
+              href={`${productBase}/ideas/new`}
               className="text-sm text-primary hover:underline"
             >
               Create an idea
@@ -66,7 +69,7 @@ export function EmptyDiscoverState({
               {isResetting ? "Resetting..." : "Start Over"}
             </Button>
             <Link
-              href="/product/ideas/new"
+              href={`${productBase}/ideas/new`}
               className="text-sm text-primary hover:underline"
             >
               Create an idea
