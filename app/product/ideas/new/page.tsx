@@ -9,7 +9,7 @@ import { useState } from "react";
 import { toast, Toaster } from "sonner";
 import {
   ArrowLeft,
-  CalendarX2,
+  CalendarClock,
   Clock3,
   Lightbulb,
   Sparkles,
@@ -21,28 +21,22 @@ import {
   useSelectedHackathon,
 } from "@/components/ProductLayoutClient";
 
-function formatDeadline(deadlineAt: number | null, timezone: string | null) {
-  if (!deadlineAt) return null;
+function formatStartDate(startsAt: number | null, timezone: string | null) {
+  if (!startsAt) return null;
 
   try {
     return new Intl.DateTimeFormat(undefined, {
       weekday: "long",
       month: "long",
       day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
       timeZone: timezone ?? undefined,
-      timeZoneName: "short",
-    }).format(new Date(deadlineAt));
+    }).format(new Date(startsAt));
   } catch {
     return new Intl.DateTimeFormat(undefined, {
       weekday: "long",
       month: "long",
       day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-      timeZoneName: "short",
-    }).format(new Date(deadlineAt));
+    }).format(new Date(startsAt));
   }
 }
 
@@ -99,10 +93,18 @@ export default function CreateIdeaPage() {
     }
   };
 
-  const deadlineLabel =
+  const startDateLabel =
     submissionStatus && !submissionStatus.isOpen
-      ? formatDeadline(submissionStatus.deadlineAt, submissionStatus.timezone)
+      ? formatStartDate(submissionStatus.startsAt, submissionStatus.timezone)
       : null;
+  const closedTitle =
+    submissionStatus?.reason === "completed"
+      ? "Hackathon is marked done"
+      : submissionStatus?.reason === "archived"
+        ? "Hackathon is archived"
+        : submissionStatus?.reason === "started"
+          ? "Hackathon has started"
+          : "Idea creation is closed";
 
   return (
     <div className="px-4 md:px-8 max-w-3xl mx-auto pb-16">
@@ -168,19 +170,19 @@ export default function CreateIdeaPage() {
           <div className="space-y-6 p-6 md:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
               <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-foreground text-background">
-                <CalendarX2 className="h-7 w-7" />
+                <CalendarClock className="h-7 w-7" />
               </div>
               <div className="min-w-0 space-y-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  Submission Window
+                  Hackathon Window
                 </p>
                 <h2 className="text-2xl font-bold tracking-tight">
-                  Idea submissions are closed
+                  {closedTitle}
                 </h2>
-                {deadlineLabel && (
+                {submissionStatus.reason === "started" && startDateLabel && (
                   <p className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock3 className="h-4 w-4" />
-                    Deadline was {deadlineLabel}
+                    First day: {startDateLabel}
                   </p>
                 )}
               </div>

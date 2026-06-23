@@ -9,7 +9,6 @@ import {
   ArrowRight,
   CalendarDays,
   CalendarClock,
-  CalendarX2,
   CheckCircle2,
   CircleDashed,
   ClipboardList,
@@ -221,13 +220,6 @@ export default function AdminDashboard() {
       bg: "bg-emerald-50 dark:bg-emerald-950",
       title: "Event Date",
       subtitle: "Set the visible hackathon date",
-    },
-    {
-      href: `${adminBase}/idea-deadline`,
-      icon: <CalendarX2 className="h-5 w-5 text-amber-600" />,
-      bg: "bg-amber-50 dark:bg-amber-950",
-      title: "Idea Deadline",
-      subtitle: "Close or reopen new submissions",
     },
     {
       href: `${adminBase}/voting`,

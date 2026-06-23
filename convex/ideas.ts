@@ -36,7 +36,7 @@ import {
   refreshIdeaMemberStats,
   refreshIdeaResourceStats,
 } from "./ideaStats";
-import { assertIdeaSubmissionsOpen } from "./ideaSubmissions";
+import { assertIdeaSubmissionsOpenForHackathon } from "./ideaSubmissions";
 
 const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
@@ -521,9 +521,9 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    assertIdeaSubmissionsOpenForHackathon(hackathon);
     await assertHackathonWritable(ctx, hackathon?._id, user);
     await assertIdeasUnlocked(ctx, hackathon?._id);
-    await assertIdeaSubmissionsOpen(ctx, hackathon?._id);
 
     const title = validateStringLength(args.title, 1, 120, "Title");
     const pitch = validateStringLength(args.pitch, 1, 200, "Pitch");

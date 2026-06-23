@@ -1,110 +1,136 @@
-import { mutation, query } from "./_generated/server";
+import { query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
-import {
-  getAdminUser,
-  getAuthenticatedUser,
-  getHackathonByIdOrCurrent,
-  validateStringLength,
-} from "./lib";
-import type { Id } from "./_generated/dataModel";
+import { getAuthenticatedUser, getHackathonByIdOrCurrent } from "./lib";
+import type { Doc, Id } from "./_generated/dataModel";
 
-const IDEA_SUBMISSION_SETTING_KEY = "main";
-const DEFAULT_CLOSED_MESSAGE =
-  "The idea submission deadline has passed. Thanks for bringing your creativity here. You can still browse ideas, join teams, and keep the momentum going.";
+type IdeaSubmissionCtx = QueryCtx | MutationCtx;
+type SubmissionClosedReason = "started" | "completed" | "archived";
+type HackathonForSubmission = Pick<
+  Doc<"hackathons">,
+  "_id" | "title" | "startsAt" | "timezone" | "status" | "completedAt"
+>;
 
-type IdeaSubmissionSettingCtx = Parameters<typeof getAuthenticatedUser>[0];
+function localDateParts(timestamp: number, timezone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date(timestamp));
 
-function optionalMessage(value: string | undefined) {
-  if (value === undefined) return undefined;
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  if (trimmed.length > 240) {
-    throw new Error("Deadline message must be at most 240 characters");
-  }
-  return trimmed;
+  return {
+    year: parts.find((part) => part.type === "year")?.value ?? "0000",
+    month: parts.find((part) => part.type === "month")?.value ?? "00",
+    day: parts.find((part) => part.type === "day")?.value ?? "00",
+  };
 }
 
-function validateTimezone(timezone: string) {
-  const trimmed = validateStringLength(timezone, 1, 80, "Timezone");
+function localDateKey(timestamp: number, timezone: string) {
   try {
-    new Intl.DateTimeFormat("en-US", { timeZone: trimmed }).format(new Date());
+    const { year, month, day } = localDateParts(timestamp, timezone);
+    return `${year}-${month}-${day}`;
   } catch {
-    throw new Error("Timezone must be a valid IANA timezone");
+    const { year, month, day } = localDateParts(timestamp, "UTC");
+    return `${year}-${month}-${day}`;
   }
-  return trimmed;
 }
 
-async function getIdeaSubmissionSetting(ctx: IdeaSubmissionSettingCtx) {
-  return await ctx.db
-    .query("ideaSubmissionSettings")
-    .withIndex("by_key", (q) => q.eq("key", IDEA_SUBMISSION_SETTING_KEY))
-    .unique();
+function formatStartDay(timestamp: number, timezone: string) {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "full",
+      timeZone: timezone,
+    }).format(new Date(timestamp));
+  } catch {
+    return new Intl.DateTimeFormat("en-US", {
+      dateStyle: "full",
+      timeZone: "UTC",
+    }).format(new Date(timestamp));
+  }
 }
 
-async function getIdeaSubmissionSettingForHackathon(
-  ctx: IdeaSubmissionSettingCtx,
-  hackathonId?: Id<"hackathons">,
+function firstDayHasStarted(
+  hackathon: Pick<Doc<"hackathons">, "startsAt" | "timezone">,
+  now: number,
 ) {
-  if (!hackathonId) return await getIdeaSubmissionSetting(ctx);
   return (
-    (await ctx.db
-      .query("ideaSubmissionSettings")
-      .withIndex("by_hackathon_and_key", (q) =>
-        q.eq("hackathonId", hackathonId).eq("key", IDEA_SUBMISSION_SETTING_KEY),
-      )
-      .unique()) ??
-    (await ctx.db
-      .query("ideaSubmissionSettings")
-      .withIndex("by_hackathon_and_key", (q) =>
-        q.eq("hackathonId", undefined).eq("key", IDEA_SUBMISSION_SETTING_KEY),
-      )
-      .first())
+    localDateKey(now, hackathon.timezone) >=
+    localDateKey(hackathon.startsAt, hackathon.timezone)
   );
 }
 
-async function getExactIdeaSubmissionSettingForHackathon(
-  ctx: IdeaSubmissionSettingCtx,
-  hackathonId?: Id<"hackathons">,
+function closedMessage(
+  hackathon: HackathonForSubmission,
+  reason: SubmissionClosedReason,
 ) {
-  if (!hackathonId) return await getIdeaSubmissionSetting(ctx);
+  if (reason === "archived") {
+    return `${hackathon.title} is archived, so new ideas are closed. You can still browse ideas, join teams, and keep building from here.`;
+  }
 
-  return await ctx.db
-    .query("ideaSubmissionSettings")
-    .withIndex("by_hackathon_and_key", (q) =>
-      q.eq("hackathonId", hackathonId).eq("key", IDEA_SUBMISSION_SETTING_KEY),
-    )
-    .unique();
+  if (reason === "completed") {
+    return `${hackathon.title} is marked done, so new ideas are closed. You can still browse ideas, join teams, and keep the momentum going.`;
+  }
+
+  return `The first day of ${hackathon.title} started on ${formatStartDay(
+    hackathon.startsAt,
+    hackathon.timezone,
+  )}. New ideas are closed, but you can still browse ideas, join teams, and keep building from here.`;
 }
 
-function formatDeadline(deadlineAt: number, timezone: string) {
-  try {
-    return new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: timezone,
-      timeZoneName: "short",
-    }).format(new Date(deadlineAt));
-  } catch {
-    return new Intl.DateTimeFormat("en-US", {
-      dateStyle: "medium",
-      timeStyle: "short",
-      timeZone: "UTC",
-      timeZoneName: "short",
-    }).format(new Date(deadlineAt));
+export function getIdeaSubmissionWindow(
+  hackathon: HackathonForSubmission | null,
+  now = Date.now(),
+) {
+  if (!hackathon) {
+    return {
+      isOpen: true,
+      hackathonId: null,
+      hackathonTitle: null,
+      startsAt: null,
+      timezone: null,
+      reason: null,
+      message: null,
+    };
   }
+
+  let reason: SubmissionClosedReason | null = null;
+  if (hackathon.status === "archived") {
+    reason = "archived";
+  } else if (
+    hackathon.status === "completed" ||
+    hackathon.completedAt !== undefined
+  ) {
+    reason = "completed";
+  } else if (firstDayHasStarted(hackathon, now)) {
+    reason = "started";
+  }
+
+  return {
+    isOpen: reason === null,
+    hackathonId: hackathon._id,
+    hackathonTitle: hackathon.title,
+    startsAt: hackathon.startsAt,
+    timezone: hackathon.timezone,
+    reason,
+    message: reason ? closedMessage(hackathon, reason) : null,
+  };
+}
+
+export function assertIdeaSubmissionsOpenForHackathon(
+  hackathon: HackathonForSubmission | null,
+) {
+  const window = getIdeaSubmissionWindow(hackathon);
+  if (window.isOpen) return;
+
+  throw new Error(window.message ?? "Idea submissions are closed");
 }
 
 export async function assertIdeaSubmissionsOpen(
-  ctx: IdeaSubmissionSettingCtx,
+  ctx: IdeaSubmissionCtx,
   hackathonId?: Id<"hackathons">,
 ) {
-  const setting = await getIdeaSubmissionSettingForHackathon(ctx, hackathonId);
-  if (!setting?.active || setting.deadlineAt > Date.now()) return;
-
-  throw new Error(
-    setting.message?.trim() ||
-      `Idea submissions closed on ${formatDeadline(setting.deadlineAt, setting.timezone)}. You can still browse ideas, join teams, and keep building from here.`,
-  );
+  const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+  assertIdeaSubmissionsOpenForHackathon(hackathon);
 }
 
 export const getCurrent = query({
@@ -113,111 +139,6 @@ export const getCurrent = query({
     await getAuthenticatedUser(ctx);
 
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    const setting = await getIdeaSubmissionSettingForHackathon(
-      ctx,
-      hackathon?._id,
-    );
-    if (!setting?.active) {
-      return {
-        isOpen: true,
-        deadlineAt: null,
-        timezone: null,
-        message: null,
-      };
-    }
-
-    return {
-      isOpen: setting.deadlineAt > Date.now(),
-      deadlineAt: setting.deadlineAt,
-      timezone: setting.timezone,
-      message: setting.message ?? DEFAULT_CLOSED_MESSAGE,
-    };
-  },
-});
-
-export const getForAdmin = query({
-  args: { hackathonId: v.optional(v.id("hackathons")) },
-  handler: async (ctx, { hackathonId }) => {
-    await getAdminUser(ctx);
-
-    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    return await getIdeaSubmissionSettingForHackathon(ctx, hackathon?._id);
-  },
-});
-
-export const save = mutation({
-  args: {
-    deadlineAt: v.number(),
-    hackathonId: v.optional(v.id("hackathons")),
-    timezone: v.string(),
-    message: v.optional(v.string()),
-    active: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    const { userId } = await getAdminUser(ctx);
-
-    if (!Number.isFinite(args.deadlineAt) || args.deadlineAt <= 0) {
-      throw new Error("Deadline must be a valid date");
-    }
-
-    const timezone = validateTimezone(args.timezone);
-    const message = optionalMessage(args.message);
-    const now = Date.now();
-    const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    const existing = await getExactIdeaSubmissionSettingForHackathon(
-      ctx,
-      hackathon?._id,
-    );
-    const setting = {
-      hackathonId: hackathon?._id,
-      key: IDEA_SUBMISSION_SETTING_KEY,
-      deadlineAt: args.deadlineAt,
-      timezone,
-      message,
-      active: args.active,
-      updatedBy: userId,
-      updatedAt: now,
-    };
-
-    if (existing) {
-      await ctx.db.patch(existing._id, setting);
-      return existing._id;
-    }
-
-    return await ctx.db.insert("ideaSubmissionSettings", setting);
-  },
-});
-
-export const clear = mutation({
-  args: { hackathonId: v.optional(v.id("hackathons")) },
-  handler: async (ctx, { hackathonId }) => {
-    const { userId } = await getAdminUser(ctx);
-
-    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    const existing = await getExactIdeaSubmissionSettingForHackathon(
-      ctx,
-      hackathon?._id,
-    );
-    if (existing) {
-      await ctx.db.delete(existing._id);
-      return;
-    }
-
-    const inherited = await getIdeaSubmissionSettingForHackathon(
-      ctx,
-      hackathon?._id,
-    );
-    if (hackathon && inherited?.active) {
-      await ctx.db.insert("ideaSubmissionSettings", {
-        hackathonId: hackathon._id,
-        key: IDEA_SUBMISSION_SETTING_KEY,
-        deadlineAt: inherited.deadlineAt,
-        timezone: inherited.timezone,
-        message: inherited.message,
-        active: false,
-        updatedBy: userId,
-        updatedAt: Date.now(),
-      });
-    }
+    return getIdeaSubmissionWindow(hackathon);
   },
 });
