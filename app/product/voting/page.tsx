@@ -282,7 +282,7 @@ export default function VotingPage() {
               </div>
 
               <div className="divide-y divide-border/60 rounded-lg border bg-background">
-                {results.slice(0, 8).map((idea, index) => (
+                {results.map((idea, index) => (
                   <div key={idea._id} className="p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
