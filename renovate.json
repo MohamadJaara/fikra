@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["npm"],
+  "schedule": ["before 5am on monday"],
+  "timezone": "Europe/Berlin",
+  "prConcurrentLimit": 10,
+  "reviewers": ["mohamadjaara"],
+  "semanticCommits": "enabled",
+  "semanticCommitType": "chore",
+  "semanticCommitScope": "deps",
+  "packageRules": [
+    {
+      "description": "Wait two weeks before proposing dependency updates.",
+      "matchManagers": ["npm"],
+      "minimumReleaseAge": "14 days"
+    }
+  ]
+}
