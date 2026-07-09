@@ -177,7 +177,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    await assertHackathonWritable(ctx, hackathon?._id, user);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await assertHackathonWritable(ctx, hackathon._id, user);
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Role name is required");
     const slug = name
@@ -187,9 +188,7 @@ export const create = mutation({
     const allRoles = hackathon
       ? await ctx.db
           .query("roles")
-          .withIndex("by_hackathon", (q) =>
-            q.eq("hackathonId", hackathon._id),
-          )
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
           .collect()
       : await ctx.db.query("roles").collect();
     const conflict = allRoles.find(
@@ -197,7 +196,7 @@ export const create = mutation({
     );
     if (conflict) throw new Error("Role already exists");
     return await ctx.db.insert("roles", {
-      hackathonId: hackathon?._id,
+      hackathonId: hackathon._id,
       name,
       slug,
     });
@@ -212,7 +211,8 @@ export const createMany = mutation({
   handler: async (ctx, args) => {
     const { user } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    await assertHackathonWritable(ctx, hackathon?._id, user);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await assertHackathonWritable(ctx, hackathon._id, user);
     const items = args.names
       .split(",")
       .map((s) => sanitizeText(s))
@@ -223,9 +223,7 @@ export const createMany = mutation({
     const allRoles = hackathon
       ? await ctx.db
           .query("roles")
-          .withIndex("by_hackathon", (q) =>
-            q.eq("hackathonId", hackathon._id),
-          )
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
           .collect()
       : await ctx.db.query("roles").collect();
     for (const name of items) {
@@ -240,7 +238,7 @@ export const createMany = mutation({
         skipped.push(name);
       } else {
         const docId = await ctx.db.insert("roles", {
-          hackathonId: hackathon?._id,
+          hackathonId: hackathon._id,
           name,
           slug,
         });

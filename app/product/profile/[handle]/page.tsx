@@ -1,7 +1,11 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
-import { useProductViewer } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useProductViewer,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { STATUS_COLORS, STATUS_LABELS, type Status } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 import { use } from "react";
@@ -18,11 +22,24 @@ export default function ProfilePage({
   params: Promise<{ handle: string }>;
 }) {
   const { handle } = use(params);
-  const profile = useQuery(api.users.getProfile, { handle });
+  const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
+  const profile = useQuery(
+    api.users.getProfile,
+    hackathon ? { handle, hackathonId: hackathon._id } : "skip",
+  );
   const viewer = useProductViewer();
   const roleLabels = useRolesMap();
 
   const isOwnProfile = profile && viewer && profile._id === viewer._id;
+
+  if (!hackathon) {
+    return (
+      <div className="p-4 text-center text-sm text-muted-foreground md:p-6">
+        Select a hackathon to view participant profiles.
+      </div>
+    );
+  }
 
   if (profile === undefined) {
     return (
@@ -38,7 +55,7 @@ export default function ProfilePage({
         <div className="text-center py-12">
           <p className="text-lg font-medium mb-2">User not found</p>
           <Link
-            href="/product/people"
+            href={`${productBase}/people`}
             className="text-sm text-muted-foreground hover:text-primary"
           >
             Back to People
@@ -51,7 +68,7 @@ export default function ProfilePage({
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <Link
-        href="/product/people"
+        href={`${productBase}/people`}
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary mb-4"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -72,7 +89,7 @@ export default function ProfilePage({
           )}
           {isOwnProfile && (
             <Link
-              href="/product/settings"
+              href={`${productBase}/settings`}
               className="text-xs text-primary hover:underline"
             >
               Edit profile
@@ -108,7 +125,7 @@ export default function ProfilePage({
             {profile.ownedIdeas.map((idea) => (
               <Link
                 key={idea._id}
-                href={`/product/ideas/${idea._id}`}
+                href={`${productBase}/ideas/${idea._id}`}
                 className="block rounded-lg border p-3 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">
@@ -143,7 +160,7 @@ export default function ProfilePage({
             {profile.joinedIdeas.map((idea) => (
               <Link
                 key={idea._id}
-                href={`/product/ideas/${idea._id}`}
+                href={`${productBase}/ideas/${idea._id}`}
                 className="block rounded-lg border p-3 hover:bg-muted/50 transition-colors"
               >
                 <div className="flex items-start justify-between gap-2">

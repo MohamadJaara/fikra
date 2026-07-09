@@ -143,13 +143,114 @@ export async function requireParticipant(
   userId: Id<"users">,
 ) {
   const participant = await getParticipant(ctx, hackathonId, userId);
-  if (!participant) {
+  if (participant) {
+    if (!participant.onboardingComplete) {
+      throw new Error("Complete your hackathon profile before continuing");
+    }
+    return participant;
+  }
+
+  // TEMPORARY MIGRATION COMPATIBILITY: legacy single-event users did not have
+  // participant rows. Only the resolved current, non-archived hackathon may
+  // inherit global onboarding during the widen/backfill deployment. A stored
+  // participant row above is always authoritative, including an incomplete one.
+  const [current, user] = await Promise.all([
+    getCurrentHackathon(ctx),
+    ctx.db.get(userId),
+  ]);
+  if (
+    current?._id !== hackathonId ||
+    current.status === "archived" ||
+    !user?.onboardingComplete
+  ) {
     throw new Error("Complete your hackathon profile before continuing");
   }
-  if (!participant.onboardingComplete) {
+
+  return {
+    hackathonId,
+    userId,
+    roles: user.roles,
+    participationMode:
+      user.participationMode === "onsite" || user.participationMode === "remote"
+        ? user.participationMode
+        : undefined,
+    onboardingComplete: true,
+    registeredAt: user._creationTime,
+    updatedAt: user._creationTime,
+  };
+}
+
+export async function requireStoredParticipant(
+  ctx: QueryCtx | MutationCtx,
+  hackathonId: Id<"hackathons">,
+  userId: Id<"users">,
+) {
+  const participant = await getParticipant(ctx, hackathonId, userId);
+  if (!participant?.onboardingComplete) {
     throw new Error("Complete your hackathon profile before continuing");
   }
   return participant;
+}
+
+export async function isCurrentHackathonId(
+  ctx: QueryCtx | MutationCtx,
+  hackathonId: Id<"hackathons">,
+) {
+  return (await getCurrentHackathon(ctx))?._id === hackathonId;
+}
+
+/** TEMPORARY MIGRATION COMPATIBILITY: remove after scope backfill verification. */
+export async function resolveLegacyScopeForMutation(
+  ctx: QueryCtx | MutationCtx,
+  existingHackathonId: Id<"hackathons"> | undefined,
+  requestedHackathonId?: Id<"hackathons">,
+  entityName = "Record",
+) {
+  if (existingHackathonId !== undefined) {
+    if (
+      requestedHackathonId !== undefined &&
+      existingHackathonId !== requestedHackathonId
+    ) {
+      throw new Error(`${entityName} does not belong to this hackathon`);
+    }
+    return { hackathonId: existingHackathonId, shouldPatch: false };
+  }
+
+  const current = await getCurrentHackathon(ctx);
+  if (!current) throw new Error("No hackathon is configured");
+  if (
+    requestedHackathonId !== undefined &&
+    requestedHackathonId !== current._id
+  ) {
+    throw new Error(`${entityName} does not belong to this hackathon`);
+  }
+  return { hackathonId: current._id, shouldPatch: true };
+}
+
+/** TEMPORARY MIGRATION COMPATIBILITY: remove after scope backfill verification. */
+export async function claimLegacyIdeaScopeForMutation(
+  ctx: MutationCtx,
+  idea: Pick<Doc<"ideas">, "_id" | "hackathonId">,
+  requestedHackathonId?: Id<"hackathons">,
+) {
+  const resolved = await resolveLegacyScopeForMutation(
+    ctx,
+    idea.hackathonId,
+    requestedHackathonId,
+    "Idea",
+  );
+  if (resolved.shouldPatch) {
+    await ctx.db.patch(idea._id, { hackathonId: resolved.hackathonId });
+  }
+  return resolved.hackathonId;
+}
+
+/** TEMPORARY MIGRATION COMPATIBILITY: current-event reads may include unscoped rows. */
+export async function canReadLegacyScope(
+  ctx: QueryCtx | MutationCtx,
+  hackathonId: Id<"hackathons">,
+) {
+  return await isCurrentHackathonId(ctx, hackathonId);
 }
 
 export async function assertHackathonWritable(
@@ -174,7 +275,14 @@ export async function assertIdeaInHackathon(
   idea: Pick<Doc<"ideas">, "hackathonId">,
   hackathonId: Id<"hackathons"> | undefined,
 ) {
-  if (!hackathonId || !idea.hackathonId) return;
+  if (!hackathonId) return;
+  if (idea.hackathonId === hackathonId) return;
+  if (
+    idea.hackathonId === undefined &&
+    (await canReadLegacyScope(ctx, hackathonId))
+  ) {
+    return;
+  }
   if (idea.hackathonId !== hackathonId) {
     throw new Error("Idea does not belong to this hackathon");
   }

@@ -28,7 +28,7 @@ We'll acknowledge your report within **48 hours** and aim to provide an initial 
 Fikra is a **self-hosted, single-tenant** application. Security expectations reflect that context:
 
 - Access is gated by email domain (`ALLOWED_DOMAIN`) and an optional email whitelist (`ALLOWED_EMAILS`), enforced server-side on every Convex function.
-- All user input is validated and sanitized server-side (length limits, HTML escaping, enum checks).
+- User input is validated server-side with length, enum, scope, and cross-reference checks; text is rendered through React rather than injected as HTML.
 - Owners can only modify their own ideas/comments.
 
 Out of scope: your own infrastructure configuration (Convex deployment settings, Resend credentials, hosting provider, etc.).

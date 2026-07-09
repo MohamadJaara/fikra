@@ -18,7 +18,17 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   const token = await convexAuth.getToken();
 
   if (isSignInPage(request) && token) {
-    return nextjsMiddlewareRedirect(request, "/product");
+    const viewer = await fetchQuery(
+      api.users.viewerOrNull,
+      {},
+      { token },
+    ).catch(() => null);
+    if (viewer) {
+      return nextjsMiddlewareRedirect(request, "/product");
+    }
+    // Keep rejected or dangling authenticated sessions on the sign-in page so
+    // they can sign out instead of bouncing forever between these two routes.
+    return;
   }
   if (isAdminRoute(request)) {
     if (!token) {

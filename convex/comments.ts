@@ -3,8 +3,15 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
   assertHackathonWritable,
+  assertIdeaInHackathon,
+  assertIdeasUnlocked,
+  canReadLegacyScope,
+  claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
   getUserDisplayName,
+  requireParticipant,
+  resolveLegacyScopeForMutation,
   sanitizeText,
   validateStringLength,
 } from "./lib";
@@ -37,16 +44,28 @@ export const create = mutation({
     parentId: v.optional(v.id("comments")),
   },
   handler: async (ctx, { ideaId, content, parentId }) => {
-    const { userId, user } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
-    await assertHackathonWritable(ctx, idea.hackathonId, user);
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     if (parentId) {
       const parent = await ctx.db.get(parentId);
       if (!parent || parent.ideaId !== ideaId) {
         throw new Error("Invalid parent comment");
+      }
+      const parentScope = await resolveLegacyScopeForMutation(
+        ctx,
+        parent.hackathonId,
+        hackathonId,
+        "Parent comment",
+      );
+      if (parentScope.shouldPatch) {
+        await ctx.db.patch(parent._id, { hackathonId });
       }
     }
 
@@ -57,7 +76,7 @@ export const create = mutation({
     const mentionedUserIds = await resolveMentions(ctx, sanitized);
 
     const commentId = await ctx.db.insert("comments", {
-      hackathonId: idea.hackathonId,
+      hackathonId,
       ideaId,
       userId,
       content: sanitized,
@@ -113,13 +132,27 @@ export const update = mutation({
     content: v.string(),
   },
   handler: async (ctx, { commentId, content }) => {
-    const { userId, user } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
 
     const comment = await ctx.db.get(commentId);
     if (!comment) throw new Error("Comment not found");
     if (comment.userId !== userId)
       throw new Error("Can only edit your own comments");
-    await assertHackathonWritable(ctx, comment.hackathonId, user);
+    const idea = await ctx.db.get(comment.ideaId);
+    if (!idea) throw new Error("Idea not found");
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    const commentScope = await resolveLegacyScopeForMutation(
+      ctx,
+      comment.hackathonId,
+      hackathonId,
+      "Comment",
+    );
+    if (commentScope.shouldPatch) {
+      await ctx.db.patch(comment._id, { hackathonId });
+    }
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const sanitized = sanitizeText(
       validateStringLength(content, 1, 2000, "Comment"),
@@ -138,13 +171,26 @@ export const update = mutation({
 export const remove = mutation({
   args: { commentId: v.id("comments") },
   handler: async (ctx, { commentId }) => {
-    const { userId, user } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
 
     const comment = await ctx.db.get(commentId);
     if (!comment) throw new Error("Comment not found");
-    await assertHackathonWritable(ctx, comment.hackathonId, user);
 
     const idea = await ctx.db.get(comment.ideaId);
+    if (!idea) throw new Error("Idea not found");
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    const commentScope = await resolveLegacyScopeForMutation(
+      ctx,
+      comment.hackathonId,
+      hackathonId,
+      "Comment",
+    );
+    if (commentScope.shouldPatch) {
+      await ctx.db.patch(comment._id, { hackathonId });
+    }
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
     const isOwner = idea?.ownerId === userId;
     const isAuthor = comment.userId === userId;
 
@@ -159,6 +205,18 @@ export const remove = mutation({
       .collect();
 
     for (const reply of replies) {
+      if (reply.ideaId !== comment.ideaId) {
+        throw new Error("Comment thread contains a cross-hackathon reply");
+      }
+      const replyScope = await resolveLegacyScopeForMutation(
+        ctx,
+        reply.hackathonId,
+        hackathonId,
+        "Reply",
+      );
+      if (replyScope.shouldPatch) {
+        await ctx.db.patch(reply._id, { hackathonId });
+      }
       await ctx.db.delete(reply._id);
     }
 
@@ -176,14 +234,26 @@ export const list = query({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) return [];
-    if (hackathonId && idea.hackathonId && idea.hackathonId !== hackathonId) {
-      return [];
-    }
+    const hackathon = await getHackathonByIdOrCurrent(
+      ctx,
+      hackathonId ?? idea.hackathonId,
+    );
+    if (!hackathon) return [];
+    await requireParticipant(ctx, hackathon._id, userId);
+    await assertIdeaInHackathon(ctx, idea, hackathon._id);
+    await assertIdeasUnlocked(ctx, hackathon._id);
+    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
 
-    const comments = await ctx.db
-      .query("comments")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
+    const comments = (
+      await ctx.db
+        .query("comments")
+        .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
+        .collect()
+    ).filter(
+      (comment) =>
+        comment.hackathonId === hackathon._id ||
+        (includeLegacy && comment.hackathonId === undefined),
+    );
 
     const withUsers = await Promise.all(
       comments.map(async (c) => {

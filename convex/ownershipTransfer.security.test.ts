@@ -251,7 +251,7 @@ describe("Ownership transfer authorization", () => {
     expect(ideaForNewOwner?.members.map((m) => m.userId)).toContain(memberId);
   });
 
-  test("legacy owner membership is not counted after ownership transfer", async () => {
+  test("owner membership without joinedAsOwner is not counted after ownership transfer", async () => {
     const t = initTest();
     const categoryId = await seedCategory(t);
 
@@ -266,7 +266,9 @@ describe("Ownership transfer authorization", () => {
     });
 
     await t.run(async (ctx: any) => {
+      const idea = await ctx.db.get(ideaId);
       await ctx.db.insert("ideaMembers", {
+        hackathonId: idea!.hackathonId,
         ideaId,
         userId: ownerId,
       });

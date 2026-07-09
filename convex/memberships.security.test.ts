@@ -51,8 +51,12 @@ describe("Membership authorization", () => {
     const idea = await asOwner.query(api.ideas.get, { ideaId });
     expect(idea?.memberCount).toBe(1);
     expect(idea?.isMember).toBe(true);
+    const hackathonId = await t.run(async (ctx: any) => {
+      return (await ctx.db.get(categoryId))!.hackathonId;
+    });
     const profile = await asOwner.query(api.users.getProfile, {
       handle: "ownerm2",
+      hackathonId,
     });
     expect(profile?.joinedIdeas.map((joined) => joined._id)).toContain(ideaId);
 

@@ -87,8 +87,22 @@ export const create = internalMutation({
     }
 
     const idea = await ctx.db.get(args.ideaId);
+    if (!idea) throw new Error("Idea not found");
+    if (!idea.hackathonId) {
+      throw new Error("Idea is not assigned to a hackathon");
+    }
+    if (args.commentId) {
+      const comment = await ctx.db.get(args.commentId);
+      if (
+        !comment ||
+        comment.ideaId !== idea._id ||
+        comment.hackathonId !== idea.hackathonId
+      ) {
+        throw new Error("Comment does not belong to this hackathon");
+      }
+    }
     const notificationId = await ctx.db.insert("notifications", {
-      hackathonId: idea?.hackathonId,
+      hackathonId: idea.hackathonId,
       recipientId: args.recipientId,
       actorId: args.actorId,
       ideaId: args.ideaId,
@@ -106,55 +120,6 @@ export const create = internalMutation({
     });
 
     return notificationId;
-  },
-});
-
-export async function deleteNotificationsForIdea(
-  ctx: MutationCtx,
-  ideaId: Id<"ideas">,
-) {
-  const notifications = await ctx.db
-    .query("notifications")
-    .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-    .collect();
-
-  const removedUnreadByRecipient = new Map<Id<"users">, number>();
-  for (const notification of notifications) {
-    if (!notification.read) {
-      removedUnreadByRecipient.set(
-        notification.recipientId,
-        (removedUnreadByRecipient.get(notification.recipientId) ?? 0) + 1,
-      );
-    }
-  }
-
-  const remainingUnreadByRecipient = new Map<Id<"users">, number>();
-  for (const [recipientId, removedUnread] of removedUnreadByRecipient) {
-    const currentUnread = await countUnreadForRecipient(ctx, recipientId);
-    remainingUnreadByRecipient.set(
-      recipientId,
-      Math.max(0, currentUnread - removedUnread),
-    );
-  }
-
-  for (const notification of notifications) {
-    await ctx.db.delete(notification._id);
-  }
-
-  for (const [recipientId, remainingUnread] of remainingUnreadByRecipient) {
-    const recipient = await ctx.db.get(recipientId);
-    if (recipient) {
-      await ctx.db.patch(recipient._id, {
-        unreadNotificationCount: remainingUnread,
-      });
-    }
-  }
-}
-
-export const deleteForIdea = internalMutation({
-  args: { ideaId: v.id("ideas") },
-  handler: async (ctx, { ideaId }) => {
-    await deleteNotificationsForIdea(ctx, ideaId);
   },
 });
 

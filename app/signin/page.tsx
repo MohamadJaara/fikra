@@ -1,6 +1,8 @@
 "use client";
 
 import { useAuthActions } from "@convex-dev/auth/react";
+import { api } from "@/convex/_generated/api";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +10,13 @@ import { toast, Toaster } from "sonner";
 
 export default function SignInPage() {
   const [step, setStep] = useState<"signIn" | "linkSent">("signIn");
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const viewer = useQuery(
+    api.users.viewerOrNull,
+    isAuthenticated ? {} : "skip",
+  );
+  const { signOut } = useAuthActions();
+  const hasRejectedSession = !isLoading && isAuthenticated && viewer === null;
 
   return (
     <div className="flex min-h-screen w-full container my-auto mx-auto">
@@ -28,7 +37,18 @@ export default function SignInPage() {
             <p className="text-sm text-muted-foreground text-center">
               Sign in with your authorized email address.
             </p>
-            <SignInWithMagicLink handleLinkSent={() => setStep("linkSent")} />
+            {hasRejectedSession ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-center text-sm text-destructive">
+                  This signed-in account is not authorized to use Fikra.
+                </p>
+                <Button type="button" onClick={() => void signOut()}>
+                  Sign out and try another account
+                </Button>
+              </div>
+            ) : (
+              <SignInWithMagicLink handleLinkSent={() => setStep("linkSent")} />
+            )}
           </>
         ) : (
           <>

@@ -2,12 +2,18 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   assertHackathonWritable,
+  assertIdeaInHackathon,
   assertIdeasUnlocked,
+  canReadLegacyScope,
+  claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
   getUserDisplayName,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   maxTeamSize,
+  requireParticipant,
+  resolveLegacyScopeForMutation,
   resolveTeamSize,
 } from "./lib";
 import { internal } from "./_generated/api";
@@ -71,9 +77,26 @@ async function loadValidRelationPair(
   return { relation, ideaA, ideaB, hackathonId };
 }
 
-async function assertRelationMutable(ctx: MutationCtx, pair: RelationPair) {
-  await assertHackathonWritable(ctx, pair.hackathonId);
-  await assertIdeasUnlocked(ctx, pair.hackathonId);
+async function assertRelationMutable(
+  ctx: MutationCtx,
+  pair: RelationPair,
+  userId: Id<"users">,
+) {
+  const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, pair.ideaA);
+  await claimLegacyIdeaScopeForMutation(ctx, pair.ideaB, hackathonId);
+  const relationScope = await resolveLegacyScopeForMutation(
+    ctx,
+    pair.relation.hackathonId,
+    hackathonId,
+    "Relation",
+  );
+  if (relationScope.shouldPatch) {
+    await ctx.db.patch(pair.relation._id, { hackathonId });
+  }
+  pair.hackathonId = hackathonId;
+  await requireParticipant(ctx, hackathonId, userId);
+  await assertHackathonWritable(ctx, hackathonId);
+  await assertIdeasUnlocked(ctx, hackathonId);
 }
 
 async function findExistingRelation(
@@ -117,10 +140,15 @@ export const markRelated = mutation({
     ]);
     if (!ideaA || !ideaB) throw new Error("Idea not found");
 
-    const hackathonId = getSharedHackathonId(ideaA, ideaB);
     if (ideaA.ownerId !== userId && ideaB.ownerId !== userId) {
       throw new Error("Only idea owners can relate ideas");
     }
+    if (ideaA.hackathonId !== undefined && ideaB.hackathonId !== undefined) {
+      getSharedHackathonId(ideaA, ideaB);
+    }
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, ideaA);
+    await claimLegacyIdeaScopeForMutation(ctx, ideaB, hackathonId);
+    await requireParticipant(ctx, hackathonId, userId);
     await assertHackathonWritable(ctx, hackathonId);
     await assertIdeasUnlocked(ctx, hackathonId);
 
@@ -164,7 +192,7 @@ export const removeRelation = mutation({
     if (!isOwnerOfEither) {
       throw new Error("Only idea owners can remove relations");
     }
-    await assertRelationMutable(ctx, pair);
+    await assertRelationMutable(ctx, pair, userId);
 
     await ctx.db.delete(relationId);
   },
@@ -176,7 +204,7 @@ export const requestMerge = mutation({
     const { userId } = await getAuthenticatedUser(ctx);
     const pair = await loadValidRelationPair(ctx, relationId);
     const { relation, ideaA, ideaB } = pair;
-    await assertRelationMutable(ctx, pair);
+    await assertRelationMutable(ctx, pair, userId);
 
     if (relation.relationType !== "duplicate") {
       throw new Error("Can only request merge on duplicate relations");
@@ -216,7 +244,7 @@ export const acceptMerge = mutation({
     const { userId } = await getAuthenticatedUser(ctx);
     const pair = await loadValidRelationPair(ctx, relationId);
     const { relation, ideaA, ideaB } = pair;
-    await assertRelationMutable(ctx, pair);
+    await assertRelationMutable(ctx, pair, userId);
     if (relation.mergeStatus !== MERGE_STATUS_PENDING) {
       throw new Error("No pending merge request");
     }
@@ -385,7 +413,7 @@ export const declineMerge = mutation({
     const { userId } = await getAuthenticatedUser(ctx);
     const pair = await loadValidRelationPair(ctx, relationId);
     const { relation, ideaA, ideaB } = pair;
-    await assertRelationMutable(ctx, pair);
+    await assertRelationMutable(ctx, pair, userId);
     if (relation.mergeStatus !== MERGE_STATUS_PENDING) {
       throw new Error("No pending merge request");
     }
@@ -421,11 +449,18 @@ export const declineMerge = mutation({
 export const listForIdea = query({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
-    await assertIdeasUnlocked(ctx, idea.hackathonId);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, idea.hackathonId);
+    if (!hackathon) return [];
+    await requireParticipant(ctx, hackathon._id, userId);
+    await assertIdeaInHackathon(ctx, idea, hackathon._id);
+    await assertIdeasUnlocked(ctx, hackathon._id);
+    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
+    const isReadableScope = (scope: Id<"hackathons"> | undefined) =>
+      scope === hackathon._id || (includeLegacy && scope === undefined);
 
     const asA = await ctx.db
       .query("relatedIdeas")
@@ -445,9 +480,8 @@ export const listForIdea = query({
         if (
           rel.ideaIdA === rel.ideaIdB ||
           !otherIdea ||
-          otherIdea.hackathonId !== idea.hackathonId ||
-          (rel.hackathonId !== undefined &&
-            rel.hackathonId !== idea.hackathonId)
+          !isReadableScope(otherIdea.hackathonId) ||
+          !isReadableScope(rel.hackathonId)
         ) {
           return null;
         }
@@ -470,7 +504,7 @@ export const listForIdea = query({
             .query("ideaMembers")
             .withIndex("by_idea", (q) => q.eq("ideaId", otherId))
             .collect()
-        ).length;
+        ).filter((member) => isReadableScope(member.hackathonId)).length;
 
         return {
           _id: rel._id,
@@ -505,7 +539,12 @@ export const searchPotentialDuplicates = query({
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) throw new Error("Only the owner can search");
-    await assertIdeasUnlocked(ctx, idea.hackathonId);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, idea.hackathonId);
+    if (!hackathon) return [];
+    await requireParticipant(ctx, hackathon._id, userId);
+    await assertIdeaInHackathon(ctx, idea, hackathon._id);
+    await assertIdeasUnlocked(ctx, hackathon._id);
+    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
 
     const titleWords = idea.title
       .toLowerCase()
@@ -575,8 +614,11 @@ export const searchPotentialDuplicates = query({
           .query("ideaMembers")
           .withIndex("by_idea", (q) => q.eq("ideaId", i._id))
           .collect();
-        const memberCount = members.filter((member) =>
-          isEffectiveIdeaMember(member, i),
+        const memberCount = members.filter(
+          (member) =>
+            (member.hackathonId === hackathon._id ||
+              (includeLegacy && member.hackathonId === undefined)) &&
+            isEffectiveIdeaMember(member, i),
         ).length;
         return {
           _id: i._id,

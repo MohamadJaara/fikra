@@ -1,10 +1,17 @@
 import { query, mutation, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
+  assertIdeasUnlocked,
+  canReadLegacyScope,
+  claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
+  getParticipant,
   getUserDisplayName,
   isEffectiveIdeaMember,
+  requireParticipant,
+  resolveLegacyScopeForMutation,
   resolveTeamSize,
 } from "./lib";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -92,44 +99,61 @@ export const getDiscoverFeed = query({
   handler: async (ctx, args) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
+    if (!hackathon) return [];
+    await requireParticipant(ctx, hackathon._id, userId);
+    const participant = await getParticipant(ctx, hackathon._id, userId);
+    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
     const mode = args.mode ?? "browse";
-    const userRoles = user.roles ?? [];
+    const userRoles = participant
+      ? (participant.roles ?? [])
+      : (user.roles ?? []);
 
-    const [memberships, interests, dismissed] = await Promise.all([
-      hackathon
-        ? ctx.db
+    const [scopedMemberships, scopedInterests, scopedDismissed] =
+      await Promise.all([
+        ctx.db
+          .query("ideaMembers")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .collect(),
+        ctx.db
+          .query("ideaInterest")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .collect(),
+        ctx.db
+          .query("dismissedIdeas")
+          .withIndex("by_hackathon_and_user", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("userId", userId),
+          )
+          .collect(),
+      ]);
+    const [legacyMemberships, legacyInterests, legacyDismissed] = includeLegacy
+      ? await Promise.all([
+          ctx.db
             .query("ideaMembers")
             .withIndex("by_hackathon_and_user", (q) =>
-              q.eq("hackathonId", hackathon._id).eq("userId", userId),
+              q.eq("hackathonId", undefined).eq("userId", userId),
             )
-            .collect()
-        : ctx.db
-            .query("ideaMembers")
-            .withIndex("by_user", (q) => q.eq("userId", userId))
             .collect(),
-      hackathon
-        ? ctx.db
+          ctx.db
             .query("ideaInterest")
             .withIndex("by_hackathon_and_user", (q) =>
-              q.eq("hackathonId", hackathon._id).eq("userId", userId),
+              q.eq("hackathonId", undefined).eq("userId", userId),
             )
-            .collect()
-        : ctx.db
-            .query("ideaInterest")
-            .withIndex("by_user", (q) => q.eq("userId", userId))
             .collect(),
-      hackathon
-        ? ctx.db
+          ctx.db
             .query("dismissedIdeas")
             .withIndex("by_hackathon_and_user", (q) =>
-              q.eq("hackathonId", hackathon._id).eq("userId", userId),
+              q.eq("hackathonId", undefined).eq("userId", userId),
             )
-            .collect()
-        : ctx.db
-            .query("dismissedIdeas")
-            .withIndex("by_user", (q) => q.eq("userId", userId))
             .collect(),
-    ]);
+        ])
+      : [[], [], []];
+    const memberships = [...scopedMemberships, ...legacyMemberships];
+    const interests = [...scopedInterests, ...legacyInterests];
+    const dismissed = [...scopedDismissed, ...legacyDismissed];
 
     const effectiveMemberships = await Promise.all(
       memberships.map(async (membership) => {
@@ -149,30 +173,41 @@ export const getDiscoverFeed = query({
     let candidates: Doc<"ideas">[] = [];
 
     if (mode === "findTeam") {
-      const teamCandidates = hackathon
-        ? await ctx.db
-            .query("ideas")
-            .withIndex("by_hackathon_and_needsTeammates", (q) =>
-              q
-                .eq("hackathonId", hackathon._id)
-                .eq("needsTeammates", true),
-            )
-            .take(200)
-        : await ctx.db
-            .query("ideas")
-            .withIndex("by_needsTeammates", (q) => q.eq("needsTeammates", true))
-            .take(200);
+      const scopedTeamCandidates = await ctx.db
+        .query("ideas")
+        .withIndex("by_hackathon_and_needsTeammates", (q) =>
+          q.eq("hackathonId", hackathon._id).eq("needsTeammates", true),
+        )
+        .take(200);
+      const teamCandidates = includeLegacy
+        ? [
+            ...scopedTeamCandidates,
+            ...(await ctx.db
+              .query("ideas")
+              .withIndex("by_hackathon_and_needsTeammates", (q) =>
+                q.eq("hackathonId", undefined).eq("needsTeammates", true),
+              )
+              .take(200)),
+          ]
+        : scopedTeamCandidates;
 
       candidates = teamCandidates.filter(
         (idea) => idea.status === "exploring" || idea.status === "forming_team",
       );
     } else {
-      candidates = hackathon
-        ? await ctx.db
-            .query("ideas")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
-            .take(200)
-        : await ctx.db.query("ideas").take(200);
+      const scopedCandidates = await ctx.db
+        .query("ideas")
+        .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+        .take(200);
+      candidates = includeLegacy
+        ? [
+            ...scopedCandidates,
+            ...(await ctx.db
+              .query("ideas")
+              .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+              .take(200)),
+          ]
+        : scopedCandidates;
     }
 
     const filtered = candidates.filter((idea) => {
@@ -233,6 +268,10 @@ export const dismissIdea = mutation({
     const { userId } = await getAuthenticatedUser(ctx);
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const existing = await ctx.db
       .query("dismissedIdeas")
@@ -240,10 +279,21 @@ export const dismissIdea = mutation({
         q.eq("ideaId", ideaId).eq("userId", userId),
       )
       .first();
+    if (existing) {
+      const dismissalScope = await resolveLegacyScopeForMutation(
+        ctx,
+        existing.hackathonId,
+        hackathonId,
+        "Dismissal",
+      );
+      if (dismissalScope.shouldPatch) {
+        await ctx.db.patch(existing._id, { hackathonId });
+      }
+    }
     if (existing) return;
 
     await ctx.db.insert("dismissedIdeas", {
-      hackathonId: idea.hackathonId,
+      hackathonId,
       ideaId,
       userId,
     });
@@ -254,6 +304,12 @@ export const undoDismissIdea = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const existing = await ctx.db
       .query("dismissedIdeas")
@@ -261,6 +317,17 @@ export const undoDismissIdea = mutation({
         q.eq("ideaId", ideaId).eq("userId", userId),
       )
       .first();
+    if (existing) {
+      const dismissalScope = await resolveLegacyScopeForMutation(
+        ctx,
+        existing.hackathonId,
+        hackathonId,
+        "Dismissal",
+      );
+      if (dismissalScope.shouldPatch) {
+        await ctx.db.patch(existing._id, { hackathonId });
+      }
+    }
     if (existing) {
       await ctx.db.delete(existing._id);
     }
@@ -272,18 +339,28 @@ export const resetDismissedIdeas = mutation({
   handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await requireParticipant(ctx, hackathon._id, userId);
+    await assertHackathonWritable(ctx, hackathon._id);
+    await assertIdeasUnlocked(ctx, hackathon._id);
 
-    const dismissed = hackathon
-      ? await ctx.db
-          .query("dismissedIdeas")
-          .withIndex("by_hackathon_and_user", (q) =>
-            q.eq("hackathonId", hackathon._id).eq("userId", userId),
-          )
-          .collect()
-      : await ctx.db
-          .query("dismissedIdeas")
-          .withIndex("by_user", (q) => q.eq("userId", userId))
-          .collect();
+    const scopedDismissed = await ctx.db
+      .query("dismissedIdeas")
+      .withIndex("by_hackathon_and_user", (q) =>
+        q.eq("hackathonId", hackathon._id).eq("userId", userId),
+      )
+      .collect();
+    const dismissed = (await canReadLegacyScope(ctx, hackathon._id))
+      ? [
+          ...scopedDismissed,
+          ...(await ctx.db
+            .query("dismissedIdeas")
+            .withIndex("by_hackathon_and_user", (q) =>
+              q.eq("hackathonId", undefined).eq("userId", userId),
+            )
+            .collect()),
+        ]
+      : scopedDismissed;
 
     await Promise.all(dismissed.map((d) => ctx.db.delete(d._id)));
   },
@@ -292,28 +369,45 @@ export const resetDismissedIdeas = mutation({
 export const getActivityTicker = query({
   args: { hackathonId: v.optional(v.id("hackathons")) },
   handler: async (ctx, { hackathonId }) => {
-    const { userId: _userId } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    if (!hackathon) return [];
+    await requireParticipant(ctx, hackathon._id, userId);
+    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
     const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
 
-    const [recentMembers, recentIdeas] = await Promise.all([
-      hackathon
-        ? ctx.db
-            .query("ideaMembers")
-            .withIndex("by_hackathon", (q) =>
-              q.eq("hackathonId", hackathon._id),
-            )
-            .order("desc")
-            .take(20)
-        : ctx.db.query("ideaMembers").order("desc").take(20),
-      hackathon
-        ? ctx.db
-            .query("ideas")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
-            .order("desc")
-            .take(10)
-        : ctx.db.query("ideas").order("desc").take(10),
+    const [scopedMembers, scopedIdeas] = await Promise.all([
+      ctx.db
+        .query("ideaMembers")
+        .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+        .order("desc")
+        .take(20),
+      ctx.db
+        .query("ideas")
+        .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+        .order("desc")
+        .take(10),
     ]);
+    const [legacyMembers, legacyIdeas] = includeLegacy
+      ? await Promise.all([
+          ctx.db
+            .query("ideaMembers")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .order("desc")
+            .take(20),
+          ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+            .order("desc")
+            .take(10),
+        ])
+      : [[], []];
+    const recentMembers = [...scopedMembers, ...legacyMembers].sort(
+      (a, b) => b._creationTime - a._creationTime,
+    );
+    const recentIdeas = [...scopedIdeas, ...legacyIdeas].sort(
+      (a, b) => b._creationTime - a._creationTime,
+    );
 
     const recentMemberActivity = recentMembers
       .filter((m) => m._creationTime > thirtyMinutesAgo)

@@ -174,18 +174,11 @@ describe("Owner-only idea mutations", () => {
     });
     expect(defaultList.page.map((idea) => idea._id)).toEqual([activeIdeaId]);
 
-    const defaultCount = await asOwner.query(api.ideas.count, {});
-    expect(defaultCount).toBe(1);
-
     const shelvedList = await asOwner.query(api.ideas.list, {
       paginationOpts: { numItems: 100, cursor: null },
       filters: { shelf: "shelved" },
     });
     expect(shelvedList.page.map((idea) => idea._id)).toEqual([shelvedIdeaId]);
 
-    const shelvedCount = await asOwner.query(api.ideas.count, {
-      filters: { shelf: "shelved" },
-    });
-    expect(shelvedCount).toBe(1);
   });
 });

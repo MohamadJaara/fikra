@@ -19,7 +19,10 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast, Toaster } from "sonner";
-import { useProductBase } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -83,7 +86,11 @@ function formatPreview(startValue: string, endValue: string, timezone: string) {
 
 export default function AdminEventPage() {
   const productBase = useProductBase();
-  const event = useQuery(api.event.getForAdmin);
+  const selectedHackathon = useSelectedHackathon();
+  const event = useQuery(
+    api.event.getForAdmin,
+    selectedHackathon ? { hackathonId: selectedHackathon._id } : "skip",
+  );
   const saveEvent = useMutation(api.event.save);
   const markDone = useMutation(api.event.markDone);
   const reopen = useMutation(api.event.reopen);
@@ -148,6 +155,7 @@ export default function AdminEventPage() {
     setSaving("save");
     try {
       await saveEvent({
+        hackathonId: selectedHackathon?._id,
         title,
         startsAt: startTimestamp,
         ...(endTimestamp !== undefined ? { endsAt: endTimestamp } : {}),
@@ -171,7 +179,9 @@ export default function AdminEventPage() {
 
     setSaving("done");
     try {
-      const result = await markDone();
+      const result = await markDone({
+        hackathonId: selectedHackathon?._id,
+      });
       setCompletedAt(result.completedAt);
       toast.success("Hackathon marked done");
     } catch (error) {
@@ -194,7 +204,7 @@ export default function AdminEventPage() {
 
     setSaving("reopen");
     try {
-      await reopen();
+      await reopen({ hackathonId: selectedHackathon?._id });
       setCompletedAt(undefined);
       toast.success("Hackathon reopened");
     } catch (error) {
@@ -205,20 +215,16 @@ export default function AdminEventPage() {
   };
 
   const handleClear = async () => {
-    if (!confirm("Clear the event date? Users will no longer see it.")) return;
+    if (!confirm("Hide this event from users and move it back to draft?"))
+      return;
 
     try {
-      await clearEvent();
-      setTitle("Hackathon kickoff");
-      const defaultStart = Date.now() + 7 * 24 * 60 * 60 * 1000;
-      setStartsAt(toDateTimeLocal(defaultStart));
-      setEndsAt(toDateTimeLocal(defaultStart + 8 * 60 * 60 * 1000));
-      setTimezone(browserTimezone);
+      await clearEvent({ hackathonId: selectedHackathon?._id });
       setLocation("");
       setNote("");
-      setActive(true);
+      setActive(false);
       setCompletedAt(undefined);
-      toast.success("Event date cleared");
+      toast.success("Event moved to draft");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to clear");
     }
@@ -267,7 +273,7 @@ export default function AdminEventPage() {
               disabled={saving !== null}
             >
               <Trash2 className="mr-2 h-4 w-4" />
-              Clear
+              Move to draft
             </Button>
           )}
           <Button

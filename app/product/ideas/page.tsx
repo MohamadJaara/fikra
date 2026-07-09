@@ -194,23 +194,6 @@ function BrowseIdeasContent() {
     { initialNumItems: PAGE_SIZE },
   );
   const ideaResults = ideas as IdeaListItem[];
-  const ideaCount = useQuery(api.ideas.count, {
-    hackathonId: hackathon?._id,
-    filters: {
-      search: filters.search,
-      shelf: shelfView,
-      statuses: filters.statuses,
-      roles: filters.roles,
-      resourceTags: filters.resourceTags,
-      categories: filters.categories,
-      needsTeammates: filters.needsTeammates,
-      needsResources: filters.needsResources,
-    },
-  });
-  const remainingIdeaCount =
-    typeof ideaCount === "number"
-      ? Math.max(ideaCount - ideaResults.length, 0)
-      : null;
 
   const activeFilterCount =
     filters.statuses.length +
@@ -289,9 +272,9 @@ function BrowseIdeasContent() {
             Ideas
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5 font-mono tabular-nums">
-            {status === "LoadingFirstPage" || ideaCount === undefined
+            {status === "LoadingFirstPage"
               ? "loading..."
-              : `${ideaCount} ${shelfView === "shelved" ? "shelved " : ""}idea${ideaCount !== 1 ? "s" : ""}`}
+              : `${ideaResults.length} ${shelfView === "shelved" ? "shelved " : ""}idea${ideaResults.length !== 1 ? "s" : ""} loaded${status === "CanLoadMore" ? " · more available" : ""}`}
           </p>
         </div>
         <Link href={`${productBase}/ideas/new`}>
@@ -599,6 +582,25 @@ function BrowseIdeasContent() {
               ))}
             </div>
           )
+        ) : ideaResults.length === 0 &&
+          (status === "CanLoadMore" || status === "LoadingMore") ? (
+          <div className="flex flex-col items-center py-24 text-center animate-fade-in">
+            <p className="mb-1.5 text-lg font-medium">Searching more ideas…</p>
+            <p className="mb-6 text-sm text-muted-foreground">
+              No matches were found in this batch, but more ideas remain.
+            </p>
+            {status === "CanLoadMore" ? (
+              <Button
+                variant="outline"
+                onClick={() => loadMore(PAGE_SIZE)}
+                className="min-w-[140px]"
+              >
+                Search more
+              </Button>
+            ) : (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            )}
+          </div>
         ) : ideaResults.length === 0 ? (
           <div className="text-center py-24 animate-fade-in">
             <p className="text-lg font-medium mb-1.5">
@@ -668,16 +670,11 @@ function BrowseIdeasContent() {
                   onClick={() => loadMore(PAGE_SIZE)}
                   className="min-w-[140px]"
                 >
-                  Load{" "}
-                  {remainingIdeaCount === null
-                    ? "more"
-                    : `${Math.min(remainingIdeaCount, PAGE_SIZE)} more`}
+                  Load more
                 </Button>
-                {ideaCount !== undefined && (
-                  <p className="text-xs text-muted-foreground font-mono tabular-nums">
-                    Showing {ideaResults.length} of {ideaCount}
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground font-mono tabular-nums">
+                  {ideaResults.length} loaded · more available
+                </p>
               </div>
             )}
             {status === "LoadingMore" && (

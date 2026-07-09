@@ -6,19 +6,15 @@ import {
   useProductViewer,
   useSelectedHackathon,
 } from "@/components/ProductLayoutClient";
+import { ParticipationModePicker } from "@/components/ParticipationModePicker";
 import { useState } from "react";
 import { useRolesList } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import {
-  PARTICIPATION_MODES,
-  PARTICIPATION_MODE_LABELS,
-  PARTICIPATION_MODE_COLORS,
-  type ParticipationMode,
-} from "@/lib/constants";
+import { type ParticipationMode } from "@/lib/constants";
 import { toast, Toaster } from "sonner";
-import { MapPin, Wifi, Shield, Radio } from "lucide-react";
+import { Shield, Radio } from "lucide-react";
 import { motion } from "framer-motion";
 
 const section = {
@@ -70,10 +66,14 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hackathon) {
+      toast.error("Select a hackathon before updating your participation");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await updateProfile({
-        hackathonId: hackathon?._id,
+        hackathonId: hackathon._id,
         firstName: form.firstName,
         lastName: form.lastName,
         roles: form.selectedRoles,
@@ -115,7 +115,11 @@ export default function SettingsPage() {
               variants={section}
               initial="hidden"
               animate="show"
-              transition={{ delay: 0.05, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                delay: 0.05,
+                duration: 0.5,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="flex gap-6 py-10 first:pt-0"
             >
               <div className="hidden sm:flex pt-1">
@@ -200,7 +204,11 @@ export default function SettingsPage() {
               variants={section}
               initial="hidden"
               animate="show"
-              transition={{ delay: 0.12, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                delay: 0.12,
+                duration: 0.5,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="flex gap-6 py-10"
             >
               <div className="hidden sm:flex pt-1">
@@ -247,7 +255,11 @@ export default function SettingsPage() {
               variants={section}
               initial="hidden"
               animate="show"
-              transition={{ delay: 0.19, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                delay: 0.19,
+                duration: 0.5,
+                ease: [0.16, 1, 0.3, 1],
+              }}
               className="flex gap-6 py-10"
             >
               <div className="hidden sm:flex pt-1">
@@ -266,44 +278,14 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {PARTICIPATION_MODES.map((mode) => {
-                    const active = form.participationMode === mode;
-                    return (
-                      <button
-                        type="button"
-                        key={mode}
-                        onClick={() => {
-                          markDirty();
-                          setForm((prev) => ({
-                            ...prev,
-                            participationMode:
-                              prev.participationMode === mode ? undefined : mode,
-                          }));
-                        }}
-                        className={cn(
-                          "inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200",
-                          "border",
-                          active
-                            ? PARTICIPATION_MODE_COLORS[mode]
-                            : "border-border bg-transparent text-foreground hover:border-primary/40 hover:bg-muted/50",
-                        )}
-                      >
-                        {mode === "onsite" ? (
-                          <MapPin className="mr-1.5 h-3.5 w-3.5" />
-                        ) : (
-                          <Wifi className="mr-1.5 h-3.5 w-3.5" />
-                        )}
-                        {PARTICIPATION_MODE_LABELS[mode]}
-                      </button>
-                    );
-                  })}
-                  {!form.participationMode && (
-                    <span className="inline-flex items-center rounded-full border border-dashed border-border px-3.5 py-1.5 text-sm text-muted-foreground">
-                      Not decided yet
-                    </span>
-                  )}
-                </div>
+                <ParticipationModePicker
+                  value={form.participationMode}
+                  showUndecided
+                  onChange={(participationMode) => {
+                    markDirty();
+                    setForm((prev) => ({ ...prev, participationMode }));
+                  }}
+                />
               </div>
             </motion.section>
           </div>

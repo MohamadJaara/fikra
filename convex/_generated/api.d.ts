@@ -18,6 +18,7 @@ import type * as discover from "../discover.js";
 import type * as event from "../event.js";
 import type * as hackathons from "../hackathons.js";
 import type * as http from "../http.js";
+import type * as ideaLifecycle from "../ideaLifecycle.js";
 import type * as ideaStats from "../ideaStats.js";
 import type * as ideaSubmissions from "../ideaSubmissions.js";
 import type * as ideas from "../ideas.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   event: typeof event;
   hackathons: typeof hackathons;
   http: typeof http;
+  ideaLifecycle: typeof ideaLifecycle;
   ideaStats: typeof ideaStats;
   ideaSubmissions: typeof ideaSubmissions;
   ideas: typeof ideas;

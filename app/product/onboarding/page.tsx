@@ -2,10 +2,15 @@
 
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useProductViewer } from "@/components/ProductLayoutClient";
+import {
+  useProductBase,
+  useProductViewer,
+  useSelectedHackathon,
+} from "@/components/ProductLayoutClient";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
 import { useRolesList } from "@/lib/hooks";
+import { ParticipationModePicker } from "@/components/ParticipationModePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,16 +21,10 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  PARTICIPATION_MODES,
-  PARTICIPATION_MODE_LABELS,
-  PARTICIPATION_MODE_COLORS,
-  type ParticipationMode,
-} from "@/lib/constants";
+import { type ParticipationMode } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { toast, Toaster } from "sonner";
-import { Lightbulb, ArrowRight, MapPin, Wifi } from "lucide-react";
+import { Lightbulb, ArrowRight } from "lucide-react";
 
 function parseNameFromEmail(email: string): {
   firstName: string;
@@ -47,6 +46,8 @@ function parseNameFromEmail(email: string): {
 
 export default function OnboardingPage() {
   const viewer = useProductViewer();
+  const hackathon = useSelectedHackathon();
+  const productBase = useProductBase();
   const completeOnboarding = useMutation(api.users.completeOnboarding);
   const roles = useRolesList();
   const router = useRouter();
@@ -82,16 +83,21 @@ export default function OnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!hackathon) {
+      toast.error("Select a hackathon before completing onboarding");
+      return;
+    }
     setIsSubmitting(true);
     try {
       await completeOnboarding({
+        hackathonId: hackathon._id,
         firstName,
         lastName,
         roles: selectedRoles,
         participationMode,
       });
       toast.success("Profile set up!");
-      router.push("/product/discover");
+      router.push(productBase);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to save profile",
@@ -111,6 +117,7 @@ export default function OnboardingPage() {
           <CardTitle className="text-2xl">Welcome to Fikra!</CardTitle>
           <CardDescription>
             Set up your profile to get started with the hackathon idea board.
+            {hackathon ? ` You are joining ${hackathon.title}.` : ""}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -167,37 +174,19 @@ export default function OnboardingPage() {
               <p className="text-xs text-muted-foreground mt-1 mb-3">
                 Are you joining the hackathon on-site or remotely?
               </p>
-              <div className="flex flex-wrap gap-2">
-                {PARTICIPATION_MODES.map((mode) => (
-                  <Badge
-                    key={mode}
-                    variant={participationMode === mode ? "default" : "outline"}
-                    className={cn(
-                      "cursor-pointer select-none text-sm px-3 py-1.5",
-                      participationMode === mode &&
-                        PARTICIPATION_MODE_COLORS[mode],
-                    )}
-                    onClick={() =>
-                      setParticipationMode((prev) =>
-                        prev === mode ? undefined : mode,
-                      )
-                    }
-                  >
-                    {mode === "onsite" ? (
-                      <MapPin className="h-3 w-3 mr-1.5" />
-                    ) : (
-                      <Wifi className="h-3 w-3 mr-1.5" />
-                    )}
-                    {PARTICIPATION_MODE_LABELS[mode]}
-                  </Badge>
-                ))}
-              </div>
+              <ParticipationModePicker
+                value={participationMode}
+                onChange={setParticipationMode}
+                compact
+              />
             </div>
 
             <Button
               type="submit"
               className="w-full"
-              disabled={isSubmitting || firstName.trim().length === 0}
+              disabled={
+                isSubmitting || !hackathon || firstName.trim().length === 0
+              }
             >
               {isSubmitting ? "Saving..." : "Get Started"}
               {!isSubmitting && <ArrowRight className="ml-2 h-4 w-4" />}

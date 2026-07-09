@@ -33,6 +33,9 @@ export default defineSchema({
   platformSettings: defineTable({
     key: v.string(),
     currentHackathonId: v.optional(v.id("hackathons")),
+    // Pinned for the lifetime of the resumable legacy scope migration. Unlike
+    // currentHackathonId, event switching must not change this target.
+    scopeMigrationHackathonId: v.optional(v.id("hackathons")),
     updatedBy: v.optional(v.id("users")),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),
@@ -203,10 +206,7 @@ export default defineSchema({
     ])
     .index("by_hackathon_and_interestCount", ["hackathonId", "interestCount"])
     .index("by_hackathon_and_reactionTotal", ["hackathonId", "reactionTotal"])
-    .index("by_hackathon_and_needsTeammates", [
-      "hackathonId",
-      "needsTeammates",
-    ])
+    .index("by_hackathon_and_needsTeammates", ["hackathonId", "needsTeammates"])
     .index("by_hackathon_and_hasUnresolvedResources", [
       "hackathonId",
       "hasUnresolvedResources",
@@ -231,6 +231,39 @@ export default defineSchema({
       searchField: "pitch",
       filterFields: ["hackathonId"],
     }),
+
+  ideaDeletionJobs: defineTable({
+    ideaId: v.id("ideas"),
+    hackathonId: v.id("hackathons"),
+    phase: v.union(
+      v.literal("ideaMembers"),
+      v.literal("ideaInterest"),
+      v.literal("comments"),
+      v.literal("reactions"),
+      v.literal("resourceRequests"),
+      v.literal("ownershipTransferRequests"),
+      v.literal("relatedIdeasAsA"),
+      v.literal("relatedIdeasAsB"),
+      v.literal("dismissedIdeas"),
+      v.literal("ideaBookmarks"),
+      v.literal("ideaVotes"),
+      v.literal("notifications"),
+      v.literal("complete"),
+    ),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("running"),
+      v.literal("completed"),
+    ),
+    deletedCount: v.number(),
+    phaseDeletedCount: v.number(),
+    batchCount: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_idea", ["ideaId"])
+    .index("by_status_and_updatedAt", ["status", "updatedAt"]),
 
   ideaMembers: defineTable({
     hackathonId: v.optional(v.id("hackathons")),

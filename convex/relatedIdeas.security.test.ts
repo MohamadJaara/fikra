@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { expect, test, describe } from "vitest";
+import { expect, test, describe, vi } from "vitest";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
@@ -7,7 +7,6 @@ import {
   insertUser,
   asUser,
   makeIdeaArgs,
-  seedCategory,
   DOMAIN,
 } from "./testHelpers.test";
 
@@ -48,6 +47,25 @@ async function seedScopedCategory(
   })) as Id<"categories">;
 }
 
+async function seedParticipants(
+  t: TestContext,
+  hackathonId: Id<"hackathons">,
+  userIds: Id<"users">[],
+) {
+  await t.run(async (ctx: any) => {
+    for (const userId of userIds) {
+      await ctx.db.insert("hackathonParticipants", {
+        hackathonId,
+        userId,
+        participationMode: "onsite",
+        onboardingComplete: true,
+        registeredAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+    }
+  });
+}
+
 async function getOnlyRelationId(t: TestContext) {
   return (await t.run(async (ctx: any) => {
     const relations = await ctx.db.query("relatedIdeas").collect();
@@ -58,25 +76,31 @@ async function getOnlyRelationId(t: TestContext) {
 describe("Related idea merges", () => {
   test("merge preserves target owner when they joined the source idea", async () => {
     const t = initTest();
-    const categoryId = await seedCategory(t);
-
     const sourceOwnerId = await insertUser(t, {
       name: "Source Owner",
       email: `source-owner@${DOMAIN}`,
     });
     const asSourceOwner = asUser(t, sourceOwnerId, `source-owner@${DOMAIN}`);
-    const sourceId = await asSourceOwner.mutation(api.ideas.create, {
-      ...makeIdeaArgs(categoryId),
-      title: "Source idea",
-    });
-
     const targetOwnerId = await insertUser(t, {
       name: "Target Owner",
       email: `target-owner@${DOMAIN}`,
     });
     const asTargetOwner = asUser(t, targetOwnerId, `target-owner@${DOMAIN}`);
+    const hackathonId = await seedHackathon(t, sourceOwnerId, "owner-merge");
+    await seedParticipants(t, hackathonId, [sourceOwnerId, targetOwnerId]);
+    const categoryId = await seedScopedCategory(
+      t,
+      hackathonId,
+      "owner-merge-category",
+    );
+    const sourceId = await asSourceOwner.mutation(api.ideas.create, {
+      ...makeIdeaArgs(categoryId),
+      hackathonId,
+      title: "Source idea",
+    });
     const targetId = await asTargetOwner.mutation(api.ideas.create, {
       ...makeIdeaArgs(categoryId),
+      hackathonId,
       title: "Target idea",
     });
 
@@ -118,6 +142,7 @@ describe("Related idea merges", () => {
     const asOwnerB = asUser(t, ownerBId, ownerBEmail);
     const asOutsider = asUser(t, outsiderId, outsiderEmail);
     const hackathonId = await seedHackathon(t, ownerAId, "relation-ownership");
+    await seedParticipants(t, hackathonId, [ownerAId, ownerBId]);
     const categoryId = await seedScopedCategory(
       t,
       hackathonId,
@@ -165,6 +190,8 @@ describe("Related idea merges", () => {
     const asTarget = asUser(t, targetOwnerId, targetEmail);
     const hackathonA = await seedHackathon(t, sourceOwnerId, "cross-event-a");
     const hackathonB = await seedHackathon(t, targetOwnerId, "cross-event-b");
+    await seedParticipants(t, hackathonA, [sourceOwnerId]);
+    await seedParticipants(t, hackathonB, [targetOwnerId]);
     const categoryA = await seedScopedCategory(
       t,
       hackathonA,
@@ -257,6 +284,7 @@ describe("Related idea merges", () => {
     const asSource = asUser(t, sourceOwnerId, sourceEmail);
     const asTarget = asUser(t, targetOwnerId, targetEmail);
     const hackathonId = await seedHackathon(t, sourceOwnerId, "locked-event");
+    await seedParticipants(t, hackathonId, [sourceOwnerId, targetOwnerId]);
     const categoryId = await seedScopedCategory(
       t,
       hackathonId,
@@ -337,6 +365,8 @@ describe("Related idea merges", () => {
     const asOther = asUser(t, otherId, otherEmail);
     const hackathonA = await seedHackathon(t, ownerId, "search-event-a");
     const hackathonB = await seedHackathon(t, ownerId, "search-event-b");
+    await seedParticipants(t, hackathonA, [ownerId, otherId]);
+    await seedParticipants(t, hackathonB, [otherId]);
     const categoryA = await seedScopedCategory(
       t,
       hackathonA,
@@ -386,6 +416,12 @@ describe("Related idea merges", () => {
     const asMember = asUser(t, memberId, memberEmail);
     const asInterested = asUser(t, interestedId, interestedEmail);
     const hackathonId = await seedHackathon(t, sourceOwnerId, "scoped-merge");
+    await seedParticipants(t, hackathonId, [
+      sourceOwnerId,
+      targetOwnerId,
+      memberId,
+      interestedId,
+    ]);
     const categoryId = await seedScopedCategory(
       t,
       hackathonId,
@@ -439,7 +475,10 @@ describe("Related idea merges", () => {
     expect(relationHackathonId).toBe(hackathonId);
 
     await asSource.mutation(api.relatedIdeas.requestMerge, { relationId });
+    vi.useFakeTimers();
     await asTarget.mutation(api.relatedIdeas.acceptMerge, { relationId });
+    await t.finishAllScheduledFunctions(() => vi.runAllTimers());
+    vi.useRealTimers();
 
     const transferred = await t.run(async (ctx: any) => {
       const member = await ctx.db
@@ -494,13 +533,25 @@ describe("Related idea merges", () => {
     const asSource = asUser(t, sourceOwnerId, sourceEmail);
     const asTarget = asUser(t, targetOwnerId, targetEmail);
     const asOutsider = asUser(t, outsiderId, outsiderEmail);
-    const categoryId = await seedCategory(t);
+    const hackathonId = await seedHackathon(t, sourceOwnerId, "actor-event");
+    await seedParticipants(t, hackathonId, [
+      sourceOwnerId,
+      targetOwnerId,
+      outsiderId,
+    ]);
+    const categoryId = await seedScopedCategory(
+      t,
+      hackathonId,
+      "actor-category",
+    );
     const sourceId = await asSource.mutation(api.ideas.create, {
       ...makeIdeaArgs(categoryId),
+      hackathonId,
       title: "Actor source idea",
     });
     const targetId = await asTarget.mutation(api.ideas.create, {
       ...makeIdeaArgs(categoryId),
+      hackathonId,
       title: "Actor target idea",
     });
     await asSource.mutation(api.relatedIdeas.markRelated, {

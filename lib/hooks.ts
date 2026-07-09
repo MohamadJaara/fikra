@@ -31,21 +31,6 @@ export function useRolesList() {
   }, [roles]);
 }
 
-export function useResourcesMap() {
-  const hackathon = useSelectedHackathon();
-  const resources = useQuery(api.resources.list, {
-    hackathonId: hackathon?._id,
-  });
-  return useMemo(() => {
-    if (!resources) return {} as Record<string, string>;
-    const map: Record<string, string> = {};
-    for (const resource of resources) {
-      map[resource.slug] = resource.name;
-    }
-    return map;
-  }, [resources]);
-}
-
 export function useResourcesList() {
   const hackathon = useSelectedHackathon();
   const resources = useQuery(api.resources.list, {

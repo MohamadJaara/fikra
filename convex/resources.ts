@@ -28,7 +28,8 @@ export const createMany = mutation({
   handler: async (ctx, args) => {
     const { user } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    await assertHackathonWritable(ctx, hackathon?._id, user);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await assertHackathonWritable(ctx, hackathon._id, user);
 
     const items = args.names
       .split(",")
@@ -63,7 +64,7 @@ export const createMany = mutation({
         skipped.push(name);
       } else {
         await ctx.db.insert("resources", {
-          hackathonId: hackathon?._id,
+          hackathonId: hackathon._id,
           name,
           slug,
         });
@@ -94,7 +95,8 @@ async function getScopedResources(
   ctx: Parameters<typeof getAuthenticatedUser>[0],
   hackathonId: Id<"hackathons"> | undefined,
 ) {
-  if (!hackathonId) return await ctx.db.query("resources").order("asc").collect();
+  if (!hackathonId)
+    return await ctx.db.query("resources").order("asc").collect();
   const [scoped, legacy] = await Promise.all([
     ctx.db
       .query("resources")

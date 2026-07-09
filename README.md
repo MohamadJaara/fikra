@@ -2,13 +2,13 @@
 
 > **Fikra** (فكرة) means **"idea"** in Arabic. It captures the essence of the app — a space where ideas are born, shared, and brought to life. The name reflects the spark of inspiration that hackathons are all about: a single _fikra_ can grow into something impactful when the right people come together around it.
 
-**Fikra** is a self-hosted hackathon idea management app. It lets participants submit ideas, browse what others are working on, express interest, join teams, request resources, and discuss — all in a lightweight, fast interface.
+**Fikra** is a self-hosted, multi-event hackathon idea management app. It lets participants submit ideas, browse what others are working on, express interest, join teams, request resources, and discuss — all in a lightweight, fast interface.
 
 Access is restricted by email domain. All authorization is enforced server-side.
 
 ## Tech Stack
 
-- **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS, shadcn/ui (new-york style)
+- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS, shadcn/ui (new-york style)
 - **Backend**: Convex (database, server functions, real-time subscriptions)
 - **Auth**: Convex Auth with Resend magic link
 - **Language**: TypeScript (strict mode)
@@ -21,7 +21,11 @@ Search and filter a grid of idea cards. Filter by status, missing roles, resourc
 
 ### Create & Edit Ideas
 
-Structured form with: title, one-line pitch, problem statement, target audience, skills needed, desired team size, current status, roles being sought, and optional resource request tags with notes. Owners can edit or delete their ideas at any time.
+Structured form with: title, one-line pitch, problem statement, target audience, skills needed, desired team size, current status, roles being sought, and optional resource request tags with notes. Owners can edit or delete their ideas while the event is writable.
+
+### Multiple Hackathons
+
+Admins can create, activate, complete, archive, and clone configuration between hackathons. Participant data, ideas, roles, resources, rooms, voting, and notifications are scoped to the selected event. Completed and archived events are read-only.
 
 ### Interest & Joining (Two Separate Actions)
 
@@ -61,11 +65,11 @@ Personal dashboard with four tabs:
 
 ### Onboarding
 
-First-time users are guided through a profile setup flow: first name, last name, and role selection. Names are auto-parsed from the email for convenience.
+Users join each hackathon through an event-scoped profile flow. Names remain global, while roles and participation mode are specific to the selected event. Names are auto-parsed from the email for convenience.
 
 ### Settings
 
-Manage your profile (name, roles) at any time. Email is read-only.
+Manage your name and event-specific participation settings. Email is read-only.
 
 ### Dark Mode
 
@@ -79,7 +83,7 @@ Full sidebar navigation on desktop; hamburger menu on mobile. All pages adapt to
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 22 (see `.node-version`)
 - A Convex account and deployment
 
 ### First-time setup
@@ -103,10 +107,11 @@ Starts the Next.js frontend (with Turbopack) and the Convex backend in parallel.
 
 ```bash
 npm run build    # Production build
-npm run lint     # ESLint (next/core-web-vitals + next/typescript)
+npm run lint     # ESLint
+npm run typecheck
+npm test         # Vitest + convex-test
+npm run check    # lint + typecheck + tests
 ```
-
-No test framework is configured.
 
 ## Project Structure
 
@@ -115,7 +120,9 @@ app/
   (splash)/          # Public landing page
   signin/            # Sign-in page (magic link)
   product/           # All authenticated routes
-    page.tsx         # Browse ideas
+    hackathons/      # Event directory
+    h/[hackathonSlug]/ # Event-scoped routes
+    ideas/           # Current-event compatibility routes
     ideas/new/       # Create idea
     ideas/[id]/      # Idea detail
     ideas/[id]/edit/ # Edit idea
@@ -123,10 +130,10 @@ app/
     notifications/   # User notifications
     onboarding/      # Post-signup profile setup
     settings/        # User settings
-  middleware.ts      # Auth gate for /product/*
+proxy.ts             # Auth/admin route gate for /product/*
 
 convex/
-  schema.ts          # Database tables
+  schema.ts          # Database tables and indexes
   auth.ts            # Auth provider (Resend magic link)
   ideas.ts           # Idea CRUD + queries
   comments.ts        # Threaded comments with @mentions
@@ -136,12 +143,15 @@ convex/
   resourceRequests.ts# Resource request management
   notifications.ts   # Notification creation + queries
   users.ts           # User queries + profile management
+  hackathons.ts      # Event lifecycle and configuration cloning
+  migrations.ts      # Batched, resumable data migrations
   lib.ts             # Shared helpers (auth, validation, sanitization)
   _generated/        # Auto-generated Convex API (do not edit)
 
 components/
   AppShell.tsx       # Sidebar layout + nav + auth gate
-  IdeaCard.tsx       # Idea card for browse grid
+  IdeaMasonryItem.tsx# Browse-grid idea item
+  IdeaExpandedRow.tsx# Expanded/list idea row
   IdeaForm.tsx       # Shared create/edit form
   ConvexClientProvider.tsx
   ThemeToggle.tsx
@@ -157,15 +167,17 @@ lib/
 
 - Access is restricted to the configured `ALLOWED_DOMAIN` (and optional `ALLOWED_EMAILS` whitelist). Enforced server-side in every Convex query and mutation via `getAuthenticatedUser` (`convex/lib.ts`).
 - The `list` query returns empty for unauthenticated or unauthorized users.
-- All inputs are validated and sanitized server-side (length limits, HTML escaping, enum checks).
+- Inputs are validated server-side with length, enum, scope, and cross-reference checks; user text is rendered through React rather than injected as HTML.
 - Owners can only edit/delete their own ideas. Comment authors can only edit their own comments. Idea owners can delete comments on their ideas.
-- The middleware in `middleware.ts` ensures `/product/*` routes require authentication; `/signin` redirects away if already signed in.
+- `proxy.ts` ensures `/product/*` routes require authentication and protects both global and event-scoped admin paths.
+- Participant-facing event mutations require a completed participant profile for that event. Event IDs and cross-document references are validated server-side.
+- Completed and archived hackathons reject participant mutations; admin lifecycle functions handle explicit status transitions.
 
 ## Disclaimer
 
 **Fikra is not a SaaS product.** It's a self-hosted, single-tenant app designed to be deployed by teams inside their own organization. There is no multi-tenancy, no billing, and no hosted version — and that's intentional.
 
-This project was **vibe coded** as an internal hackathon tool. It prioritizes speed and simplicity over production-grade hardening. That said, it's built on solid foundations (Convex, Next.js, TypeScript) and is easy to fork, customize, and deploy for your own company.
+The app is designed for a single organization and is easy to fork, customize, and deploy for an internal event program.
 
 ### Deploying for your team
 

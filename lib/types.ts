@@ -200,19 +200,6 @@ export type IdeaRoomInfo = {
   sharedWithIdeas: { _id: Id<"ideas">; title: string }[];
 };
 
-export type ProfileIdea = {
-  _id: Id<"ideas">;
-  _creationTime: number;
-  title: string;
-  pitch: string;
-  status: string;
-  lookingForRoles: string[];
-};
-
-export type JoinedIdea = ProfileIdea & {
-  memberRoles?: string[];
-};
-
 export type PublicUser = {
   _id: Id<"users">;
   _creationTime: number;
@@ -223,20 +210,6 @@ export type PublicUser = {
   roles?: string[];
   handle?: string;
   participationMode?: string;
-};
-
-export type UserProfile = {
-  _id: Id<"users">;
-  _creationTime: number;
-  name?: string;
-  firstName?: string;
-  lastName?: string;
-  image?: string;
-  roles?: string[];
-  handle?: string;
-  participationMode?: string;
-  ownedIdeas: ProfileIdea[];
-  joinedIdeas: JoinedIdea[];
 };
 
 export type UnresolvedResource = {

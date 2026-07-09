@@ -81,7 +81,7 @@ export const getBySlug = query({
     await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
     const category = hackathon
-      ? (await ctx.db
+      ? ((await ctx.db
           .query("categories")
           .withIndex("by_hackathon_and_slug", (q) =>
             q.eq("hackathonId", hackathon._id).eq("slug", slug),
@@ -92,7 +92,7 @@ export const getBySlug = query({
           .withIndex("by_hackathon_and_slug", (q) =>
             q.eq("hackathonId", undefined).eq("slug", slug),
           )
-          .first())
+          .first()))
       : await ctx.db
           .query("categories")
           .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -123,7 +123,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    await assertHackathonWritable(ctx, hackathon?._id, user);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await assertHackathonWritable(ctx, hackathon._id, user);
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Category name is required");
     const slug = createCategorySlug(name);
@@ -143,7 +144,7 @@ export const create = mutation({
       ? sanitizeText(args.description)
       : undefined;
     return await ctx.db.insert("categories", {
-      hackathonId: hackathon?._id,
+      hackathonId: hackathon._id,
       name,
       slug,
       description,
@@ -161,7 +162,8 @@ export const createMany = mutation({
   handler: async (ctx, args) => {
     const { user } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    await assertHackathonWritable(ctx, hackathon?._id, user);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await assertHackathonWritable(ctx, hackathon._id, user);
     const items = args.names
       .split(",")
       .map((s) => sanitizeText(s))
@@ -186,7 +188,7 @@ export const createMany = mutation({
         skipped.push(name);
       } else {
         await ctx.db.insert("categories", {
-          hackathonId: hackathon?._id,
+          hackathonId: hackathon._id,
           name,
           slug,
           order: Date.now(),
@@ -293,7 +295,8 @@ export const reorder = mutation({
     const { user } = await getAdminUser(ctx);
     for (let i = 0; i < orderedIds.length; i++) {
       const category = await ctx.db.get(orderedIds[i]);
-      if (category) await assertHackathonWritable(ctx, category.hackathonId, user);
+      if (category)
+        await assertHackathonWritable(ctx, category.hackathonId, user);
       await ctx.db.patch(orderedIds[i], { order: i });
     }
   },
@@ -303,7 +306,8 @@ async function getScopedCategories(
   ctx: Parameters<typeof getAuthenticatedUser>[0],
   hackathonId: Id<"hackathons"> | undefined,
 ) {
-  if (!hackathonId) return await ctx.db.query("categories").order("asc").collect();
+  if (!hackathonId)
+    return await ctx.db.query("categories").order("asc").collect();
   const [scoped, legacy] = await Promise.all([
     ctx.db
       .query("categories")

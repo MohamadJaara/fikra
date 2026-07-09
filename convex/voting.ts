@@ -6,10 +6,14 @@ import {
 } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
+  claimLegacyIdeaScopeForMutation,
   getAdminUser,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
   getUserDisplayName,
+  requireParticipant,
+  resolveLegacyScopeForMutation,
   resolveTeamSize,
   STATUSES,
 } from "./lib";
@@ -214,7 +218,8 @@ export const toggleVote = mutation({
   handler: async (ctx, { ideaId, hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    const settings = await getVotingSettings(ctx, hackathon?._id);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    const settings = await getVotingSettings(ctx, hackathon._id);
 
     if (!settings?.active || settings.currentRound <= 0) {
       throw new Error("Voting is not open");
@@ -222,45 +227,39 @@ export const toggleVote = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
-    if (
-      hackathon?._id &&
-      idea.hackathonId !== undefined &&
-      idea.hackathonId !== hackathon._id
-    ) {
-      throw new Error("Idea does not belong to this hackathon");
-    }
+    await claimLegacyIdeaScopeForMutation(ctx, idea, hackathon._id);
+    await requireParticipant(ctx, hackathon._id, userId);
+    await assertHackathonWritable(ctx, hackathon._id);
     if (idea.status === IDEA_STATUS_SHELVED) {
       throw new Error("Shelved ideas are not on the voting ballot");
     }
 
-    const existing = hackathon
-      ? await ctx.db
-          .query("ideaVotes")
-          .withIndex("by_hackathon_and_idea_and_user_and_round", (q) =>
-            q
-              .eq("hackathonId", hackathon._id)
-              .eq("ideaId", ideaId)
-              .eq("userId", userId)
-              .eq("round", settings.currentRound),
-          )
-          .unique()
-      : await ctx.db
-          .query("ideaVotes")
-          .withIndex("by_idea_and_user_and_round", (q) =>
-            q
-              .eq("ideaId", ideaId)
-              .eq("userId", userId)
-              .eq("round", settings.currentRound),
-          )
-          .unique();
+    const existing = await ctx.db
+      .query("ideaVotes")
+      .withIndex("by_idea_and_user_and_round", (q) =>
+        q
+          .eq("ideaId", ideaId)
+          .eq("userId", userId)
+          .eq("round", settings.currentRound),
+      )
+      .first();
 
     if (existing) {
+      const voteScope = await resolveLegacyScopeForMutation(
+        ctx,
+        existing.hackathonId,
+        hackathon._id,
+        "Vote",
+      );
+      if (voteScope.shouldPatch) {
+        await ctx.db.patch(existing._id, { hackathonId: hackathon._id });
+      }
       await ctx.db.delete(existing._id);
       return { voted: false };
     }
 
     await ctx.db.insert("ideaVotes", {
-      hackathonId: hackathon?._id ?? idea.hackathonId,
+      hackathonId: hackathon._id,
       ideaId,
       userId,
       round: settings.currentRound,
@@ -355,12 +354,13 @@ export const start = mutation({
   handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    const existing = await getExactVotingSettings(ctx, hackathon?._id);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    const existing = await getExactVotingSettings(ctx, hackathon._id);
     const now = Date.now();
 
     if (!existing) {
       await ctx.db.insert("votingSettings", {
-        hackathonId: hackathon?._id,
+        hackathonId: hackathon._id,
         key: SETTINGS_KEY,
         active: true,
         currentRound: 1,
@@ -392,11 +392,12 @@ export const stop = mutation({
   handler: async (ctx, { hackathonId }) => {
     const { userId } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    if (!hackathon) throw new Error("No hackathon is configured");
     const now = Date.now();
-    const existing = await getExactVotingSettings(ctx, hackathon?._id);
+    const existing = await getExactVotingSettings(ctx, hackathon._id);
     if (!existing) {
-      const inherited = await getVotingSettings(ctx, hackathon?._id);
-      if (hackathon && inherited?.active) {
+      const inherited = await getVotingSettings(ctx, hackathon._id);
+      if (inherited?.active) {
         await ctx.db.insert("votingSettings", {
           hackathonId: hackathon._id,
           key: SETTINGS_KEY,

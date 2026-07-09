@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { describe, expect, test } from "vitest";
 import { api } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import {
   asUser,
   DOMAIN,
@@ -21,6 +22,25 @@ function todayAtUtc(hour: number, minute = 0) {
     hour,
     minute,
   );
+}
+
+async function scopeCreatorForHackathon(
+  t: ReturnType<typeof initTest>,
+  categoryId: Id<"categories">,
+  hackathonId: Id<"hackathons">,
+  userId: Id<"users">,
+) {
+  await t.run(async (ctx: any) => {
+    await ctx.db.patch(categoryId, { hackathonId });
+    await ctx.db.insert("hackathonParticipants", {
+      hackathonId,
+      userId,
+      onboardingComplete: true,
+      participationMode: "onsite",
+      registeredAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  });
 }
 
 describe("Idea submission window", () => {
@@ -44,6 +64,7 @@ describe("Idea submission window", () => {
       timezone: "UTC",
       status: "upcoming",
     });
+    await scopeCreatorForHackathon(t, categoryId, hackathonId, userId);
 
     await expect(
       asCreator.mutation(api.ideas.create, {
@@ -74,6 +95,7 @@ describe("Idea submission window", () => {
       timezone: "UTC",
       status: "upcoming",
     });
+    await scopeCreatorForHackathon(t, categoryId, hackathonId, userId);
 
     const window = await asCreator.query(api.ideaSubmissions.getCurrent, {
       hackathonId,
@@ -113,6 +135,7 @@ describe("Idea submission window", () => {
       timezone: "UTC",
       status: "upcoming",
     });
+    await scopeCreatorForHackathon(t, categoryId, hackathonId, userId);
 
     await asAdmin.mutation(api.hackathons.complete, { hackathonId });
 

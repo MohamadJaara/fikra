@@ -1,6 +1,14 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedUser, getHackathonByIdOrCurrent } from "./lib";
+import {
+  assertHackathonWritable,
+  assertIdeasUnlocked,
+  claimLegacyIdeaScopeForMutation,
+  getAuthenticatedUser,
+  getHackathonByIdOrCurrent,
+  requireParticipant,
+  resolveLegacyScopeForMutation,
+} from "./lib";
 
 export const toggle = mutation({
   args: { ideaId: v.id("ideas") },
@@ -9,6 +17,10 @@ export const toggle = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const existing = await ctx.db
       .query("ideaBookmarks")
@@ -18,12 +30,24 @@ export const toggle = mutation({
       .first();
 
     if (existing) {
+      const bookmarkScope = await resolveLegacyScopeForMutation(
+        ctx,
+        existing.hackathonId,
+        hackathonId,
+        "Bookmark",
+      );
+      if (bookmarkScope.shouldPatch) {
+        await ctx.db.patch(existing._id, { hackathonId });
+      }
+    }
+
+    if (existing) {
       await ctx.db.delete(existing._id);
       return false;
     }
 
     await ctx.db.insert("ideaBookmarks", {
-      hackathonId: idea.hackathonId,
+      hackathonId,
       ideaId,
       userId,
     });

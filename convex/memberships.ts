@@ -2,12 +2,15 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   assertHackathonWritable,
+  assertIdeasUnlocked,
+  claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
-  getParticipant,
   getHackathonByIdOrCurrent,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
   normalizeOptionalStringArray,
+  requireParticipant,
+  resolveLegacyScopeForMutation,
   validateRoleSlugs,
 } from "./lib";
 import { internal } from "./_generated/api";
@@ -23,7 +26,10 @@ export const join = mutation({
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
-    await assertHackathonWritable(ctx, idea.hackathonId, user);
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    const participant = await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const existing = await ctx.db
       .query("ideaMembers")
@@ -31,14 +37,23 @@ export const join = mutation({
         q.eq("ideaId", ideaId).eq("userId", userId),
       )
       .first();
+    if (existing) {
+      const membershipScope = await resolveLegacyScopeForMutation(
+        ctx,
+        existing.hackathonId,
+        hackathonId,
+        "Membership",
+      );
+      if (membershipScope.shouldPatch) {
+        await ctx.db.patch(existing._id, { hackathonId });
+      }
+    }
     if (existing && isEffectiveIdeaMember(existing, idea)) {
       throw new Error("Already a member");
     }
 
-    const participant = idea.hackathonId
-      ? await getParticipant(ctx, idea.hackathonId, userId)
-      : null;
-    const participationMode = participant?.participationMode ?? user.participationMode;
+    const participationMode =
+      participant.participationMode ?? user.participationMode;
     if (idea.onsiteOnly && participationMode !== "onsite") {
       throw new Error(
         "This team is limited to on-site participants only. Update your participation mode to on-site in settings to join.",
@@ -47,7 +62,7 @@ export const join = mutation({
 
     const roles = normalizeOptionalStringArray(memberRoles);
     if (roles) {
-      await validateRoleSlugs(ctx, roles, idea.hackathonId);
+      await validateRoleSlugs(ctx, roles, hackathonId);
     }
 
     if (existing) {
@@ -57,7 +72,7 @@ export const join = mutation({
       });
     } else {
       await ctx.db.insert("ideaMembers", {
-        hackathonId: idea.hackathonId,
+        hackathonId,
         ideaId,
         userId,
         memberRoles: roles,
@@ -80,11 +95,14 @@ export const join = mutation({
 export const leave = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId, user } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
-    await assertHackathonWritable(ctx, idea.hackathonId, user);
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const membership = await ctx.db
       .query("ideaMembers")
@@ -93,6 +111,15 @@ export const leave = mutation({
       )
       .first();
     if (!membership) throw new Error("Not a member");
+    const membershipScope = await resolveLegacyScopeForMutation(
+      ctx,
+      membership.hackathonId,
+      hackathonId,
+      "Membership",
+    );
+    if (membershipScope.shouldPatch) {
+      await ctx.db.patch(membership._id, { hackathonId });
+    }
 
     await ctx.db.delete(membership._id);
     await refreshIdeaMemberStats(ctx, ideaId);
@@ -106,13 +133,16 @@ export const updateMemberRoles = mutation({
     memberRoles: v.optional(v.array(v.string())),
   },
   handler: async (ctx, { ideaId, targetUserId, memberRoles }) => {
-    const { userId, user } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId)
       throw new Error("Only the idea owner can update member roles");
-    await assertHackathonWritable(ctx, idea.hackathonId, user);
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const membership = await ctx.db
       .query("ideaMembers")
@@ -121,10 +151,19 @@ export const updateMemberRoles = mutation({
       )
       .first();
     if (!membership) throw new Error("Target user is not a member");
+    const membershipScope = await resolveLegacyScopeForMutation(
+      ctx,
+      membership.hackathonId,
+      hackathonId,
+      "Membership",
+    );
+    if (membershipScope.shouldPatch) {
+      await ctx.db.patch(membership._id, { hackathonId });
+    }
 
     const roles = normalizeOptionalStringArray(memberRoles);
     if (roles) {
-      await validateRoleSlugs(ctx, roles, idea.hackathonId);
+      await validateRoleSlugs(ctx, roles, hackathonId);
     }
 
     await ctx.db.patch(membership._id, {

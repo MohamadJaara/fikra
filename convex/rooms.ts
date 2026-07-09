@@ -21,10 +21,7 @@ function teamSizeCapacity(idea: Doc<"ideas">) {
   return 7;
 }
 
-function normalizeAssignmentLimit(
-  limit: number | undefined,
-  roomType: string,
-) {
+function normalizeAssignmentLimit(limit: number | undefined, roomType: string) {
   if (roomType !== "shared") return undefined;
   if (limit === undefined) return undefined;
   if (!Number.isInteger(limit) || limit < 1 || limit > 999) {
@@ -101,9 +98,7 @@ export const list = query({
     const rooms = hackathon
       ? await ctx.db
           .query("rooms")
-          .withIndex("by_hackathon", (q) =>
-            q.eq("hackathonId", hackathon._id),
-          )
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
           .collect()
       : await ctx.db.query("rooms").collect();
 
@@ -153,7 +148,8 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { user } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    await assertHackathonWritable(ctx, hackathon?._id, user);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await assertHackathonWritable(ctx, hackathon._id, user);
 
     const name = sanitizeText(args.name);
     if (!name) throw new Error("Room name is required");
@@ -170,7 +166,7 @@ export const create = mutation({
     );
 
     return await ctx.db.insert("rooms", {
-      hackathonId: hackathon?._id,
+      hackathonId: hackathon._id,
       name,
       type: args.type,
       assignmentLimit,
@@ -186,7 +182,8 @@ export const queueFullIdeasForRooms = mutation({
   handler: async (ctx, { hackathonId }) => {
     const { user } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-    await assertHackathonWritable(ctx, hackathon?._id, user);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await assertHackathonWritable(ctx, hackathon._id, user);
 
     const ideas = hackathon
       ? await ctx.db

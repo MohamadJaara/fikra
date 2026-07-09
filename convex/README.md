@@ -1,90 +1,29 @@
-# Welcome to your Convex functions directory!
+# Fikra Convex backend
 
-Write your Convex functions here.
-See https://docs.convex.dev/functions for more.
+The backend is event-scoped. `hackathons` is the canonical event model, while `platformSettings.currentHackathonId` selects the compatibility/current event. Participant roles, participation mode, and onboarding live in `hackathonParticipants`.
 
-A query function that takes two arguments looks like:
+Before changing Convex functions, read [`_generated/ai/guidelines.md`](./_generated/ai/guidelines.md).
 
-```ts
-// functions.js
-import { query } from "./_generated/server";
-import { v } from "convex/values";
+## Safety rules
 
-export const myQueryFunction = query({
-  // Validators for arguments.
-  args: {
-    first: v.number(),
-    second: v.string(),
-  },
+- Never edit `_generated/` files manually.
+- New event-owned records must have a concrete `hackathonId`.
+- Validate that referenced records belong to the same hackathon.
+- Participant mutations require completed event participation and must respect completed/archived and voting locks.
+- Use indexes and bounded reads on growing tables; use the migrations component for backfills.
+- Treat `eventSettings` and global user roles/mode as temporary legacy compatibility data.
 
-  // Function implementation.
-  handler: async (ctx, args) => {
-    // Read the database as many times as you need here.
-    // See https://docs.convex.dev/database/reading-data.
-    const documents = await ctx.db.query("tablename").collect();
+## Verification
 
-    // Arguments passed from the client are properties of the args object.
-    console.log(args.first, args.second);
+From the repository root:
 
-    // Write arbitrary JavaScript here: filter, aggregate, build derived data,
-    // remove non-public properties, or create new objects.
-    return documents;
-  },
-});
+```bash
+npm run check
+npm run build
 ```
 
-Using this query function in a React component looks like:
+Convex tests live beside the functions as `*.test.ts` and run with Vitest plus `convex-test`.
 
-```ts
-const data = useQuery(api.functions.myQueryFunction, {
-  first: 10,
-  second: "hello",
-});
-```
+## Migrations
 
-A mutation function looks like:
-
-```ts
-// functions.js
-import { mutation } from "./_generated/server";
-import { v } from "convex/values";
-
-export const myMutationFunction = mutation({
-  // Validators for arguments.
-  args: {
-    first: v.string(),
-    second: v.string(),
-  },
-
-  // Function implementation.
-  handler: async (ctx, args) => {
-    // Insert or modify documents in the database here.
-    // Mutations can also read from the database like queries.
-    // See https://docs.convex.dev/database/writing-data.
-    const message = { body: args.first, author: args.second };
-    const id = await ctx.db.insert("messages", message);
-
-    // Optionally, return a value from your mutation.
-    return await ctx.db.get(id);
-  },
-});
-```
-
-Using this mutation function in a React component looks like:
-
-```ts
-const mutation = useMutation(api.functions.myMutationFunction);
-function handleButtonPress() {
-  // fire and forget, the most common way to use mutations
-  mutation({ first: "Hello!", second: "me" });
-  // OR
-  // use the result once the mutation has completed
-  mutation({ first: "Hello!", second: "me" }).then((result) =>
-    console.log(result),
-  );
-}
-```
-
-Use the Convex CLI to push your functions to a deployment. See everything
-the Convex CLI can do by running `npx convex -h` in your project root
-directory. To learn more, launch the docs with `npx convex docs`.
+Migration definitions are in `migrations.ts`. They are manual, batched, and resumable. Always dry-run against the intended deployment, inspect component status and the scope verification report, and keep destructive cleanup runners separate from normal backfills. Never run a production migration merely by starting the development server.

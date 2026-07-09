@@ -1,15 +1,26 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import {
   assertHackathonWritable,
   getAdminUser,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
   getUserDisplayName,
+  requireParticipant,
   validateStringLength,
 } from "./lib";
 
 const ANNOUNCEMENT_TYPES = ["info", "urgent", "celebration"] as const;
+
+function requireAnnouncementHackathonId(announcement: {
+  hackathonId?: Id<"hackathons">;
+}) {
+  if (!announcement.hackathonId) {
+    throw new Error("Announcement is not assigned to a hackathon");
+  }
+  return announcement.hackathonId;
+}
 
 export const getActive = query({
   args: { hackathonId: v.optional(v.id("hackathons")) },
@@ -68,9 +79,7 @@ export const list = query({
     const announcements = hackathon
       ? await ctx.db
           .query("announcements")
-          .withIndex("by_hackathon", (q) =>
-            q.eq("hackathonId", hackathon._id),
-          )
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
           .order("desc")
           .collect()
       : await ctx.db.query("announcements").order("desc").collect();
@@ -107,12 +116,13 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { userId, user } = await getAdminUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
-    await assertHackathonWritable(ctx, hackathon?._id, user);
+    if (!hackathon) throw new Error("No hackathon is configured");
+    await assertHackathonWritable(ctx, hackathon._id, user);
     const title = validateStringLength(args.title, 1, 120, "Title");
     const message = validateStringLength(args.message, 1, 1000, "Message");
 
     return await ctx.db.insert("announcements", {
-      hackathonId: hackathon?._id,
+      hackathonId: hackathon._id,
       title,
       message,
       type: args.type,
@@ -136,7 +146,8 @@ export const update = mutation({
     const { announcementId, ...updates } = args;
     const announcement = await ctx.db.get(announcementId);
     if (!announcement) throw new Error("Announcement not found");
-    await assertHackathonWritable(ctx, announcement.hackathonId, user);
+    const hackathonId = requireAnnouncementHackathonId(announcement);
+    await assertHackathonWritable(ctx, hackathonId, user);
 
     const patch: Record<string, unknown> = {};
     if (updates.title !== undefined) {
@@ -160,7 +171,8 @@ export const remove = mutation({
     const { user } = await getAdminUser(ctx);
     const announcement = await ctx.db.get(announcementId);
     if (!announcement) throw new Error("Announcement not found");
-    await assertHackathonWritable(ctx, announcement.hackathonId, user);
+    const hackathonId = requireAnnouncementHackathonId(announcement);
+    await assertHackathonWritable(ctx, hackathonId, user);
 
     const dismissed = await ctx.db
       .query("dismissedAnnouncements")
@@ -178,6 +190,11 @@ export const dismiss = mutation({
   args: { announcementId: v.id("announcements") },
   handler: async (ctx, { announcementId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
+    const announcement = await ctx.db.get(announcementId);
+    if (!announcement) throw new Error("Announcement not found");
+    const hackathonId = requireAnnouncementHackathonId(announcement);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
 
     const existing = await ctx.db
       .query("dismissedAnnouncements")
@@ -185,11 +202,13 @@ export const dismiss = mutation({
         q.eq("announcementId", announcementId).eq("userId", userId),
       )
       .unique();
+    if (existing && existing.hackathonId !== hackathonId) {
+      throw new Error("Dismissal does not belong to this hackathon");
+    }
     if (existing) return;
 
     await ctx.db.insert("dismissedAnnouncements", {
-      hackathonId:
-        (await ctx.db.get(announcementId))?.hackathonId,
+      hackathonId,
       announcementId,
       userId,
     });

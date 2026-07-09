@@ -7,10 +7,16 @@ import { useQuery } from "convex/react";
 import { Lightbulb } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, ReactNode, use, useEffect, useMemo } from "react";
+import {
+  bypassesParticipantOnboarding,
+  hackathonSlugFromPathname,
+  productBaseForHackathon,
+  productRedirectForParticipation,
+} from "@/lib/productRouting";
 
 type ProductViewer = NonNullable<
   FunctionReturnType<typeof api.users.viewerOrNull>
->;
+> & { availabilityNote?: string };
 type ProductHackathon = NonNullable<
   FunctionReturnType<typeof api.hackathons.getCurrent>
 >;
@@ -30,26 +36,11 @@ export function useSelectedHackathon() {
   return use(ProductHackathonContext);
 }
 
-export function productBaseForHackathon(
-  hackathon: ProductHackathon | null,
-  pathname?: string,
-) {
-  if (hackathon && pathname?.startsWith(`/product/h/${hackathon.slug}`)) {
-    return `/product/h/${hackathon.slug}`;
-  }
-  return "/product";
-}
+export { productBaseForHackathon } from "@/lib/productRouting";
 
 export function useProductBase() {
   const pathname = usePathname();
   return productBaseForHackathon(useSelectedHackathon(), pathname);
-}
-
-function hackathonSlugFromPathname(pathname: string) {
-  const parts = pathname.split("/").filter(Boolean);
-  const hIndex = parts.indexOf("h");
-  if (hIndex === -1) return null;
-  return parts[hIndex + 1] ?? null;
 }
 
 export function ProductLayoutClient({ children }: { children: ReactNode }) {
@@ -69,46 +60,72 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
     viewer && hackathonSlug ? { slug: hackathonSlug } : "skip",
   );
   const selectedHackathon = hackathonSlug ? slugHackathon : currentHackathon;
+  const bypassParticipantOnboarding = bypassesParticipantOnboarding(pathname);
+  const participation = useQuery(
+    api.users.getMyParticipation,
+    viewer && selectedHackathon && !bypassParticipantOnboarding
+      ? { hackathonId: selectedHackathon._id }
+      : "skip",
+  );
+  const shouldLoadVoting = Boolean(
+    viewer &&
+    selectedHackathon &&
+    !bypassParticipantOnboarding &&
+    participation?.onboardingComplete,
+  );
   const votingStatus = useQuery(
     api.voting.status,
-    viewer && selectedHackathon
+    shouldLoadVoting && selectedHackathon
       ? { hackathonId: selectedHackathon._id }
-      : viewer && !hackathonSlug && selectedHackathon === null
-        ? {}
-        : "skip",
+      : "skip",
   );
 
+  const effectiveViewer = useMemo<ProductViewer | null | undefined>(() => {
+    if (!viewer || !selectedHackathon || bypassParticipantOnboarding) {
+      return viewer;
+    }
+    if (participation === undefined) return viewer;
+    return {
+      ...viewer,
+      roles: participation?.roles ?? [],
+      participationMode: participation?.participationMode,
+      onboardingComplete: participation?.onboardingComplete === true,
+      availabilityNote: participation?.availabilityNote,
+    };
+  }, [bypassParticipantOnboarding, participation, selectedHackathon, viewer]);
+
+  const redirectTo =
+    viewer &&
+    selectedHackathon !== undefined &&
+    (bypassParticipantOnboarding ||
+      selectedHackathon === null ||
+      participation !== undefined)
+      ? productRedirectForParticipation({
+          pathname,
+          hackathon: selectedHackathon,
+          participation: participation ?? null,
+          votingActive: votingStatus?.active === true,
+          isAdmin: viewer.isAdmin === true,
+        })
+      : null;
+
   useEffect(() => {
-    if (viewer === undefined || selectedHackathon === undefined) return;
+    if (viewer === undefined) return;
     if (viewer === null) {
       router.replace("/signin");
       return;
     }
-
-    const onOnboardingPage = pathname === "/product/onboarding";
-    const onVotingPage =
-      pathname === "/product/voting" || pathname.endsWith("/voting");
-
-    if (!viewer.onboardingComplete && !onOnboardingPage) {
-      router.replace("/product/onboarding");
-    } else if (viewer.onboardingComplete && onOnboardingPage) {
-      router.replace("/product");
-    } else if (
-      viewer.onboardingComplete &&
-      votingStatus?.active &&
-      !viewer.isAdmin &&
-      !onVotingPage
-    ) {
-      router.replace(
-        `${productBaseForHackathon(selectedHackathon, pathname)}/voting`,
-      );
-    }
-  }, [viewer, selectedHackathon, votingStatus, pathname, router]);
+    if (redirectTo) router.replace(redirectTo);
+  }, [redirectTo, router, viewer]);
 
   if (
     viewer === undefined ||
-    selectedHackathon === undefined ||
-    (viewer !== null && selectedHackathon !== null && votingStatus === undefined)
+    (viewer !== null && selectedHackathon === undefined) ||
+    (viewer !== null &&
+      selectedHackathon !== null &&
+      !bypassParticipantOnboarding &&
+      participation === undefined) ||
+    (shouldLoadVoting && votingStatus === undefined)
   ) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -121,6 +138,7 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
   }
 
   if (viewer === null) return null;
+  if (selectedHackathon === undefined) return null;
   if (selectedHackathon === null && hackathonSlug) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -131,24 +149,15 @@ export function ProductLayoutClient({ children }: { children: ReactNode }) {
     );
   }
 
-  const onOnboardingPage = pathname === "/product/onboarding";
-  const onVotingPage =
-    pathname === "/product/voting" || pathname.endsWith("/voting");
-  if (!viewer.onboardingComplete && !onOnboardingPage) return null;
-  if (viewer.onboardingComplete && onOnboardingPage) return null;
-  if (
-    viewer.onboardingComplete &&
-    votingStatus?.active &&
-    !viewer.isAdmin &&
-    !onVotingPage
-  ) {
-    return null;
-  }
+  if (redirectTo) return null;
 
   return (
-    <ProductViewerContext value={viewer}>
+    <ProductViewerContext value={effectiveViewer ?? viewer}>
       <ProductHackathonContext value={selectedHackathon}>
-        <AppShell viewer={viewer} hackathon={selectedHackathon}>
+        <AppShell
+          viewer={effectiveViewer ?? viewer}
+          hackathon={selectedHackathon}
+        >
           {children}
         </AppShell>
       </ProductHackathonContext>

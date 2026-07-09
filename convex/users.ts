@@ -3,12 +3,17 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
+  canReadLegacyScope,
   getAuthenticatedUser,
   generateUniqueHandle,
   getHackathonByIdOrCurrent,
+  getParticipant,
   getUserDisplayName,
   isEffectiveIdeaMember,
   mergeUniqueStringArrays,
+  requireParticipant,
+  requireStoredParticipant,
   validateRoleSlugs,
   PARTICIPATION_MODES,
   isEmailAllowed,
@@ -16,18 +21,19 @@ import {
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
+const MAX_PROFILE_IDEAS = 50;
+// TEMPORARY MIGRATION COMPATIBILITY: cap each scoped/legacy membership read.
+const MAX_PROFILE_MEMBERSHIPS_PER_SCOPE = 100;
+
 async function upsertHackathonParticipant(
   ctx: MutationCtx,
-  hackathonId: Id<"hackathons"> | undefined,
+  hackathonId: Id<"hackathons">,
   userId: Id<"users">,
   values: {
-    roles?: string[];
+    roles: string[];
     participationMode?: string;
-    onboardingComplete?: boolean;
-    availabilityNote?: string;
   },
 ) {
-  if (!hackathonId) return;
   const existing = await ctx.db
     .query("hackathonParticipants")
     .withIndex("by_hackathon_and_user", (q) =>
@@ -36,15 +42,15 @@ async function upsertHackathonParticipant(
     .unique();
   const now = Date.now();
   const participationMode =
-    values.participationMode === "onsite" || values.participationMode === "remote"
+    values.participationMode === "onsite" ||
+    values.participationMode === "remote"
       ? values.participationMode
       : undefined;
   if (existing) {
     await ctx.db.patch(existing._id, {
       roles: values.roles,
       participationMode,
-      onboardingComplete: values.onboardingComplete,
-      availabilityNote: values.availabilityNote,
+      onboardingComplete: true,
       updatedAt: now,
     });
     return;
@@ -54,8 +60,7 @@ async function upsertHackathonParticipant(
     userId,
     roles: values.roles,
     participationMode,
-    onboardingComplete: values.onboardingComplete,
-    availabilityNote: values.availabilityNote,
+    onboardingComplete: true,
     registeredAt: now,
     updatedAt: now,
   });
@@ -102,6 +107,42 @@ export const viewerOrNull = query({
     if (!user?.email || !isEmailAllowed(user.email)) return null;
 
     return pickViewerFields(user);
+  },
+});
+
+export const getMyParticipation = query({
+  args: { hackathonId: v.id("hackathons") },
+  handler: async (ctx, { hackathonId }) => {
+    const { userId, user } = await getAuthenticatedUser(ctx);
+    const participant = await getParticipant(ctx, hackathonId, userId);
+    if (!participant) {
+      const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+      if (
+        !hackathon ||
+        hackathon.status === "archived" ||
+        !user.onboardingComplete ||
+        !(await canReadLegacyScope(ctx, hackathon._id))
+      ) {
+        return null;
+      }
+      return {
+        hackathonId: hackathon._id,
+        roles: user.roles,
+        participationMode: user.participationMode,
+        onboardingComplete: true,
+        legacyFallback: true as const,
+      };
+    }
+
+    return {
+      _id: participant._id,
+      hackathonId: participant.hackathonId,
+      roles: participant.roles ?? user.roles,
+      participationMode:
+        participant.participationMode ?? user.participationMode,
+      onboardingComplete: participant.onboardingComplete,
+      availabilityNote: participant.availabilityNote,
+    };
   },
 });
 
@@ -158,7 +199,7 @@ export const search = query({
 
 export const completeOnboarding = mutation({
   args: {
-    hackathonId: v.optional(v.id("hackathons")),
+    hackathonId: v.id("hackathons"),
     firstName: v.string(),
     lastName: v.string(),
     roles: v.array(v.string()),
@@ -170,6 +211,8 @@ export const completeOnboarding = mutation({
   ) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    if (!hackathon) throw new Error("Hackathon not found");
+    await assertHackathonWritable(ctx, hackathon._id);
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
     if (trimmedFirst.length === 0) {
@@ -184,7 +227,7 @@ export const completeOnboarding = mutation({
     const handle = user.email
       ? await generateUniqueHandle(ctx, user.email, userId)
       : undefined;
-    await validateRoleSlugs(ctx, roles, hackathon?._id);
+    await validateRoleSlugs(ctx, roles, hackathon._id);
     if (
       participationMode !== undefined &&
       !PARTICIPATION_MODES.includes(
@@ -196,45 +239,96 @@ export const completeOnboarding = mutation({
     await ctx.db.patch(userId, {
       firstName: trimmedFirst,
       lastName: trimmedLast,
-      roles: roles,
       name: `${trimmedFirst} ${trimmedLast}`.trim(),
       onboardingComplete: true,
       handle,
-      participationMode,
     });
-    await upsertHackathonParticipant(ctx, hackathon?._id, userId, {
+    await upsertHackathonParticipant(ctx, hackathon._id, userId, {
       roles,
       participationMode,
-      onboardingComplete: true,
     });
   },
 });
 
 export const getProfile = query({
-  args: { handle: v.string() },
-  handler: async (ctx, { handle }) => {
-    await getAuthenticatedUser(ctx);
+  args: { handle: v.string(), hackathonId: v.id("hackathons") },
+  handler: async (ctx, { handle, hackathonId }) => {
+    const { userId: viewerId } = await getAuthenticatedUser(ctx);
+    const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    if (!hackathon) return null;
+    await requireParticipant(ctx, hackathon._id, viewerId);
 
     const user = await ctx.db
       .query("users")
       .withIndex("handle", (q) => q.eq("handle", handle))
       .first();
     if (!user || !user.onboardingComplete) return null;
+    const [targetParticipant, includeLegacy] = await Promise.all([
+      getParticipant(ctx, hackathon._id, user._id),
+      canReadLegacyScope(ctx, hackathon._id),
+    ]);
+    if (
+      (targetParticipant && targetParticipant.onboardingComplete !== true) ||
+      (!targetParticipant && !includeLegacy)
+    ) {
+      return null;
+    }
 
-    const ownedIdeas = await ctx.db
-      .query("ideas")
-      .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-      .collect();
-
-    const memberships = await ctx.db
-      .query("ideaMembers")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .collect();
+    const [
+      scopedOwnedIdeas,
+      legacyOwnedIdeas,
+      scopedMemberships,
+      legacyMemberships,
+    ] = await Promise.all([
+      ctx.db
+        .query("ideas")
+        .withIndex("by_hackathon_and_owner", (q) =>
+          q.eq("hackathonId", hackathon._id).eq("ownerId", user._id),
+        )
+        .order("desc")
+        .take(MAX_PROFILE_IDEAS),
+      includeLegacy
+        ? ctx.db
+            .query("ideas")
+            .withIndex("by_hackathon_and_owner", (q) =>
+              q.eq("hackathonId", undefined).eq("ownerId", user._id),
+            )
+            .order("desc")
+            .take(MAX_PROFILE_IDEAS)
+        : Promise.resolve([]),
+      ctx.db
+        .query("ideaMembers")
+        .withIndex("by_hackathon_and_user", (q) =>
+          q.eq("hackathonId", hackathon._id).eq("userId", user._id),
+        )
+        .order("desc")
+        .take(MAX_PROFILE_MEMBERSHIPS_PER_SCOPE),
+      includeLegacy
+        ? ctx.db
+            .query("ideaMembers")
+            .withIndex("by_hackathon_and_user", (q) =>
+              q.eq("hackathonId", undefined).eq("userId", user._id),
+            )
+            .order("desc")
+            .take(MAX_PROFILE_MEMBERSHIPS_PER_SCOPE)
+        : Promise.resolve([]),
+    ]);
+    const ownedIdeas = [...scopedOwnedIdeas, ...legacyOwnedIdeas]
+      .sort((a, b) => b._creationTime - a._creationTime)
+      .slice(0, MAX_PROFILE_IDEAS);
+    const memberships = [...scopedMemberships, ...legacyMemberships];
 
     const joinedIdeas = await Promise.all(
       memberships.map(async (m) => {
         const idea = await ctx.db.get(m.ideaId);
-        if (!idea || !isEffectiveIdeaMember(m, idea)) return null;
+        if (
+          !idea ||
+          (idea.hackathonId !== hackathon._id &&
+            !(includeLegacy && idea.hackathonId === undefined)) ||
+          !isEffectiveIdeaMember(m, idea)
+        ) {
+          return null;
+        }
         return {
           ...idea,
           memberRoles: mergeUniqueStringArrays(
@@ -247,6 +341,10 @@ export const getProfile = query({
 
     return {
       ...pickPublicFields(user),
+      roles: targetParticipant?.roles ?? user.roles,
+      participationMode: targetParticipant
+        ? (targetParticipant.participationMode ?? user.participationMode)
+        : user.participationMode,
       ownedIdeas: ownedIdeas.map((i) => ({
         _id: i._id,
         _creationTime: i._creationTime,
@@ -257,6 +355,12 @@ export const getProfile = query({
       })),
       joinedIdeas: joinedIdeas
         .filter((i) => i !== null)
+        .filter(
+          (idea, index, all) =>
+            all.findIndex((candidate) => candidate?._id === idea?._id) ===
+            index,
+        )
+        .slice(0, MAX_PROFILE_IDEAS)
         .map((i) => ({
           _id: i!._id,
           _creationTime: i!._creationTime,
@@ -276,20 +380,19 @@ export const listAll = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { hackathonId, paginationOpts }) => {
-    await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
 
     if (hackathon) {
+      await requireParticipant(ctx, hackathon._id, userId);
       const result = await ctx.db
         .query("hackathonParticipants")
-        .withIndex("by_hackathon", (q) =>
-          q.eq("hackathonId", hackathon._id),
-        )
+        .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
         .paginate(paginationOpts);
 
       const page = await Promise.all(
         result.page.map(async (participant) => {
-          if (participant.onboardingComplete === false) return null;
+          if (participant.onboardingComplete !== true) return null;
           const user = await ctx.db.get(participant.userId);
           if (!user || !user.onboardingComplete) return null;
           return {
@@ -323,7 +426,7 @@ export const listAll = query({
 
 export const updateProfile = mutation({
   args: {
-    hackathonId: v.optional(v.id("hackathons")),
+    hackathonId: v.id("hackathons"),
     firstName: v.string(),
     lastName: v.string(),
     roles: v.array(v.string()),
@@ -335,6 +438,13 @@ export const updateProfile = mutation({
   ) => {
     const { userId } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    if (!hackathon) throw new Error("Hackathon not found");
+    await assertHackathonWritable(ctx, hackathon._id);
+    const participant = await requireStoredParticipant(
+      ctx,
+      hackathon._id,
+      userId,
+    );
     const trimmedFirst = firstName.trim();
     const trimmedLast = lastName.trim();
     if (trimmedFirst.length === 0) {
@@ -346,7 +456,7 @@ export const updateProfile = mutation({
     if (trimmedLast.length > 100) {
       throw new Error("Last name must be at most 100 characters");
     }
-    await validateRoleSlugs(ctx, roles, hackathon?._id);
+    await validateRoleSlugs(ctx, roles, hackathon._id);
     if (
       participationMode !== undefined &&
       !PARTICIPATION_MODES.includes(
@@ -358,26 +468,34 @@ export const updateProfile = mutation({
     await ctx.db.patch(userId, {
       firstName: trimmedFirst,
       lastName: trimmedLast,
-      roles: roles,
       name: `${trimmedFirst} ${trimmedLast}`.trim(),
-      participationMode,
     });
-    await upsertHackathonParticipant(ctx, hackathon?._id, userId, {
+    await ctx.db.patch(participant._id, {
       roles,
-      participationMode,
-      onboardingComplete: true,
+      participationMode:
+        participationMode === "onsite" || participationMode === "remote"
+          ? participationMode
+          : undefined,
+      updatedAt: Date.now(),
     });
   },
 });
 
 export const setParticipationMode = mutation({
   args: {
-    hackathonId: v.optional(v.id("hackathons")),
+    hackathonId: v.id("hackathons"),
     mode: v.optional(v.string()),
   },
   handler: async (ctx, { mode, hackathonId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
+    if (!hackathon) throw new Error("Hackathon not found");
+    await assertHackathonWritable(ctx, hackathon._id);
+    const participant = await requireStoredParticipant(
+      ctx,
+      hackathon._id,
+      userId,
+    );
     if (
       mode !== undefined &&
       !PARTICIPATION_MODES.includes(
@@ -386,12 +504,10 @@ export const setParticipationMode = mutation({
     ) {
       throw new Error("Invalid participation mode");
     }
-    await ctx.db.patch(userId, {
-      participationMode: mode,
-    });
-    await upsertHackathonParticipant(ctx, hackathon?._id, userId, {
-      participationMode: mode,
-      onboardingComplete: true,
+    await ctx.db.patch(participant._id, {
+      participationMode:
+        mode === "onsite" || mode === "remote" ? mode : undefined,
+      updatedAt: Date.now(),
     });
   },
 });

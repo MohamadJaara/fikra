@@ -7,7 +7,9 @@ Built with Next.js 16 (App Router) + Convex backend + Convex Auth + shadcn/ui (n
 - `npm run dev` — starts both frontend (Next.js with Turbopack) and backend (`convex dev`) in parallel
 - `npm run predev` — one-time setup: pushes Convex schema, runs `setup.mjs` for auth env vars, opens Convex dashboard
 - `npm run build` — `next build`
-- `npm run lint` — `next lint` (uses `next/core-web-vitals` + `next/typescript` via flat config in `eslint.config.mjs`)
+- `npm run lint` — `eslint .` using the flat config in `eslint.config.mjs`
+- `npm run typecheck` — regenerate Next route types and run the isolated TypeScript check
+- `npm run check` — lint, typecheck, and all tests sequentially
 - `npm test` — `vitest run` (runs all tests)
 - `npm run test:watch` — `vitest` (watch mode)
 - Formatter: Prettier with empty config (all defaults)
@@ -33,14 +35,14 @@ Frontend (Next.js) and backend (Convex) run as separate processes via `npm-run-a
 
 - `(splash)/` — public landing page (no auth required)
 - `signin/` — sign-in page (redirects to `/product` if already authenticated)
-- `product/` — all protected routes (requires auth via `middleware.ts`)
+- `product/` — all protected routes (requires auth via `proxy.ts`)
   - `layout.tsx` — wraps children in `ConvexClientProvider` + `AppShell`
   - `ideas/` — idea CRUD pages
   - `activity/` — activity feed
   - `notifications/` — user notifications
   - `onboarding/` — post-signup onboarding flow
   - `settings/` — user settings
-- `middleware.ts` enforces: `/product(.*)` requires auth, `/signin` redirects away if authenticated
+- `proxy.ts` enforces auth and recognizes both global and event-scoped admin routes
 
 ### Shared code
 

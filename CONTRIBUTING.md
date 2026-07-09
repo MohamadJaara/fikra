@@ -4,7 +4,7 @@ Thanks for your interest in contributing to Fikra. This document covers the basi
 
 ## Setup
 
-1. **Prerequisites**: Node.js 18+ and a [Convex](https://convex.dev) account.
+1. **Prerequisites**: Node.js 22 (see `.node-version`) and a [Convex](https://convex.dev) account.
 2. **Install dependencies**:
 
    ```bash
@@ -29,7 +29,7 @@ Thanks for your interest in contributing to Fikra. This document covers the basi
 
 ## Project Overview
 
-- **Frontend**: Next.js 15 (App Router), React 19, Tailwind CSS, shadcn/ui (new-york style)
+- **Frontend**: Next.js 16 (App Router), React 19, Tailwind CSS, shadcn/ui (new-york style)
 - **Backend**: Convex (database, server functions, real-time subscriptions)
 - **Auth**: Convex Auth with Resend magic link
 - **Language**: TypeScript (strict mode)
@@ -41,7 +41,7 @@ See [AGENTS.md](./AGENTS.md) for a detailed architecture breakdown.
 ### Code Style
 
 - **Formatter**: Prettier with default settings. Run `npx prettier --write .` before committing.
-- **Linting**: `npm run lint` (ESLint with `next/core-web-vitals` + `next/typescript`).
+- **Linting**: `npm run lint` (ESLint flat config).
 - **Comments**: Keep code self-documenting. Only add comments where the "why" is non-obvious.
 
 ### Conventions
@@ -72,7 +72,7 @@ Even easier — you can [open an issue](https://github.com/MohamadJaara/fikra/is
 
 ### Pull Request Checklist
 
-- [ ] `npm run lint` passes with no errors.
+- [ ] `npm run check` passes.
 - [ ] `npm run build` succeeds.
 - [ ] Changes have been manually tested via `npm run dev`.
 

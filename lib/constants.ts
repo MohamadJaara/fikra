@@ -81,11 +81,6 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
 export const TEAM_FORMATION_STATUSES = ["forming", "formed"] as const;
 export type TeamFormationStatus = (typeof TEAM_FORMATION_STATUSES)[number];
 
-export const TEAM_FORMATION_LABELS: Record<TeamFormationStatus, string> = {
-  forming: "Forming",
-  formed: "Team Formed",
-};
-
 export const TEAM_FORMATION_SOURCES = ["auto", "owner"] as const;
 export type TeamFormationSource = (typeof TEAM_FORMATION_SOURCES)[number];
 

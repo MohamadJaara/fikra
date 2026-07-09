@@ -2,8 +2,12 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
   assertHackathonWritable,
+  assertIdeasUnlocked,
+  claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
+  requireParticipant,
+  resolveLegacyScopeForMutation,
 } from "./lib";
 import { internal } from "./_generated/api";
 import { refreshIdeaInterestStats } from "./ideaStats";
@@ -11,11 +15,14 @@ import { refreshIdeaInterestStats } from "./ideaStats";
 export const express = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId, user } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
 
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
-    await assertHackathonWritable(ctx, idea.hackathonId, user);
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const existing = await ctx.db
       .query("ideaInterest")
@@ -23,10 +30,21 @@ export const express = mutation({
         q.eq("ideaId", ideaId).eq("userId", userId),
       )
       .first();
+    if (existing) {
+      const interestScope = await resolveLegacyScopeForMutation(
+        ctx,
+        existing.hackathonId,
+        hackathonId,
+        "Interest",
+      );
+      if (interestScope.shouldPatch) {
+        await ctx.db.patch(existing._id, { hackathonId });
+      }
+    }
     if (existing) throw new Error("Already expressed interest");
 
     await ctx.db.insert("ideaInterest", {
-      hackathonId: idea.hackathonId,
+      hackathonId,
       ideaId,
       userId,
     });
@@ -44,9 +62,13 @@ export const express = mutation({
 export const remove = mutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const { userId, user } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
     const idea = await ctx.db.get(ideaId);
-    if (idea) await assertHackathonWritable(ctx, idea.hackathonId, user);
+    if (!idea) throw new Error("Idea not found");
+    const hackathonId = await claimLegacyIdeaScopeForMutation(ctx, idea);
+    await requireParticipant(ctx, hackathonId, userId);
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const interest = await ctx.db
       .query("ideaInterest")
@@ -55,6 +77,15 @@ export const remove = mutation({
       )
       .first();
     if (!interest) throw new Error("Not interested");
+    const interestScope = await resolveLegacyScopeForMutation(
+      ctx,
+      interest.hackathonId,
+      hackathonId,
+      "Interest",
+    );
+    if (interestScope.shouldPatch) {
+      await ctx.db.patch(interest._id, { hackathonId });
+    }
 
     await ctx.db.delete(interest._id);
     await refreshIdeaInterestStats(ctx, interest.ideaId);
