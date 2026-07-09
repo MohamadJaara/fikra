@@ -12,6 +12,7 @@ import {
 import { STATUSES } from "../lib/constants";
 import { internal } from "./_generated/api";
 import { refreshIdeaMemberStats } from "./ideaStats";
+import { deleteIdeaAndReferences } from "./ideaLifecycle";
 
 const statusValidator = v.union(...STATUSES.map((s) => v.literal(s)));
 const IDEA_STATUS_SHELVED = "shelved";
@@ -1020,45 +1021,7 @@ export const deleteIdea = mutation({
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
 
-    const members = await ctx.db
-      .query("ideaMembers")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const m of members) await ctx.db.delete(m._id);
-
-    const interest = await ctx.db
-      .query("ideaInterest")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const i of interest) await ctx.db.delete(i._id);
-
-    const comments = await ctx.db
-      .query("comments")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const c of comments) await ctx.db.delete(c._id);
-
-    const reactions = await ctx.db
-      .query("reactions")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const r of reactions) await ctx.db.delete(r._id);
-
-    const resources = await ctx.db
-      .query("resourceRequests")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const r of resources) await ctx.db.delete(r._id);
-
-    await ctx.runMutation(internal.notifications.deleteForIdea, { ideaId });
-
-    const transferRequests = await ctx.db
-      .query("ownershipTransferRequests")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const request of transferRequests) await ctx.db.delete(request._id);
-
-    await ctx.db.delete(ideaId);
+    await deleteIdeaAndReferences(ctx, ideaId);
   },
 });
 

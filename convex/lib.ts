@@ -100,11 +100,16 @@ export async function getCurrentHackathon(ctx: QueryCtx | MutationCtx) {
     .first();
   if (active) return active;
 
-  return await ctx.db
-    .query("hackathons")
-    .withIndex("by_startsAt")
-    .order("desc")
-    .first();
+  for (const status of ["upcoming", "draft", "completed"] as const) {
+    const fallback = await ctx.db
+      .query("hackathons")
+      .withIndex("by_status_and_startsAt", (q) => q.eq("status", status))
+      .order("desc")
+      .first();
+    if (fallback) return fallback;
+  }
+
+  return null;
 }
 
 export async function getHackathonByIdOrCurrent(
@@ -175,10 +180,9 @@ export async function assertIdeaInHackathon(
   }
 }
 
-export function resolveScopedHackathonId<T extends { hackathonId?: Id<"hackathons"> }>(
-  doc: T,
-  fallback?: Id<"hackathons">,
-) {
+export function resolveScopedHackathonId<
+  T extends { hackathonId?: Id<"hackathons"> },
+>(doc: T, fallback?: Id<"hackathons">) {
   return doc.hackathonId ?? fallback;
 }
 

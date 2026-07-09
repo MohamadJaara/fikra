@@ -12,6 +12,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit --incremental false -p tsconfig.typecheck.json",
+    "check": "npm-run-all --sequential lint typecheck test",
     "test": "vitest run",
     "test:watch": "vitest"
   },

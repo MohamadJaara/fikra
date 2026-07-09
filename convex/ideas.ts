@@ -37,6 +37,7 @@ import {
   refreshIdeaResourceStats,
 } from "./ideaStats";
 import { assertIdeaSubmissionsOpenForHackathon } from "./ideaSubmissions";
+import { deleteIdeaAndReferences } from "./ideaLifecycle";
 
 const TRANSFER_STATUS_PENDING = "pending";
 const TRANSFER_STATUS_ACCEPTED = "accepted";
@@ -805,61 +806,7 @@ export const remove = mutation({
     if (idea.ownerId !== userId) throw new Error("Only the owner can delete");
     await assertHackathonWritable(ctx, idea.hackathonId, user);
 
-    const members = await ctx.db
-      .query("ideaMembers")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const m of members) await ctx.db.delete(m._id);
-
-    const interest = await ctx.db
-      .query("ideaInterest")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const i of interest) await ctx.db.delete(i._id);
-
-    const comments = await ctx.db
-      .query("comments")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const c of comments) await ctx.db.delete(c._id);
-
-    const reactions = await ctx.db
-      .query("reactions")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const r of reactions) await ctx.db.delete(r._id);
-
-    const resources = await ctx.db
-      .query("resourceRequests")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const r of resources) await ctx.db.delete(r._id);
-
-    await ctx.runMutation(internal.notifications.deleteForIdea, { ideaId });
-
-    const transferRequests = await ctx.db
-      .query("ownershipTransferRequests")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const request of transferRequests) await ctx.db.delete(request._id);
-
-    const relAsA = await ctx.db
-      .query("relatedIdeas")
-      .withIndex("by_ideaA", (q) => q.eq("ideaIdA", ideaId))
-      .collect();
-    const relAsB = await ctx.db
-      .query("relatedIdeas")
-      .withIndex("by_ideaB", (q) => q.eq("ideaIdB", ideaId))
-      .collect();
-    for (const r of [...relAsA, ...relAsB]) await ctx.db.delete(r._id);
-
-    const allBookmarks = await ctx.db
-      .query("ideaBookmarks")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-    for (const b of allBookmarks) await ctx.db.delete(b._id);
-
-    await ctx.db.delete(ideaId);
+    await deleteIdeaAndReferences(ctx, ideaId);
   },
 });
 

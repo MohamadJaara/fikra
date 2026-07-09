@@ -5,10 +5,14 @@ import {
 } from "@convex-dev/auth/nextjs/server";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
+import { isAdminPathname } from "@/lib/adminRoutes";
 
 const isSignInPage = createRouteMatcher(["/signin"]);
 const isProtectedRoute = createRouteMatcher(["/product(.*)"]);
-const isAdminRoute = createRouteMatcher(["/product/admin(.*)"]);
+
+const isAdminRoute = createRouteMatcher((request) =>
+  isAdminPathname(request.nextUrl.pathname),
+);
 
 export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   const token = await convexAuth.getToken();

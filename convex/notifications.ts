@@ -109,36 +109,52 @@ export const create = internalMutation({
   },
 });
 
+export async function deleteNotificationsForIdea(
+  ctx: MutationCtx,
+  ideaId: Id<"ideas">,
+) {
+  const notifications = await ctx.db
+    .query("notifications")
+    .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
+    .collect();
+
+  const removedUnreadByRecipient = new Map<Id<"users">, number>();
+  for (const notification of notifications) {
+    if (!notification.read) {
+      removedUnreadByRecipient.set(
+        notification.recipientId,
+        (removedUnreadByRecipient.get(notification.recipientId) ?? 0) + 1,
+      );
+    }
+  }
+
+  const remainingUnreadByRecipient = new Map<Id<"users">, number>();
+  for (const [recipientId, removedUnread] of removedUnreadByRecipient) {
+    const currentUnread = await countUnreadForRecipient(ctx, recipientId);
+    remainingUnreadByRecipient.set(
+      recipientId,
+      Math.max(0, currentUnread - removedUnread),
+    );
+  }
+
+  for (const notification of notifications) {
+    await ctx.db.delete(notification._id);
+  }
+
+  for (const [recipientId, remainingUnread] of remainingUnreadByRecipient) {
+    const recipient = await ctx.db.get(recipientId);
+    if (recipient) {
+      await ctx.db.patch(recipient._id, {
+        unreadNotificationCount: remainingUnread,
+      });
+    }
+  }
+}
+
 export const deleteForIdea = internalMutation({
   args: { ideaId: v.id("ideas") },
   handler: async (ctx, { ideaId }) => {
-    const notifications = await ctx.db
-      .query("notifications")
-      .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
-      .collect();
-
-    const unreadByRecipient = new Map<Id<"users">, number>();
-    for (const notification of notifications) {
-      if (!notification.read) {
-        unreadByRecipient.set(
-          notification.recipientId,
-          (unreadByRecipient.get(notification.recipientId) ?? 0) + 1,
-        );
-      }
-      await ctx.db.delete(notification._id);
-    }
-
-    for (const [recipientId, removedUnread] of unreadByRecipient) {
-      const recipient = await ctx.db.get(recipientId);
-      if (typeof recipient?.unreadNotificationCount === "number") {
-        await ctx.db.patch(recipient._id, {
-          unreadNotificationCount: Math.max(
-            0,
-            recipient.unreadNotificationCount - removedUnread,
-          ),
-        });
-      }
-    }
+    await deleteNotificationsForIdea(ctx, ideaId);
   },
 });
 

@@ -1,3 +1,11 @@
+const SKELETON_KEYS = [
+  "skeleton-1",
+  "skeleton-2",
+  "skeleton-3",
+  "skeleton-4",
+  "skeleton-5",
+] as const;
+
 export function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-shimmer rounded-md ${className ?? ""}`} />;
 }
@@ -5,9 +13,9 @@ export function Skeleton({ className }: { className?: string }) {
 export function IdeaListSkeleton() {
   return (
     <div className="divide-y divide-border/50">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {SKELETON_KEYS.map((key, i) => (
         <div
-          key={i}
+          key={key}
           className="flex items-start gap-4 py-4 pl-4 border-l-2 border-l-muted"
           style={{ animationDelay: `${i * 0.06}s` }}
         >
@@ -72,8 +80,8 @@ export function IdeaMasonryItemSkeleton() {
 export function NotificationSkeleton() {
   return (
     <div className="space-y-1">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-start gap-3 px-4 py-3">
+      {SKELETON_KEYS.map((key) => (
+        <div key={key} className="flex items-start gap-3 px-4 py-3">
           <Skeleton className="h-8 w-8 rounded-full shrink-0" />
           <div className="flex-1 space-y-1.5">
             <Skeleton className="h-4 w-3/4 rounded" />
@@ -114,15 +122,15 @@ export function IdeaDetailSkeleton() {
         </div>
       </div>
       <div className="flex gap-3 py-6 border-t">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-14 rounded-full" />
+        {SKELETON_KEYS.slice(0, 4).map((key) => (
+          <Skeleton key={key} className="h-8 w-14 rounded-full" />
         ))}
       </div>
       <div className="space-y-3">
         <Skeleton className="h-3 w-20 rounded" />
         <div className="space-y-2">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-2">
+          {SKELETON_KEYS.slice(0, 3).map((key) => (
+            <div key={key} className="flex items-center gap-2">
               <Skeleton className="h-7 w-7 rounded-full" />
               <Skeleton className="h-4 w-24 rounded" />
             </div>

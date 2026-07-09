@@ -1,6 +1,8 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import {
+  assertHackathonWritable,
+  assertIdeasUnlocked,
   getAuthenticatedUser,
   getUserDisplayName,
   isEffectiveIdeaMember,
@@ -12,6 +14,7 @@ import { internal } from "./_generated/api";
 import type { Id, Doc } from "./_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "./_generated/server";
 import { refreshIdeaInterestStats, refreshIdeaMemberStats } from "./ideaStats";
+import { deleteIdeaAndReferences } from "./ideaLifecycle";
 
 const RELATION_TYPES = ["related", "duplicate"] as const;
 type RelationType = (typeof RELATION_TYPES)[number];
@@ -23,6 +26,55 @@ const MERGE_STATUS_DECLINED = "declined";
 export { RELATION_TYPES };
 
 type RelatedIdeaDoc = Doc<"relatedIdeas">;
+
+type RelationPair = {
+  relation: RelatedIdeaDoc;
+  ideaA: Doc<"ideas">;
+  ideaB: Doc<"ideas">;
+  hackathonId: Id<"hackathons"> | undefined;
+};
+
+function getSharedHackathonId(
+  ideaA: Doc<"ideas">,
+  ideaB: Doc<"ideas">,
+): Id<"hackathons"> | undefined {
+  if (ideaA.hackathonId !== ideaB.hackathonId) {
+    throw new Error("Ideas must belong to the same hackathon");
+  }
+  return ideaA.hackathonId;
+}
+
+async function loadValidRelationPair(
+  ctx: QueryCtx | MutationCtx,
+  relationId: Id<"relatedIdeas">,
+): Promise<RelationPair> {
+  const relation = await ctx.db.get(relationId);
+  if (!relation) throw new Error("Relation not found");
+  if (relation.ideaIdA === relation.ideaIdB) {
+    throw new Error("Invalid idea relation");
+  }
+
+  const [ideaA, ideaB] = await Promise.all([
+    ctx.db.get(relation.ideaIdA),
+    ctx.db.get(relation.ideaIdB),
+  ]);
+  if (!ideaA || !ideaB) throw new Error("Idea not found");
+
+  const hackathonId = getSharedHackathonId(ideaA, ideaB);
+  if (
+    relation.hackathonId !== undefined &&
+    relation.hackathonId !== hackathonId
+  ) {
+    throw new Error("Relation does not belong to this hackathon");
+  }
+
+  return { relation, ideaA, ideaB, hackathonId };
+}
+
+async function assertRelationMutable(ctx: MutationCtx, pair: RelationPair) {
+  await assertHackathonWritable(ctx, pair.hackathonId);
+  await assertIdeasUnlocked(ctx, pair.hackathonId);
+}
 
 async function findExistingRelation(
   ctx: QueryCtx | MutationCtx,
@@ -59,9 +111,18 @@ export const markRelated = mutation({
       throw new Error("Invalid relation type");
     }
 
-    const ideaA = await ctx.db.get(ideaIdA);
-    const ideaB = await ctx.db.get(ideaIdB);
+    const [ideaA, ideaB] = await Promise.all([
+      ctx.db.get(ideaIdA),
+      ctx.db.get(ideaIdB),
+    ]);
     if (!ideaA || !ideaB) throw new Error("Idea not found");
+
+    const hackathonId = getSharedHackathonId(ideaA, ideaB);
+    if (ideaA.ownerId !== userId && ideaB.ownerId !== userId) {
+      throw new Error("Only idea owners can relate ideas");
+    }
+    await assertHackathonWritable(ctx, hackathonId);
+    await assertIdeasUnlocked(ctx, hackathonId);
 
     const existing = await findExistingRelation(ctx, ideaIdA, ideaIdB);
     if (existing) throw new Error("These ideas are already related");
@@ -69,6 +130,7 @@ export const markRelated = mutation({
     const [sortedA, sortedB] = orderedPair(ideaIdA, ideaIdB);
 
     await ctx.db.insert("relatedIdeas", {
+      hackathonId,
       ideaIdA: sortedA,
       ideaIdB: sortedB,
       markedByUserId: userId,
@@ -94,18 +156,15 @@ export const removeRelation = mutation({
   args: { relationId: v.id("relatedIdeas") },
   handler: async (ctx, { relationId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    const relation = await ctx.db.get(relationId);
-    if (!relation) throw new Error("Relation not found");
-
-    const ideaA = await ctx.db.get(relation.ideaIdA);
-    const ideaB = await ctx.db.get(relation.ideaIdB);
-    if (!ideaA || !ideaB) throw new Error("Idea not found");
+    const pair = await loadValidRelationPair(ctx, relationId);
+    const { ideaA, ideaB } = pair;
 
     const isOwnerOfEither =
       ideaA.ownerId === userId || ideaB.ownerId === userId;
     if (!isOwnerOfEither) {
       throw new Error("Only idea owners can remove relations");
     }
+    await assertRelationMutable(ctx, pair);
 
     await ctx.db.delete(relationId);
   },
@@ -115,8 +174,9 @@ export const requestMerge = mutation({
   args: { relationId: v.id("relatedIdeas") },
   handler: async (ctx, { relationId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    const relation = await ctx.db.get(relationId);
-    if (!relation) throw new Error("Relation not found");
+    const pair = await loadValidRelationPair(ctx, relationId);
+    const { relation, ideaA, ideaB } = pair;
+    await assertRelationMutable(ctx, pair);
 
     if (relation.relationType !== "duplicate") {
       throw new Error("Can only request merge on duplicate relations");
@@ -125,16 +185,13 @@ export const requestMerge = mutation({
       throw new Error("Merge already requested for this relation");
     }
 
-    const ideaA = await ctx.db.get(relation.ideaIdA);
-    const ideaB = await ctx.db.get(relation.ideaIdB);
-    if (!ideaA || !ideaB) throw new Error("Idea not found");
-
     if (ideaA.ownerId !== userId && ideaB.ownerId !== userId) {
       throw new Error("Only an idea owner can request a merge");
     }
+    if (ideaA.ownerId === ideaB.ownerId) {
+      throw new Error("Ideas with the same owner cannot be merged");
+    }
 
-    const _sourceId =
-      ideaA.ownerId === userId ? relation.ideaIdA : relation.ideaIdB;
     const targetId =
       ideaA.ownerId === userId ? relation.ideaIdB : relation.ideaIdA;
     const targetDoc = ideaA.ownerId === userId ? ideaB : ideaA;
@@ -157,18 +214,15 @@ export const acceptMerge = mutation({
   args: { relationId: v.id("relatedIdeas") },
   handler: async (ctx, { relationId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    const relation = await ctx.db.get(relationId);
-    if (!relation) throw new Error("Relation not found");
+    const pair = await loadValidRelationPair(ctx, relationId);
+    const { relation, ideaA, ideaB } = pair;
+    await assertRelationMutable(ctx, pair);
     if (relation.mergeStatus !== MERGE_STATUS_PENDING) {
       throw new Error("No pending merge request");
     }
     if (!relation.mergeRequestedById) {
       throw new Error("Invalid merge request");
     }
-
-    const ideaA = await ctx.db.get(relation.ideaIdA);
-    const ideaB = await ctx.db.get(relation.ideaIdB);
-    if (!ideaA || !ideaB) throw new Error("Idea not found");
 
     const sourceId =
       ideaA.ownerId === relation.mergeRequestedById
@@ -217,6 +271,7 @@ export const acceptMerge = mutation({
         .first();
       if (!existing) {
         await ctx.db.insert("ideaMembers", {
+          hackathonId: targetDoc.hackathonId,
           ideaId: targetId,
           userId: member.userId,
           memberRoles: sourceRoles,
@@ -237,9 +292,16 @@ export const acceptMerge = mutation({
         );
       const joinedAsOwnerChanged =
         member.userId === targetDoc.ownerId && existing.joinedAsOwner !== true;
+      const hackathonChanged = existing.hackathonId !== targetDoc.hackathonId;
 
-      if (existing.role !== undefined || rolesChanged || joinedAsOwnerChanged) {
+      if (
+        existing.role !== undefined ||
+        rolesChanged ||
+        joinedAsOwnerChanged ||
+        hackathonChanged
+      ) {
         await ctx.db.patch(existing._id, {
+          hackathonId: targetDoc.hackathonId,
           memberRoles: mergedRoles,
           role: undefined,
           joinedAsOwner: joinedAsOwnerChanged ? true : existing.joinedAsOwner,
@@ -261,8 +323,13 @@ export const acceptMerge = mutation({
         .first();
       if (!existing) {
         await ctx.db.insert("ideaInterest", {
+          hackathonId: targetDoc.hackathonId,
           ideaId: targetId,
           userId: interest.userId,
+        });
+      } else if (existing.hackathonId !== targetDoc.hackathonId) {
+        await ctx.db.patch(existing._id, {
+          hackathonId: targetDoc.hackathonId,
         });
       }
     }
@@ -287,59 +354,7 @@ export const acceptMerge = mutation({
       teamSizeWanted: undefined,
     });
 
-    const sourceComments = await ctx.db
-      .query("comments")
-      .withIndex("by_idea", (q) => q.eq("ideaId", sourceId))
-      .collect();
-    for (const c of sourceComments) await ctx.db.delete(c._id);
-
-    const sourceReactions = await ctx.db
-      .query("reactions")
-      .withIndex("by_idea", (q) => q.eq("ideaId", sourceId))
-      .collect();
-    for (const r of sourceReactions) await ctx.db.delete(r._id);
-
-    const sourceResources = await ctx.db
-      .query("resourceRequests")
-      .withIndex("by_idea", (q) => q.eq("ideaId", sourceId))
-      .collect();
-    for (const r of sourceResources) await ctx.db.delete(r._id);
-
-    await ctx.runMutation(internal.notifications.deleteForIdea, {
-      ideaId: sourceId,
-    });
-
-    const sourceInterestDocs = await ctx.db
-      .query("ideaInterest")
-      .withIndex("by_idea", (q) => q.eq("ideaId", sourceId))
-      .collect();
-    for (const i of sourceInterestDocs) await ctx.db.delete(i._id);
-
-    const sourceMemberDocs = await ctx.db
-      .query("ideaMembers")
-      .withIndex("by_idea", (q) => q.eq("ideaId", sourceId))
-      .collect();
-    for (const m of sourceMemberDocs) await ctx.db.delete(m._id);
-
-    const sourceTransferReqs = await ctx.db
-      .query("ownershipTransferRequests")
-      .withIndex("by_idea", (q) => q.eq("ideaId", sourceId))
-      .collect();
-    for (const t of sourceTransferReqs) await ctx.db.delete(t._id);
-
-    const relatedRows = await ctx.db
-      .query("relatedIdeas")
-      .withIndex("by_ideaA", (q) => q.eq("ideaIdA", sourceId))
-      .collect();
-    const relatedRowsB = await ctx.db
-      .query("relatedIdeas")
-      .withIndex("by_ideaB", (q) => q.eq("ideaIdB", sourceId))
-      .collect();
-    for (const r of [...relatedRows, ...relatedRowsB]) {
-      await ctx.db.delete(r._id);
-    }
-
-    await ctx.db.delete(sourceId);
+    await deleteIdeaAndReferences(ctx, sourceId);
 
     await refreshIdeaMemberStats(ctx, targetId);
     await refreshIdeaInterestStats(ctx, targetId);
@@ -368,18 +383,15 @@ export const declineMerge = mutation({
   args: { relationId: v.id("relatedIdeas") },
   handler: async (ctx, { relationId }) => {
     const { userId } = await getAuthenticatedUser(ctx);
-    const relation = await ctx.db.get(relationId);
-    if (!relation) throw new Error("Relation not found");
+    const pair = await loadValidRelationPair(ctx, relationId);
+    const { relation, ideaA, ideaB } = pair;
+    await assertRelationMutable(ctx, pair);
     if (relation.mergeStatus !== MERGE_STATUS_PENDING) {
       throw new Error("No pending merge request");
     }
     if (!relation.mergeRequestedById) {
       throw new Error("Invalid merge request");
     }
-
-    const ideaA = await ctx.db.get(relation.ideaIdA);
-    const ideaB = await ctx.db.get(relation.ideaIdB);
-    if (!ideaA || !ideaB) throw new Error("Idea not found");
 
     const targetDoc =
       ideaA.ownerId === relation.mergeRequestedById ? ideaB : ideaA;
@@ -411,6 +423,10 @@ export const listForIdea = query({
   handler: async (ctx, { ideaId }) => {
     await getAuthenticatedUser(ctx);
 
+    const idea = await ctx.db.get(ideaId);
+    if (!idea) throw new Error("Idea not found");
+    await assertIdeasUnlocked(ctx, idea.hackathonId);
+
     const asA = await ctx.db
       .query("relatedIdeas")
       .withIndex("by_ideaA", (q) => q.eq("ideaIdA", ideaId))
@@ -422,10 +438,19 @@ export const listForIdea = query({
 
     const all = [...asA, ...asB];
 
-    return await Promise.all(
+    const results = await Promise.all(
       all.map(async (rel) => {
         const otherId = rel.ideaIdA === ideaId ? rel.ideaIdB : rel.ideaIdA;
         const otherIdea = await ctx.db.get(otherId);
+        if (
+          rel.ideaIdA === rel.ideaIdB ||
+          !otherIdea ||
+          otherIdea.hackathonId !== idea.hackathonId ||
+          (rel.hackathonId !== undefined &&
+            rel.hackathonId !== idea.hackathonId)
+        ) {
+          return null;
+        }
         const otherOwner = otherIdea
           ? await ctx.db.get(otherIdea.ownerId)
           : null;
@@ -440,14 +465,12 @@ export const listForIdea = query({
             otherIdea.ownerId === rel.mergeRequestedById ? otherId : ideaId;
         }
 
-        const otherMemberCount = otherIdea
-          ? (
-              await ctx.db
-                .query("ideaMembers")
-                .withIndex("by_idea", (q) => q.eq("ideaId", otherId))
-                .collect()
-            ).length
-          : 0;
+        const otherMemberCount = (
+          await ctx.db
+            .query("ideaMembers")
+            .withIndex("by_idea", (q) => q.eq("ideaId", otherId))
+            .collect()
+        ).length;
 
         return {
           _id: rel._id,
@@ -460,9 +483,9 @@ export const listForIdea = query({
             : null,
           markedByName: getUserDisplayName(markedBy),
           otherIdeaId: otherId,
-          otherIdeaTitle: otherIdea?.title || "Deleted",
-          otherIdeaStatus: otherIdea?.status || null,
-          otherIdeaOwnerId: otherIdea?.ownerId || null,
+          otherIdeaTitle: otherIdea.title,
+          otherIdeaStatus: otherIdea.status,
+          otherIdeaOwnerId: otherIdea.ownerId,
           otherOwnerName: getUserDisplayName(otherOwner),
           otherOwnerImage: otherOwner?.image,
           otherOwnerHandle: otherOwner?.handle,
@@ -471,6 +494,7 @@ export const listForIdea = query({
         };
       }),
     );
+    return results.filter((result) => result !== null);
   },
 });
 
@@ -481,6 +505,7 @@ export const searchPotentialDuplicates = query({
     const idea = await ctx.db.get(ideaId);
     if (!idea) throw new Error("Idea not found");
     if (idea.ownerId !== userId) throw new Error("Only the owner can search");
+    await assertIdeasUnlocked(ctx, idea.hackathonId);
 
     const titleWords = idea.title
       .toLowerCase()
@@ -488,15 +513,27 @@ export const searchPotentialDuplicates = query({
       .filter((w) => w.length > 3);
     if (titleWords.length === 0) return [];
 
-    const candidates = await ctx.db
-      .query("ideas")
-      .withSearchIndex("search_title", (q) =>
-        q.search("title", titleWords.join(" ")),
-      )
-      .take(20);
+    const scopedHackathonId = idea.hackathonId;
+    const candidates = scopedHackathonId
+      ? await ctx.db
+          .query("ideas")
+          .withSearchIndex("search_title_by_hackathon", (q) =>
+            q
+              .search("title", titleWords.join(" "))
+              .eq("hackathonId", scopedHackathonId),
+          )
+          .take(20)
+      : await ctx.db
+          .query("ideas")
+          .withSearchIndex("search_title_by_hackathon", (q) =>
+            q
+              .search("title", titleWords.join(" "))
+              .eq("hackathonId", undefined),
+          )
+          .take(20);
 
     const scored = candidates
-      .filter((i) => i._id !== ideaId)
+      .filter((i) => i._id !== ideaId && i.hackathonId === idea.hackathonId)
       .map((i) => {
         const otherWords = i.title.toLowerCase().split(/\s+/);
         const otherLower = i.title.toLowerCase();

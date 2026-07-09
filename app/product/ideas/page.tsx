@@ -49,6 +49,17 @@ import type { IdeaListItem } from "@/lib/types";
 
 const PAGE_SIZE = 60;
 const STATUS_FILTERS = STATUSES.filter((status) => status !== "shelved");
+const SKELETON_KEYS = [
+  "skeleton-1",
+  "skeleton-2",
+  "skeleton-3",
+  "skeleton-4",
+  "skeleton-5",
+  "skeleton-6",
+  "skeleton-7",
+  "skeleton-8",
+  "skeleton-9",
+] as const;
 
 type ShelfView = "active" | "shelved";
 
@@ -76,8 +87,8 @@ export default function BrowseIdeasPage() {
             </div>
           </div>
           <div className="divide-y divide-border/40">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
+            {SKELETON_KEYS.slice(0, 6).map((key, i) => (
+              <div key={key} className={`animate-fade-in stagger-${i + 1}`}>
                 <IdeaExpandedRowSkeleton />
               </div>
             ))}
@@ -570,9 +581,9 @@ function BrowseIdeasContent() {
         {status === "LoadingFirstPage" ? (
           viewMode === "masonry" ? (
             <div className="columns-1 md:columns-2 lg:columns-3 gap-4">
-              {Array.from({ length: 9 }).map((_, i) => (
+              {SKELETON_KEYS.map((key, i) => (
                 <div
-                  key={i}
+                  key={key}
                   className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
                 >
                   <IdeaMasonryItemSkeleton />
@@ -581,8 +592,8 @@ function BrowseIdeasContent() {
             </div>
           ) : (
             <div className="divide-y divide-border/40">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
+              {SKELETON_KEYS.slice(0, 6).map((key, i) => (
+                <div key={key} className={`animate-fade-in stagger-${i + 1}`}>
                   <IdeaExpandedRowSkeleton />
                 </div>
               ))}
