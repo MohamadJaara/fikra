@@ -14,7 +14,6 @@ import {
   assertIdeasUnlocked,
   assertHackathonWritable,
   assertIdeaInHackathon,
-  canReadLegacyScope,
   claimLegacyIdeaScopeForMutation,
   getHackathonByIdOrCurrent,
   getParticipant,
@@ -89,7 +88,7 @@ async function assertIdeaMutationAllowed(
 
 async function shouldPatchLegacyChildScope(
   ctx: MutationCtx,
-  existingHackathonId: Id<"hackathons"> | undefined,
+  existingHackathonId: Id<"hackathons">,
   hackathonId: Id<"hackathons">,
   entityName: string,
 ) {
@@ -109,74 +108,53 @@ async function getIdeaListMembershipMaps(
   ideas: Doc<"ideas">[],
   hackathonId: Id<"hackathons">,
 ) {
-  const includeLegacy = await canReadLegacyScope(ctx, hackathonId);
   const relationRows = await Promise.all(
     ideas.map(async (idea) => {
-      const scopes: Array<Id<"hackathons"> | undefined> = includeLegacy
-        ? [hackathonId, undefined]
-        : [hackathonId];
-      const [membershipSets, interestSets, reactionSets, bookmarkSets] =
-        await Promise.all([
-          Promise.all(
-            scopes.map((scope) =>
-              ctx.db
-                .query("ideaMembers")
-                .withIndex("by_hackathon_and_idea_and_user", (q) =>
-                  q
-                    .eq("hackathonId", scope)
-                    .eq("ideaId", idea._id)
-                    .eq("userId", userId),
-                )
-                .take(MAX_USER_IDEA_RELATION_ROWS_PER_SCOPE),
-            ),
-          ),
-          Promise.all(
-            scopes.map((scope) =>
-              ctx.db
-                .query("ideaInterest")
-                .withIndex("by_hackathon_and_idea_and_user", (q) =>
-                  q
-                    .eq("hackathonId", scope)
-                    .eq("ideaId", idea._id)
-                    .eq("userId", userId),
-                )
-                .take(MAX_USER_IDEA_RELATION_ROWS_PER_SCOPE),
-            ),
-          ),
-          Promise.all(
-            scopes.map((scope) =>
-              ctx.db
-                .query("reactions")
-                .withIndex("by_hackathon_and_idea_and_user", (q) =>
-                  q
-                    .eq("hackathonId", scope)
-                    .eq("ideaId", idea._id)
-                    .eq("userId", userId),
-                )
-                .take(MAX_USER_IDEA_RELATION_ROWS_PER_SCOPE),
-            ),
-          ),
-          Promise.all(
-            scopes.map((scope) =>
-              ctx.db
-                .query("ideaBookmarks")
-                .withIndex("by_hackathon_and_idea_and_user", (q) =>
-                  q
-                    .eq("hackathonId", scope)
-                    .eq("ideaId", idea._id)
-                    .eq("userId", userId),
-                )
-                .take(MAX_USER_IDEA_RELATION_ROWS_PER_SCOPE),
-            ),
-          ),
-        ]);
+      const [memberships, interests, reactions, bookmarks] = await Promise.all([
+        ctx.db
+          .query("ideaMembers")
+          .withIndex("by_hackathon_and_idea_and_user", (q) =>
+            q
+              .eq("hackathonId", hackathonId)
+              .eq("ideaId", idea._id)
+              .eq("userId", userId),
+          )
+          .take(MAX_USER_IDEA_RELATION_ROWS_PER_SCOPE),
+        ctx.db
+          .query("ideaInterest")
+          .withIndex("by_hackathon_and_idea_and_user", (q) =>
+            q
+              .eq("hackathonId", hackathonId)
+              .eq("ideaId", idea._id)
+              .eq("userId", userId),
+          )
+          .take(MAX_USER_IDEA_RELATION_ROWS_PER_SCOPE),
+        ctx.db
+          .query("reactions")
+          .withIndex("by_hackathon_and_idea_and_user", (q) =>
+            q
+              .eq("hackathonId", hackathonId)
+              .eq("ideaId", idea._id)
+              .eq("userId", userId),
+          )
+          .take(MAX_USER_IDEA_RELATION_ROWS_PER_SCOPE),
+        ctx.db
+          .query("ideaBookmarks")
+          .withIndex("by_hackathon_and_idea_and_user", (q) =>
+            q
+              .eq("hackathonId", hackathonId)
+              .eq("ideaId", idea._id)
+              .eq("userId", userId),
+          )
+          .take(MAX_USER_IDEA_RELATION_ROWS_PER_SCOPE),
+      ]);
 
       return {
         idea,
-        memberships: membershipSets.flat(),
-        interests: interestSets.flat(),
-        reactions: reactionSets.flat(),
-        bookmarks: bookmarkSets.flat(),
+        memberships,
+        interests,
+        reactions,
+        bookmarks,
       };
     }),
   );
@@ -502,11 +480,10 @@ type IdeaScanSourceState = {
 type IdeaScanCursor = {
   version: 1;
   scoped: IdeaScanSourceState;
-  legacy?: IdeaScanSourceState;
 };
 
 type MutableIdeaScanSource = {
-  scope: Id<"hackathons"> | undefined;
+  scope: Id<"hackathons">;
   cursor: string | null;
   exhausted: boolean;
   buffer: Doc<"ideas">[];
@@ -535,14 +512,10 @@ function parseIdeaScanSourceState(value: unknown): IdeaScanSourceState | null {
   };
 }
 
-function parseIdeaScanCursor(
-  cursor: string | null,
-  includeLegacy: boolean,
-): IdeaScanCursor {
+function parseIdeaScanCursor(cursor: string | null): IdeaScanCursor {
   const fallback: IdeaScanCursor = {
     version: 1,
     scoped: emptyIdeaScanSourceState(),
-    ...(includeLegacy ? { legacy: emptyIdeaScanSourceState() } : {}),
   };
   if (!cursor) return fallback;
 
@@ -550,11 +523,8 @@ function parseIdeaScanCursor(
     const parsed = JSON.parse(cursor) as Record<string, unknown>;
     if (parsed.version !== 1) return fallback;
     const scoped = parseIdeaScanSourceState(parsed.scoped);
-    const legacy = includeLegacy
-      ? parseIdeaScanSourceState(parsed.legacy)
-      : undefined;
-    if (!scoped || (includeLegacy && !legacy)) return fallback;
-    return { version: 1, scoped, ...(legacy ? { legacy } : {}) };
+    if (!scoped) return fallback;
+    return { version: 1, scoped };
   } catch {
     // Cursors from the former offset implementation safely restart at page one.
     return fallback;
@@ -564,7 +534,7 @@ function parseIdeaScanCursor(
 async function loadIdeaScanBuffer(
   ctx: QueryCtx,
   ids: Id<"ideas">[],
-  scope: Id<"hackathons"> | undefined,
+  scope: Id<"hackathons">,
   filters?: IdeaListFilters,
   categoryId?: Id<"categories">,
 ) {
@@ -649,21 +619,19 @@ async function scanIdeaPage(
   ctx: QueryCtx,
   {
     hackathonId,
-    includeLegacy,
     filters,
     sortBy,
     paginationOpts,
     categoryId,
   }: {
     hackathonId: Id<"hackathons">;
-    includeLegacy: boolean;
     filters?: IdeaListFilters;
     sortBy: IdeaListSortOption;
     paginationOpts: { numItems: number; cursor: string | null };
     categoryId?: Id<"categories">;
   },
 ) {
-  const cursor = parseIdeaScanCursor(paginationOpts.cursor, includeLegacy);
+  const cursor = parseIdeaScanCursor(paginationOpts.cursor);
   const scoped: MutableIdeaScanSource = {
     scope: hackathonId,
     cursor: cursor.scoped.cursor,
@@ -677,20 +645,6 @@ async function scanIdeaPage(
     ),
   };
   const sources = [scoped];
-  if (includeLegacy && cursor.legacy) {
-    sources.push({
-      scope: undefined,
-      cursor: cursor.legacy.cursor,
-      exhausted: cursor.legacy.exhausted,
-      buffer: await loadIdeaScanBuffer(
-        ctx,
-        cursor.legacy.bufferedIds,
-        undefined,
-        filters,
-        categoryId,
-      ),
-    });
-  }
 
   const page: Doc<"ideas">[] = [];
   let scannedRows = 0;
@@ -760,15 +714,6 @@ async function scanIdeaPage(
       exhausted: scoped.exhausted,
       bufferedIds: scoped.buffer.map((idea) => idea._id),
     },
-    ...(sources[1]
-      ? {
-          legacy: {
-            cursor: sources[1].cursor,
-            exhausted: sources[1].exhausted,
-            bufferedIds: sources[1].buffer.map((idea) => idea._id),
-          },
-        }
-      : {}),
   };
 
   return {
@@ -1603,10 +1548,8 @@ export const list = query({
 
     const sortBy = args.sortBy ?? "most_interest";
     const filters = normalizeIdeaListFilters(args.filters);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
     const result = await scanIdeaPage(ctx, {
       hackathonId: hackathon._id,
-      includeLegacy,
       filters,
       sortBy,
       paginationOpts: args.paginationOpts,
@@ -1638,7 +1581,6 @@ export const listByCategory = query({
 
     const result = await scanIdeaPage(ctx, {
       hackathonId: hackathon._id,
-      includeLegacy: await canReadLegacyScope(ctx, hackathon._id),
       sortBy: "newest",
       paginationOpts: args.paginationOpts,
       categoryId: args.categoryId,
@@ -1665,10 +1607,8 @@ export const get = query({
     await requireParticipant(ctx, hackathon._id, userId);
     await assertIdeaInHackathon(ctx, idea, hackathon._id);
     await assertIdeasUnlocked(ctx, hackathon._id);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
-    const isReadableChild = (child: { hackathonId?: Id<"hackathons"> }) =>
-      child.hackathonId === hackathon._id ||
-      (includeLegacy && child.hackathonId === undefined);
+    const isReadableChild = (child: { hackathonId: Id<"hackathons"> }) =>
+      child.hackathonId === hackathon._id;
 
     const owner = await ctx.db.get(idea.ownerId);
     const category = idea.categoryId ? await ctx.db.get(idea.categoryId) : null;

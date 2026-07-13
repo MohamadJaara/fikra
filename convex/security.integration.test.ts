@@ -590,7 +590,9 @@ describe("Notification authorization", () => {
     });
 
     const notificationId = await t.run(async (ctx: any) => {
+      const idea = await ctx.db.get(ideaId);
       return await ctx.db.insert("notifications", {
+        hackathonId: idea!.hackathonId,
         recipientId: ownerId,
         actorId: ownerId,
         ideaId,
@@ -664,7 +666,9 @@ describe("Ownership transfer authorization", () => {
     });
 
     const requestId = await t.run(async (ctx: any) => {
+      const idea = await ctx.db.get(ideaId);
       return await ctx.db.insert("ownershipTransferRequests", {
+        hackathonId: idea!.hackathonId,
         ideaId,
         requesterId: ownerId,
         recipientId,
@@ -706,7 +710,9 @@ describe("Ownership transfer authorization", () => {
     });
 
     const requestId = await t.run(async (ctx: any) => {
+      const idea = await ctx.db.get(ideaId);
       return await ctx.db.insert("ownershipTransferRequests", {
+        hackathonId: idea!.hackathonId,
         ideaId,
         requesterId: ownerId,
         recipientId,
@@ -748,7 +754,9 @@ describe("Ownership transfer authorization", () => {
     });
 
     const requestId = await t.run(async (ctx: any) => {
+      const idea = await ctx.db.get(ideaId);
       return await ctx.db.insert("ownershipTransferRequests", {
+        hackathonId: idea!.hackathonId,
         ideaId,
         requesterId,
         recipientId: ownerId,

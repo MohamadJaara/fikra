@@ -34,20 +34,12 @@ async function getVotingSettings(
       .withIndex("by_key", (q) => q.eq("key", SETTINGS_KEY))
       .unique();
   }
-  return (
-    (await ctx.db
-      .query("votingSettings")
-      .withIndex("by_hackathon_and_key", (q) =>
-        q.eq("hackathonId", hackathonId).eq("key", SETTINGS_KEY),
-      )
-      .unique()) ??
-    (await ctx.db
-      .query("votingSettings")
-      .withIndex("by_hackathon_and_key", (q) =>
-        q.eq("hackathonId", undefined).eq("key", SETTINGS_KEY),
-      )
-      .first())
-  );
+  return await ctx.db
+    .query("votingSettings")
+    .withIndex("by_hackathon_and_key", (q) =>
+      q.eq("hackathonId", hackathonId).eq("key", SETTINGS_KEY),
+    )
+    .unique();
 }
 
 async function getExactVotingSettings(

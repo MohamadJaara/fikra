@@ -4,7 +4,6 @@ import {
   assertHackathonWritable,
   assertIdeaInHackathon,
   assertIdeasUnlocked,
-  canReadLegacyScope,
   claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
@@ -458,9 +457,8 @@ export const listForIdea = query({
     await requireParticipant(ctx, hackathon._id, userId);
     await assertIdeaInHackathon(ctx, idea, hackathon._id);
     await assertIdeasUnlocked(ctx, hackathon._id);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
-    const isReadableScope = (scope: Id<"hackathons"> | undefined) =>
-      scope === hackathon._id || (includeLegacy && scope === undefined);
+    const isReadableScope = (scope: Id<"hackathons">) =>
+      scope === hackathon._id;
 
     const asA = await ctx.db
       .query("relatedIdeas")
@@ -544,32 +542,20 @@ export const searchPotentialDuplicates = query({
     await requireParticipant(ctx, hackathon._id, userId);
     await assertIdeaInHackathon(ctx, idea, hackathon._id);
     await assertIdeasUnlocked(ctx, hackathon._id);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
-
     const titleWords = idea.title
       .toLowerCase()
       .split(/\s+/)
       .filter((w) => w.length > 3);
     if (titleWords.length === 0) return [];
 
-    const scopedHackathonId = idea.hackathonId;
-    const candidates = scopedHackathonId
-      ? await ctx.db
-          .query("ideas")
-          .withSearchIndex("search_title_by_hackathon", (q) =>
-            q
-              .search("title", titleWords.join(" "))
-              .eq("hackathonId", scopedHackathonId),
-          )
-          .take(20)
-      : await ctx.db
-          .query("ideas")
-          .withSearchIndex("search_title_by_hackathon", (q) =>
-            q
-              .search("title", titleWords.join(" "))
-              .eq("hackathonId", undefined),
-          )
-          .take(20);
+    const candidates = await ctx.db
+      .query("ideas")
+      .withSearchIndex("search_title_by_hackathon", (q) =>
+        q
+          .search("title", titleWords.join(" "))
+          .eq("hackathonId", idea.hackathonId),
+      )
+      .take(20);
 
     const scored = candidates
       .filter((i) => i._id !== ideaId && i.hackathonId === idea.hackathonId)
@@ -616,8 +602,7 @@ export const searchPotentialDuplicates = query({
           .collect();
         const memberCount = members.filter(
           (member) =>
-            (member.hackathonId === hackathon._id ||
-              (includeLegacy && member.hackathonId === undefined)) &&
+            member.hackathonId === hackathon._id &&
             isEffectiveIdeaMember(member, i),
         ).length;
         return {

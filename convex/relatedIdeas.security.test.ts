@@ -401,7 +401,7 @@ describe("Related idea merges", () => {
     expect(results.map((result) => result._id)).not.toContain(otherEventId);
   });
 
-  test("merge transfers carry and repair the target hackathon scope", async () => {
+  test("merge transfers preserve the target hackathon scope", async () => {
     const t = initTest();
     const sourceEmail = `scoped-source@${DOMAIN}`;
     const targetEmail = `scoped-target@${DOMAIN}`;
@@ -441,6 +441,7 @@ describe("Related idea merges", () => {
     await asInterested.mutation(api.interest.express, { ideaId: sourceId });
     await t.run(async (ctx: any) => {
       await ctx.db.insert("ideaInterest", {
+        hackathonId,
         ideaId: targetId,
         userId: interestedId,
       });
@@ -586,55 +587,5 @@ describe("Related idea merges", () => {
     ).rejects.toThrow(
       "Only the owner of the target idea can decline the merge",
     );
-  });
-
-  test("unscoped duplicate search is not crowded out by scoped matches", async () => {
-    const t = initTest();
-    const ownerEmail = `legacy-search-owner@${DOMAIN}`;
-    const ownerId = await insertUser(t, { email: ownerEmail });
-    const asOwner = asUser(t, ownerId, ownerEmail);
-    const scopedHackathonId = await seedHackathon(
-      t,
-      ownerId,
-      "legacy-search-distractors",
-    );
-
-    const { ideaId, expectedMatchId } = await t.run(async (ctx: any) => {
-      const ideaFields = {
-        pitch: "A climate water collaboration platform",
-        problem: "Climate water coordination",
-        targetAudience: "Hackathon participants",
-        skillsNeeded: [],
-        teamSize: "small",
-        status: "exploring",
-        lookingForRoles: [],
-        ownerId,
-      };
-
-      for (let index = 0; index < 110; index += 1) {
-        await ctx.db.insert("ideas", {
-          ...ideaFields,
-          hackathonId: scopedHackathonId,
-          title: `Climate Water Platform ${index}`,
-        });
-      }
-
-      const expectedMatchId = await ctx.db.insert("ideas", {
-        ...ideaFields,
-        title: "Climate Water Legacy Match",
-      });
-      const ideaId = await ctx.db.insert("ideas", {
-        ...ideaFields,
-        title: "Climate Water Legacy Platform",
-      });
-      return { ideaId, expectedMatchId };
-    });
-
-    const results = await asOwner.query(
-      api.relatedIdeas.searchPotentialDuplicates,
-      { ideaId },
-    );
-    expect(results.map((result) => result._id)).toContain(expectedMatchId);
-    expect(results).toHaveLength(1);
   });
 });

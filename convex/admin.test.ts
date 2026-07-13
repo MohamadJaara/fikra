@@ -37,10 +37,21 @@ describe("Admin dashboard stats", () => {
     });
 
     await t.run(async (ctx: any) => {
-      await ctx.db.insert("roles", { name: "Designer", slug: "designer" });
-      await ctx.db.insert("rooms", { name: "Team Room A", type: "team" });
+      const category = await ctx.db.get(categoryId);
+      const hackathonId = category!.hackathonId;
+      await ctx.db.insert("roles", {
+        hackathonId,
+        name: "Designer",
+        slug: "designer",
+      });
+      await ctx.db.insert("rooms", {
+        hackathonId,
+        name: "Team Room A",
+        type: "team",
+      });
 
       const ideaId = (await ctx.db.insert("ideas", {
+        hackathonId,
         title: "Room Ready Idea",
         pitch: "A pitch",
         problem: "A problem",
@@ -58,11 +69,13 @@ describe("Admin dashboard stats", () => {
       })) as Id<"ideas">;
 
       await ctx.db.insert("ideaMembers", {
+        hackathonId,
         ideaId,
         userId: memberId,
         memberRoles: ["developer"],
       });
       await ctx.db.insert("resourceRequests", {
+        hackathonId,
         ideaId,
         tag: "linux_vps",
         resolved: false,
@@ -171,16 +184,20 @@ describe("Admin dashboard stats", () => {
     });
 
     await t.run(async (ctx: any) => {
+      const idea = await ctx.db.get(ideaId);
+      const hackathonId = idea!.hackathonId;
       await ctx.db.patch(ideaId, {
         teamFormationStatus: "formed",
         roomRequestStatus: "requested",
       });
       await ctx.db.insert("resourceRequests", {
+        hackathonId,
         ideaId,
         tag: "linux_vps",
         resolved: false,
       });
       await ctx.db.insert("rooms", {
+        hackathonId,
         name: "Shared Lab",
         type: "shared",
         assignmentLimit: 3,

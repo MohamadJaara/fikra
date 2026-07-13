@@ -4,7 +4,6 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import {
   assertHackathonWritable,
-  canReadLegacyScope,
   getAuthenticatedUser,
   generateUniqueHandle,
   getHackathonByIdOrCurrent,
@@ -22,7 +21,6 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 
 const MAX_PROFILE_IDEAS = 50;
-// TEMPORARY MIGRATION COMPATIBILITY: cap each scoped/legacy membership read.
 const MAX_PROFILE_MEMBERSHIPS_PER_SCOPE = 100;
 
 async function upsertHackathonParticipant(
@@ -115,24 +113,7 @@ export const getMyParticipation = query({
   handler: async (ctx, { hackathonId }) => {
     const { userId, user } = await getAuthenticatedUser(ctx);
     const participant = await getParticipant(ctx, hackathonId, userId);
-    if (!participant) {
-      const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
-      if (
-        !hackathon ||
-        hackathon.status === "archived" ||
-        !user.onboardingComplete ||
-        !(await canReadLegacyScope(ctx, hackathon._id))
-      ) {
-        return null;
-      }
-      return {
-        hackathonId: hackathon._id,
-        roles: user.roles,
-        participationMode: user.participationMode,
-        onboardingComplete: true,
-        legacyFallback: true as const,
-      };
-    }
+    if (!participant) return null;
 
     return {
       _id: participant._id,
@@ -263,23 +244,16 @@ export const getProfile = query({
       .withIndex("handle", (q) => q.eq("handle", handle))
       .first();
     if (!user || !user.onboardingComplete) return null;
-    const [targetParticipant, includeLegacy] = await Promise.all([
-      getParticipant(ctx, hackathon._id, user._id),
-      canReadLegacyScope(ctx, hackathon._id),
-    ]);
-    if (
-      (targetParticipant && targetParticipant.onboardingComplete !== true) ||
-      (!targetParticipant && !includeLegacy)
-    ) {
+    const targetParticipant = await getParticipant(
+      ctx,
+      hackathon._id,
+      user._id,
+    );
+    if (targetParticipant?.onboardingComplete !== true) {
       return null;
     }
 
-    const [
-      scopedOwnedIdeas,
-      legacyOwnedIdeas,
-      scopedMemberships,
-      legacyMemberships,
-    ] = await Promise.all([
+    const [ownedIdeas, memberships] = await Promise.all([
       ctx.db
         .query("ideas")
         .withIndex("by_hackathon_and_owner", (q) =>
@@ -287,15 +261,6 @@ export const getProfile = query({
         )
         .order("desc")
         .take(MAX_PROFILE_IDEAS),
-      includeLegacy
-        ? ctx.db
-            .query("ideas")
-            .withIndex("by_hackathon_and_owner", (q) =>
-              q.eq("hackathonId", undefined).eq("ownerId", user._id),
-            )
-            .order("desc")
-            .take(MAX_PROFILE_IDEAS)
-        : Promise.resolve([]),
       ctx.db
         .query("ideaMembers")
         .withIndex("by_hackathon_and_user", (q) =>
@@ -303,28 +268,14 @@ export const getProfile = query({
         )
         .order("desc")
         .take(MAX_PROFILE_MEMBERSHIPS_PER_SCOPE),
-      includeLegacy
-        ? ctx.db
-            .query("ideaMembers")
-            .withIndex("by_hackathon_and_user", (q) =>
-              q.eq("hackathonId", undefined).eq("userId", user._id),
-            )
-            .order("desc")
-            .take(MAX_PROFILE_MEMBERSHIPS_PER_SCOPE)
-        : Promise.resolve([]),
     ]);
-    const ownedIdeas = [...scopedOwnedIdeas, ...legacyOwnedIdeas]
-      .sort((a, b) => b._creationTime - a._creationTime)
-      .slice(0, MAX_PROFILE_IDEAS);
-    const memberships = [...scopedMemberships, ...legacyMemberships];
 
     const joinedIdeas = await Promise.all(
       memberships.map(async (m) => {
         const idea = await ctx.db.get(m.ideaId);
         if (
           !idea ||
-          (idea.hackathonId !== hackathon._id &&
-            !(includeLegacy && idea.hackathonId === undefined)) ||
+          idea.hackathonId !== hackathon._id ||
           !isEffectiveIdeaMember(m, idea)
         ) {
           return null;

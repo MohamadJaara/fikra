@@ -5,7 +5,6 @@ import {
   assertHackathonWritable,
   assertIdeaInHackathon,
   assertIdeasUnlocked,
-  canReadLegacyScope,
   claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
@@ -242,18 +241,12 @@ export const list = query({
     await requireParticipant(ctx, hackathon._id, userId);
     await assertIdeaInHackathon(ctx, idea, hackathon._id);
     await assertIdeasUnlocked(ctx, hackathon._id);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
-
     const comments = (
       await ctx.db
         .query("comments")
         .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
         .collect()
-    ).filter(
-      (comment) =>
-        comment.hackathonId === hackathon._id ||
-        (includeLegacy && comment.hackathonId === undefined),
-    );
+    ).filter((comment) => comment.hackathonId === hackathon._id);
 
     const withUsers = await Promise.all(
       comments.map(async (c) => {

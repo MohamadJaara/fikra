@@ -4,7 +4,6 @@ import type { Id } from "./_generated/dataModel";
 import {
   assertHackathonWritable,
   assertIdeasUnlocked,
-  canReadLegacyScope,
   claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
@@ -19,7 +18,7 @@ import { refreshIdeaResourceStats } from "./ideaStats";
 
 async function assertRequestHackathon(
   ctx: MutationCtx,
-  request: { _id: Id<"resourceRequests">; hackathonId?: Id<"hackathons"> },
+  request: { _id: Id<"resourceRequests">; hackathonId: Id<"hackathons"> },
   hackathonId: Id<"hackathons">,
 ) {
   const requestScope = await resolveLegacyScopeForMutation(
@@ -164,32 +163,17 @@ export const getAllUnresolved = query({
     await requireParticipant(ctx, hackathon._id, userId);
     await assertIdeasUnlocked(ctx, hackathon._id);
     const resourceNameMap = await getResourceNameMap(ctx, hackathon._id);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
-
-    const scoped = await ctx.db
+    const unresolved = await ctx.db
       .query("resourceRequests")
       .withIndex("by_hackathon_and_resolved", (q) =>
         q.eq("hackathonId", hackathon._id).eq("resolved", false),
       )
       .collect();
-    const legacy = includeLegacy
-      ? await ctx.db
-          .query("resourceRequests")
-          .withIndex("by_hackathon_and_resolved", (q) =>
-            q.eq("hackathonId", undefined).eq("resolved", false),
-          )
-          .collect()
-      : [];
-    const unresolved = [...scoped, ...legacy];
 
     const withIdeas = await Promise.all(
       unresolved.map(async (r) => {
         const idea = await ctx.db.get(r.ideaId);
-        if (
-          !idea ||
-          (idea.hackathonId !== hackathon._id &&
-            !(includeLegacy && idea.hackathonId === undefined))
-        ) {
+        if (!idea || idea.hackathonId !== hackathon._id) {
           return null;
         }
         const owner = idea ? await ctx.db.get(idea.ownerId) : null;

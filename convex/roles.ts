@@ -152,18 +152,10 @@ export const list = query({
     await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
     const all = hackathon
-      ? [
-          ...(await ctx.db
-            .query("roles")
-            .withIndex("by_hackathon", (q) =>
-              q.eq("hackathonId", hackathon._id),
-            )
-            .collect()),
-          ...(await ctx.db
-            .query("roles")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect()),
-        ]
+      ? await ctx.db
+          .query("roles")
+          .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
+          .collect()
       : await ctx.db.query("roles").order("asc").collect();
     return all.filter((r) => !r.deletedAt);
   },
@@ -245,6 +237,7 @@ export const createMany = mutation({
         allRoles.push({
           _id: docId,
           _creationTime: Date.now(),
+          hackathonId: hackathon._id,
           name,
           slug,
         });

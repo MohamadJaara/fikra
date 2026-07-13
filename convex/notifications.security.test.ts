@@ -26,7 +26,9 @@ describe("Notification authorization", () => {
     });
 
     const notificationId = await t.run(async (ctx: any) => {
+      const idea = await ctx.db.get(ideaId);
       return await ctx.db.insert("notifications", {
+        hackathonId: idea!.hackathonId,
         recipientId: ownerId,
         actorId: ownerId,
         ideaId,

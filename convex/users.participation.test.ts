@@ -40,7 +40,7 @@ async function insertRole(
 }
 
 describe("event-scoped participant profile contract", () => {
-  test("participant reads expose only the current-event legacy fallback", async () => {
+  test("participant reads require a stored hackathon profile", async () => {
     const t = initTest();
     const email = "participant-fallback@test.com";
     const userId = await insertUser(t, {
@@ -53,13 +53,7 @@ describe("event-scoped participant profile contract", () => {
 
     expect(
       await client.query(api.users.getMyParticipation, { hackathonId }),
-    ).toMatchObject({
-      hackathonId,
-      roles: ["legacy-role"],
-      participationMode: "remote",
-      onboardingComplete: true,
-      legacyFallback: true,
-    });
+    ).toBeNull();
 
     const otherHackathonId = await insertHackathon(
       t,

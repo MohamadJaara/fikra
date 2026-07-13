@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import {
   assertHackathonWritable,
   assertIdeasUnlocked,
-  canReadLegacyScope,
   claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
@@ -97,63 +96,34 @@ export const getDiscoverFeed = query({
     mode: v.optional(v.union(v.literal("browse"), v.literal("findTeam"))),
   },
   handler: async (ctx, args) => {
-    const { userId, user } = await getAuthenticatedUser(ctx);
+    const { userId } = await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, args.hackathonId);
     if (!hackathon) return [];
     await requireParticipant(ctx, hackathon._id, userId);
     const participant = await getParticipant(ctx, hackathon._id, userId);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
     const mode = args.mode ?? "browse";
-    const userRoles = participant
-      ? (participant.roles ?? [])
-      : (user.roles ?? []);
+    const userRoles = participant?.roles ?? [];
 
-    const [scopedMemberships, scopedInterests, scopedDismissed] =
-      await Promise.all([
-        ctx.db
-          .query("ideaMembers")
-          .withIndex("by_hackathon_and_user", (q) =>
-            q.eq("hackathonId", hackathon._id).eq("userId", userId),
-          )
-          .collect(),
-        ctx.db
-          .query("ideaInterest")
-          .withIndex("by_hackathon_and_user", (q) =>
-            q.eq("hackathonId", hackathon._id).eq("userId", userId),
-          )
-          .collect(),
-        ctx.db
-          .query("dismissedIdeas")
-          .withIndex("by_hackathon_and_user", (q) =>
-            q.eq("hackathonId", hackathon._id).eq("userId", userId),
-          )
-          .collect(),
-      ]);
-    const [legacyMemberships, legacyInterests, legacyDismissed] = includeLegacy
-      ? await Promise.all([
-          ctx.db
-            .query("ideaMembers")
-            .withIndex("by_hackathon_and_user", (q) =>
-              q.eq("hackathonId", undefined).eq("userId", userId),
-            )
-            .collect(),
-          ctx.db
-            .query("ideaInterest")
-            .withIndex("by_hackathon_and_user", (q) =>
-              q.eq("hackathonId", undefined).eq("userId", userId),
-            )
-            .collect(),
-          ctx.db
-            .query("dismissedIdeas")
-            .withIndex("by_hackathon_and_user", (q) =>
-              q.eq("hackathonId", undefined).eq("userId", userId),
-            )
-            .collect(),
-        ])
-      : [[], [], []];
-    const memberships = [...scopedMemberships, ...legacyMemberships];
-    const interests = [...scopedInterests, ...legacyInterests];
-    const dismissed = [...scopedDismissed, ...legacyDismissed];
+    const [memberships, interests, dismissed] = await Promise.all([
+      ctx.db
+        .query("ideaMembers")
+        .withIndex("by_hackathon_and_user", (q) =>
+          q.eq("hackathonId", hackathon._id).eq("userId", userId),
+        )
+        .collect(),
+      ctx.db
+        .query("ideaInterest")
+        .withIndex("by_hackathon_and_user", (q) =>
+          q.eq("hackathonId", hackathon._id).eq("userId", userId),
+        )
+        .collect(),
+      ctx.db
+        .query("dismissedIdeas")
+        .withIndex("by_hackathon_and_user", (q) =>
+          q.eq("hackathonId", hackathon._id).eq("userId", userId),
+        )
+        .collect(),
+    ]);
 
     const effectiveMemberships = await Promise.all(
       memberships.map(async (membership) => {
@@ -173,41 +143,20 @@ export const getDiscoverFeed = query({
     let candidates: Doc<"ideas">[] = [];
 
     if (mode === "findTeam") {
-      const scopedTeamCandidates = await ctx.db
+      const teamCandidates = await ctx.db
         .query("ideas")
         .withIndex("by_hackathon_and_needsTeammates", (q) =>
           q.eq("hackathonId", hackathon._id).eq("needsTeammates", true),
         )
         .take(200);
-      const teamCandidates = includeLegacy
-        ? [
-            ...scopedTeamCandidates,
-            ...(await ctx.db
-              .query("ideas")
-              .withIndex("by_hackathon_and_needsTeammates", (q) =>
-                q.eq("hackathonId", undefined).eq("needsTeammates", true),
-              )
-              .take(200)),
-          ]
-        : scopedTeamCandidates;
-
       candidates = teamCandidates.filter(
         (idea) => idea.status === "exploring" || idea.status === "forming_team",
       );
     } else {
-      const scopedCandidates = await ctx.db
+      candidates = await ctx.db
         .query("ideas")
         .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
         .take(200);
-      candidates = includeLegacy
-        ? [
-            ...scopedCandidates,
-            ...(await ctx.db
-              .query("ideas")
-              .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-              .take(200)),
-          ]
-        : scopedCandidates;
     }
 
     const filtered = candidates.filter((idea) => {
@@ -344,24 +293,12 @@ export const resetDismissedIdeas = mutation({
     await assertHackathonWritable(ctx, hackathon._id);
     await assertIdeasUnlocked(ctx, hackathon._id);
 
-    const scopedDismissed = await ctx.db
+    const dismissed = await ctx.db
       .query("dismissedIdeas")
       .withIndex("by_hackathon_and_user", (q) =>
         q.eq("hackathonId", hackathon._id).eq("userId", userId),
       )
       .collect();
-    const dismissed = (await canReadLegacyScope(ctx, hackathon._id))
-      ? [
-          ...scopedDismissed,
-          ...(await ctx.db
-            .query("dismissedIdeas")
-            .withIndex("by_hackathon_and_user", (q) =>
-              q.eq("hackathonId", undefined).eq("userId", userId),
-            )
-            .collect()),
-        ]
-      : scopedDismissed;
-
     await Promise.all(dismissed.map((d) => ctx.db.delete(d._id)));
   },
 });
@@ -373,10 +310,9 @@ export const getActivityTicker = query({
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
     if (!hackathon) return [];
     await requireParticipant(ctx, hackathon._id, userId);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
     const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
 
-    const [scopedMembers, scopedIdeas] = await Promise.all([
+    const [recentMembers, recentIdeas] = await Promise.all([
       ctx.db
         .query("ideaMembers")
         .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathon._id))
@@ -388,27 +324,6 @@ export const getActivityTicker = query({
         .order("desc")
         .take(10),
     ]);
-    const [legacyMembers, legacyIdeas] = includeLegacy
-      ? await Promise.all([
-          ctx.db
-            .query("ideaMembers")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .order("desc")
-            .take(20),
-          ctx.db
-            .query("ideas")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .order("desc")
-            .take(10),
-        ])
-      : [[], []];
-    const recentMembers = [...scopedMembers, ...legacyMembers].sort(
-      (a, b) => b._creationTime - a._creationTime,
-    );
-    const recentIdeas = [...scopedIdeas, ...legacyIdeas].sort(
-      (a, b) => b._creationTime - a._creationTime,
-    );
-
     const recentMemberActivity = recentMembers
       .filter((m) => m._creationTime > thirtyMinutesAgo)
       .slice(0, 8);

@@ -31,11 +31,10 @@ function increment(map: Record<string, number>, key: string, by = 1) {
 async function scopedResults<T>(
   hackathonId: Id<"hackathons"> | undefined,
   scoped: (hackathonId: Id<"hackathons">) => Promise<T[]>,
-  legacy: () => Promise<T[]>,
   global: () => Promise<T[]>,
 ) {
   if (!hackathonId) return await global();
-  return [...(await scoped(hackathonId)), ...(await legacy())];
+  return await scoped(hackathonId);
 }
 
 export const stats = query({
@@ -74,11 +73,6 @@ export const stats = query({
             .query("ideas")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("ideas")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("ideas").collect(),
       ),
       scopedResults(
@@ -87,11 +81,6 @@ export const stats = query({
           ctx.db
             .query("comments")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-            .collect(),
-        () =>
-          ctx.db
-            .query("comments")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
             .collect(),
         () => ctx.db.query("comments").collect(),
       ),
@@ -102,11 +91,6 @@ export const stats = query({
             .query("reactions")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("reactions")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("reactions").collect(),
       ),
       scopedResults(
@@ -115,11 +99,6 @@ export const stats = query({
           ctx.db
             .query("ideaInterest")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-            .collect(),
-        () =>
-          ctx.db
-            .query("ideaInterest")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
             .collect(),
         () => ctx.db.query("ideaInterest").collect(),
       ),
@@ -130,11 +109,6 @@ export const stats = query({
             .query("ideaMembers")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("ideaMembers")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("ideaMembers").collect(),
       ),
       scopedResults(
@@ -143,11 +117,6 @@ export const stats = query({
           ctx.db
             .query("resourceRequests")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-            .collect(),
-        () =>
-          ctx.db
-            .query("resourceRequests")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
             .collect(),
         () => ctx.db.query("resourceRequests").collect(),
       ),
@@ -158,11 +127,6 @@ export const stats = query({
             .query("resources")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("resources")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("resources").collect(),
       ),
       scopedResults(
@@ -172,11 +136,6 @@ export const stats = query({
             .query("roles")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("roles")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("roles").collect(),
       ),
       scopedResults(
@@ -185,11 +144,6 @@ export const stats = query({
           ctx.db
             .query("rooms")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-            .collect(),
-        () =>
-          ctx.db
-            .query("rooms")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
             .collect(),
         () => ctx.db.query("rooms").collect(),
       ),
@@ -443,11 +397,6 @@ export const ideasReport = query({
             .query("ideas")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("ideas")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("ideas").collect(),
       ),
       ctx.db.query("users").collect(),
@@ -458,11 +407,6 @@ export const ideasReport = query({
             .query("rooms")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("rooms")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("rooms").collect(),
       ),
       scopedResults(
@@ -471,11 +415,6 @@ export const ideasReport = query({
           ctx.db
             .query("comments")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-            .collect(),
-        () =>
-          ctx.db
-            .query("comments")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
             .collect(),
         () => ctx.db.query("comments").collect(),
       ),
@@ -486,11 +425,6 @@ export const ideasReport = query({
             .query("reactions")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("reactions")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("reactions").collect(),
       ),
       scopedResults(
@@ -499,11 +433,6 @@ export const ideasReport = query({
           ctx.db
             .query("ideaInterest")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-            .collect(),
-        () =>
-          ctx.db
-            .query("ideaInterest")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
             .collect(),
         () => ctx.db.query("ideaInterest").collect(),
       ),
@@ -514,11 +443,6 @@ export const ideasReport = query({
             .query("ideaMembers")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
             .collect(),
-        () =>
-          ctx.db
-            .query("ideaMembers")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-            .collect(),
         () => ctx.db.query("ideaMembers").collect(),
       ),
       scopedResults(
@@ -527,11 +451,6 @@ export const ideasReport = query({
           ctx.db
             .query("resourceRequests")
             .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-            .collect(),
-        () =>
-          ctx.db
-            .query("resourceRequests")
-            .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
             .collect(),
         () => ctx.db.query("resourceRequests").collect(),
       ),
@@ -547,7 +466,8 @@ export const ideasReport = query({
     const byStatus: Record<string, number> = {};
 
     for (const comment of comments) increment(commentsByIdea, comment.ideaId);
-    for (const reaction of reactions) increment(reactionsByIdea, reaction.ideaId);
+    for (const reaction of reactions)
+      increment(reactionsByIdea, reaction.ideaId);
     for (const item of interest) increment(interestByIdea, item.ideaId);
     for (const request of resourceRequests) {
       if (!request.resolved) increment(resourcesByIdea, request.ideaId);
@@ -673,8 +593,7 @@ export const ideasReport = query({
         assignedIdeas,
         unassignedIdeas: ideas.length - assignedIdeas,
         roomRequests,
-        readyWithoutRoomRequest:
-          decisionQueues.readyWithoutRoomRequest.length,
+        readyWithoutRoomRequest: decisionQueues.readyWithoutRoomRequest.length,
         buildingWithoutRoom: decisionQueues.buildingWithoutRoom.length,
         resourceBlockedIdeas: decisionQueues.resourceBlocked.length,
         onsiteOnlyIdeas: ideaRows.filter((idea) => idea.onsiteOnly).length,
@@ -775,12 +694,6 @@ export const listUsers = query({
               ctx.db
                 .query("ideas")
                 .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
-                .filter((q) => q.eq(q.field("hackathonId"), undefined))
-                .collect(),
-            () =>
-              ctx.db
-                .query("ideas")
-                .withIndex("by_owner", (q) => q.eq("ownerId", user._id))
                 .collect(),
           ),
           scopedResults(
@@ -796,12 +709,6 @@ export const listUsers = query({
               ctx.db
                 .query("ideaMembers")
                 .withIndex("by_user", (q) => q.eq("userId", user._id))
-                .filter((q) => q.eq(q.field("hackathonId"), undefined))
-                .collect(),
-            () =>
-              ctx.db
-                .query("ideaMembers")
-                .withIndex("by_user", (q) => q.eq("userId", user._id))
                 .collect(),
           ),
           scopedResults(
@@ -812,12 +719,6 @@ export const listUsers = query({
                 .withIndex("by_hackathon_and_user", (q) =>
                   q.eq("hackathonId", id).eq("userId", user._id),
                 )
-                .collect(),
-            () =>
-              ctx.db
-                .query("ideaInterest")
-                .withIndex("by_user", (q) => q.eq("userId", user._id))
-                .filter((q) => q.eq(q.field("hackathonId"), undefined))
                 .collect(),
             () =>
               ctx.db
@@ -878,11 +779,6 @@ export const listIdeas = query({
         ctx.db
           .query("ideas")
           .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-          .collect(),
-      () =>
-        ctx.db
-          .query("ideas")
-          .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
           .collect(),
       () => ctx.db.query("ideas").collect(),
     );
@@ -966,11 +862,6 @@ export const listComments = query({
         ctx.db
           .query("comments")
           .withIndex("by_hackathon", (q) => q.eq("hackathonId", id))
-          .collect(),
-      () =>
-        ctx.db
-          .query("comments")
-          .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
           .collect(),
       () => ctx.db.query("comments").collect(),
     );

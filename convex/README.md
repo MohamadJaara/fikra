@@ -27,3 +27,16 @@ Convex tests live beside the functions as `*.test.ts` and run with Vitest plus `
 ## Migrations
 
 Migration definitions are in `migrations.ts`. They are manual, batched, and resumable. Always dry-run against the intended deployment, inspect component status and the scope verification report, and keep destructive cleanup runners separate from normal backfills. Never run a production migration merely by starting the development server.
+
+Before making scoped `hackathonId` fields required, deploy the wide schema and
+run the fresh exhaustive verification series:
+
+```bash
+npx convex run migrations:runNarrowingVerificationV1 '{"dryRun":true}' --prod
+npx convex run migrations:runNarrowingVerificationV1 --prod
+npx convex run --component migrations lib:getStatus '{"limit":30}' --prod
+```
+
+Every `verify*ForNarrowingV1` job must report `state: "success"` and
+`isDone: true`. The `V1` suffix is deliberate: completed migration names are
+not rerun when their implementation changes.

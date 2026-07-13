@@ -54,7 +54,7 @@ async function seedParticipant(
 async function seedCategory(
   t: TestContext,
   slug: string,
-  hackathonId?: Id<"hackathons">,
+  hackathonId: Id<"hackathons">,
 ) {
   return (await t.run(async (ctx: any) => {
     return await ctx.db.insert("categories", {
@@ -69,7 +69,7 @@ async function seedIdea(
   t: TestContext,
   ownerId: Id<"users">,
   title: string,
-  hackathonId?: Id<"hackathons">,
+  hackathonId: Id<"hackathons">,
 ) {
   return (await t.run(async (ctx: any) => {
     return await ctx.db.insert("ideas", {
@@ -88,63 +88,6 @@ async function seedIdea(
 }
 
 describe("Event-owned mutation scoping", () => {
-  test("participant mutations reject event-less writes", async () => {
-    const t = initTest();
-    const email = `eventless-admin@${DOMAIN}`;
-    const userId = await insertUser(t, { email, isAdmin: true });
-    const actingUser = asUser(t, userId, email);
-    const ideaId = await seedIdea(t, userId, "Legacy unscoped idea");
-    const otherIdeaId = await seedIdea(t, userId, "Other legacy idea");
-    const categoryId = await seedCategory(t, "legacy-category");
-
-    const ideaMutations = [
-      () =>
-        actingUser.mutation(api.comments.create, {
-          ideaId,
-          content: "Comment",
-        }),
-      () =>
-        actingUser.mutation(api.reactions.toggle, {
-          ideaId,
-          type: "interested",
-        }),
-      () => actingUser.mutation(api.memberships.join, { ideaId }),
-      () => actingUser.mutation(api.interest.express, { ideaId }),
-      () => actingUser.mutation(api.bookmarks.toggle, { ideaId }),
-      () =>
-        actingUser.mutation(api.resourceRequests.add, {
-          ideaId,
-          tag: "server",
-        }),
-      () => actingUser.mutation(api.discover.dismissIdea, { ideaId }),
-    ];
-    for (const mutate of ideaMutations) {
-      await expect(mutate()).rejects.toThrow(
-        /Idea is not assigned to a hackathon|No hackathon is configured/,
-      );
-    }
-
-    await expect(
-      actingUser.mutation(api.relatedIdeas.markRelated, {
-        ideaIdA: ideaId,
-        ideaIdB: otherIdeaId,
-        relationType: "related",
-      }),
-    ).rejects.toThrow(
-      /Ideas are not assigned to a hackathon|No hackathon is configured/,
-    );
-    await expect(
-      actingUser.mutation(api.ideas.create, makeIdeaArgs(categoryId)),
-    ).rejects.toThrow("No hackathon is configured");
-    await expect(
-      actingUser.mutation(api.announcements.create, {
-        title: "No event",
-        message: "Must not be global",
-        type: "info",
-      }),
-    ).rejects.toThrow("No hackathon is configured");
-  });
-
   test("non-participants cannot mutate scoped event data", async () => {
     const t = initTest();
     const email = `non-participant@${DOMAIN}`;

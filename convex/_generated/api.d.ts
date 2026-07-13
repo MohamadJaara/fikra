@@ -14,6 +14,7 @@ import type * as auth from "../auth.js";
 import type * as bookmarks from "../bookmarks.js";
 import type * as categories from "../categories.js";
 import type * as comments from "../comments.js";
+import type * as crons from "../crons.js";
 import type * as discover from "../discover.js";
 import type * as event from "../event.js";
 import type * as hackathons from "../hackathons.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   bookmarks: typeof bookmarks;
   categories: typeof categories;
   comments: typeof comments;
+  crons: typeof crons;
   discover: typeof discover;
   event: typeof event;
   hackathons: typeof hackathons;

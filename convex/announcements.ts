@@ -42,22 +42,13 @@ export const getActive = query({
     const dismissedIds = new Set(dismissed.map((d) => d.announcementId));
 
     const active = hackathon
-      ? [
-          ...(await ctx.db
-            .query("announcements")
-            .withIndex("by_hackathon_and_active", (q) =>
-              q.eq("hackathonId", hackathon._id).eq("active", true),
-            )
-            .order("desc")
-            .collect()),
-          ...(await ctx.db
-            .query("announcements")
-            .withIndex("by_hackathon_and_active", (q) =>
-              q.eq("hackathonId", undefined).eq("active", true),
-            )
-            .order("desc")
-            .collect()),
-        ]
+      ? await ctx.db
+          .query("announcements")
+          .withIndex("by_hackathon_and_active", (q) =>
+            q.eq("hackathonId", hackathon._id).eq("active", true),
+          )
+          .order("desc")
+          .collect()
       : await ctx.db
           .query("announcements")
           .withIndex("by_active", (q) => q.eq("active", true))

@@ -181,7 +181,8 @@ type IdeaChildId =
   | Id<"ownershipTransferRequests">
   | Id<"dismissedIdeas">
   | Id<"ideaBookmarks">
-  | Id<"ideaVotes">;
+  | Id<"ideaVotes">
+  | Id<"notifications">;
 
 /**
  * Legacy root documents without a scope belong to the initial hackathon.
@@ -741,6 +742,335 @@ export const backfillDismissedAnnouncementHackathonIds = migrations.define({
   },
 });
 
+function narrowingVerificationBlocker(
+  table: string,
+  documentId: string,
+  reason: string,
+): never {
+  throw new Error(
+    `Narrow-schema verification blocked for ${table}/${documentId}: ${reason}. ` +
+      "Keep hackathonId optional, repair the data, and run migrations:runNarrowingVerificationV1 again.",
+  );
+}
+
+export async function assertPlatformReadyForNarrowing(ctx: MutationCtx) {
+  const setting = await ctx.db
+    .query("platformSettings")
+    .withIndex("by_key", (q) => q.eq("key", PLATFORM_SETTING_KEY))
+    .unique();
+  if (!setting) {
+    narrowingVerificationBlocker(
+      "platformSettings",
+      PLATFORM_SETTING_KEY,
+      "the main platform setting does not exist",
+    );
+  }
+  if (!setting.currentHackathonId) {
+    narrowingVerificationBlocker(
+      "platformSettings",
+      setting._id,
+      "currentHackathonId is missing",
+    );
+  }
+  if (!(await ctx.db.get(setting.currentHackathonId))) {
+    narrowingVerificationBlocker(
+      "platformSettings",
+      setting._id,
+      `current hackathon ${setting.currentHackathonId} does not exist`,
+    );
+  }
+  if (
+    setting.scopeMigrationHackathonId !== undefined &&
+    !(await ctx.db.get(setting.scopeMigrationHackathonId))
+  ) {
+    narrowingVerificationBlocker(
+      "platformSettings",
+      setting._id,
+      `pinned migration hackathon ${setting.scopeMigrationHackathonId} does not exist`,
+    );
+  }
+}
+
+export async function assertScopedRootReadyForNarrowing(
+  ctx: MutationCtx,
+  table: string,
+  document: {
+    _id: ScopedRootId;
+    hackathonId?: Id<"hackathons">;
+  },
+) {
+  if (document.hackathonId === undefined) {
+    narrowingVerificationBlocker(table, document._id, "hackathonId is missing");
+  }
+  if (!(await ctx.db.get(document.hackathonId))) {
+    narrowingVerificationBlocker(
+      table,
+      document._id,
+      `hackathon ${document.hackathonId} does not exist`,
+    );
+  }
+}
+
+export async function assertIdeaReadyForNarrowing(
+  ctx: MutationCtx,
+  idea: {
+    _id: Id<"ideas">;
+    hackathonId?: Id<"hackathons">;
+    categoryId?: Id<"categories">;
+    roomId?: Id<"rooms">;
+  },
+) {
+  await assertScopedRootReadyForNarrowing(ctx, "ideas", idea);
+  const hackathonId = idea.hackathonId!;
+  for (const [table, referencedId] of [
+    ["categories", idea.categoryId],
+    ["rooms", idea.roomId],
+  ] as const) {
+    if (referencedId === undefined) continue;
+    const referenced = await ctx.db.get(referencedId);
+    if (!referenced || referenced.hackathonId !== hackathonId) {
+      narrowingVerificationBlocker(
+        "ideas",
+        idea._id,
+        `${table} reference ${referencedId} is missing or belongs to another hackathon`,
+      );
+    }
+  }
+}
+
+export async function assertIdeaChildReadyForNarrowing(
+  ctx: MutationCtx,
+  table: string,
+  document: {
+    _id: IdeaChildId;
+    ideaId: Id<"ideas">;
+    hackathonId?: Id<"hackathons">;
+  },
+) {
+  if (document.hackathonId === undefined) {
+    narrowingVerificationBlocker(table, document._id, "hackathonId is missing");
+  }
+  const idea = await ctx.db.get(document.ideaId);
+  if (!idea) {
+    narrowingVerificationBlocker(
+      table,
+      document._id,
+      `parent idea ${document.ideaId} does not exist`,
+    );
+  }
+  if (
+    idea.hackathonId === undefined ||
+    idea.hackathonId !== document.hackathonId
+  ) {
+    narrowingVerificationBlocker(
+      table,
+      document._id,
+      `hackathonId does not match parent idea ${document.ideaId}`,
+    );
+  }
+  if (!(await ctx.db.get(document.hackathonId))) {
+    narrowingVerificationBlocker(
+      table,
+      document._id,
+      `hackathon ${document.hackathonId} does not exist`,
+    );
+  }
+}
+
+export async function assertRelatedIdeaReadyForNarrowing(
+  ctx: MutationCtx,
+  relation: {
+    _id: Id<"relatedIdeas">;
+    ideaIdA: Id<"ideas">;
+    ideaIdB: Id<"ideas">;
+    hackathonId?: Id<"hackathons">;
+  },
+) {
+  const [ideaA, ideaB] = await Promise.all([
+    ctx.db.get(relation.ideaIdA),
+    ctx.db.get(relation.ideaIdB),
+  ]);
+  if (
+    relation.hackathonId === undefined ||
+    ideaA?.hackathonId === undefined ||
+    ideaB?.hackathonId === undefined ||
+    relation.hackathonId !== ideaA.hackathonId ||
+    relation.hackathonId !== ideaB.hackathonId ||
+    !(await ctx.db.get(relation.hackathonId))
+  ) {
+    narrowingVerificationBlocker(
+      "relatedIdeas",
+      relation._id,
+      "both ideas and the relation must share an existing hackathon",
+    );
+  }
+}
+
+export async function assertDismissedAnnouncementReadyForNarrowing(
+  ctx: MutationCtx,
+  dismissed: {
+    _id: Id<"dismissedAnnouncements">;
+    announcementId: Id<"announcements">;
+    hackathonId?: Id<"hackathons">;
+  },
+) {
+  const announcement = await ctx.db.get(dismissed.announcementId);
+  if (
+    dismissed.hackathonId === undefined ||
+    announcement?.hackathonId === undefined ||
+    dismissed.hackathonId !== announcement.hackathonId ||
+    !(await ctx.db.get(dismissed.hackathonId))
+  ) {
+    narrowingVerificationBlocker(
+      "dismissedAnnouncements",
+      dismissed._id,
+      "the dismissal and its announcement must share an existing hackathon",
+    );
+  }
+}
+
+export async function assertParticipantReadyForNarrowing(
+  ctx: MutationCtx,
+  participant: {
+    _id: Id<"hackathonParticipants">;
+    hackathonId: Id<"hackathons">;
+    userId: Id<"users">;
+  },
+) {
+  const [hackathon, user] = await Promise.all([
+    ctx.db.get(participant.hackathonId),
+    ctx.db.get(participant.userId),
+  ]);
+  if (!hackathon || !user) {
+    narrowingVerificationBlocker(
+      "hackathonParticipants",
+      participant._id,
+      "the participant references a missing hackathon or user",
+    );
+  }
+  await assertUniqueHackathonParticipant(
+    ctx,
+    participant.hackathonId,
+    participant.userId,
+  );
+}
+
+// These V1 names are intentionally new. The migrations component skips jobs
+// that succeeded under an earlier backfill implementation, so the final gate
+// needs fresh identities to guarantee a complete verification scan.
+export const verifyPlatformSettingsForNarrowingV1 = migrations.define({
+  table: "hackathons",
+  migrateOne: async (ctx) => assertPlatformReadyForNarrowing(ctx),
+});
+export const verifyParticipantsForNarrowingV1 = migrations.define({
+  table: "hackathonParticipants",
+  migrateOne: async (ctx, participant) =>
+    assertParticipantReadyForNarrowing(ctx, participant),
+});
+export const verifyIdeasForNarrowingV1 = migrations.define({
+  table: "ideas",
+  migrateOne: async (ctx, idea) => assertIdeaReadyForNarrowing(ctx, idea),
+});
+export const verifyCategoriesForNarrowingV1 = migrations.define({
+  table: "categories",
+  migrateOne: async (ctx, document) =>
+    assertScopedRootReadyForNarrowing(ctx, "categories", document),
+});
+export const verifyResourcesForNarrowingV1 = migrations.define({
+  table: "resources",
+  migrateOne: async (ctx, document) =>
+    assertScopedRootReadyForNarrowing(ctx, "resources", document),
+});
+export const verifyRolesForNarrowingV1 = migrations.define({
+  table: "roles",
+  migrateOne: async (ctx, document) =>
+    assertScopedRootReadyForNarrowing(ctx, "roles", document),
+});
+export const verifyRoomsForNarrowingV1 = migrations.define({
+  table: "rooms",
+  migrateOne: async (ctx, document) =>
+    assertScopedRootReadyForNarrowing(ctx, "rooms", document),
+});
+export const verifyAnnouncementsForNarrowingV1 = migrations.define({
+  table: "announcements",
+  migrateOne: async (ctx, document) =>
+    assertScopedRootReadyForNarrowing(ctx, "announcements", document),
+});
+export const verifySubmissionSettingsForNarrowingV1 = migrations.define({
+  table: "ideaSubmissionSettings",
+  migrateOne: async (ctx, document) =>
+    assertScopedRootReadyForNarrowing(ctx, "ideaSubmissionSettings", document),
+});
+export const verifyVotingSettingsForNarrowingV1 = migrations.define({
+  table: "votingSettings",
+  migrateOne: async (ctx, document) =>
+    assertScopedRootReadyForNarrowing(ctx, "votingSettings", document),
+});
+export const verifyMembersForNarrowingV1 = migrations.define({
+  table: "ideaMembers",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "ideaMembers", document),
+});
+export const verifyInterestForNarrowingV1 = migrations.define({
+  table: "ideaInterest",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "ideaInterest", document),
+});
+export const verifyCommentsForNarrowingV1 = migrations.define({
+  table: "comments",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "comments", document),
+});
+export const verifyReactionsForNarrowingV1 = migrations.define({
+  table: "reactions",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "reactions", document),
+});
+export const verifyResourceRequestsForNarrowingV1 = migrations.define({
+  table: "resourceRequests",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "resourceRequests", document),
+});
+export const verifyOwnershipTransfersForNarrowingV1 = migrations.define({
+  table: "ownershipTransferRequests",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(
+      ctx,
+      "ownershipTransferRequests",
+      document,
+    ),
+});
+export const verifyRelatedIdeasForNarrowingV1 = migrations.define({
+  table: "relatedIdeas",
+  migrateOne: async (ctx, relation) =>
+    assertRelatedIdeaReadyForNarrowing(ctx, relation),
+});
+export const verifyDismissedIdeasForNarrowingV1 = migrations.define({
+  table: "dismissedIdeas",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "dismissedIdeas", document),
+});
+export const verifyBookmarksForNarrowingV1 = migrations.define({
+  table: "ideaBookmarks",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "ideaBookmarks", document),
+});
+export const verifyVotesForNarrowingV1 = migrations.define({
+  table: "ideaVotes",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "ideaVotes", document),
+});
+export const verifyNotificationsForNarrowingV1 = migrations.define({
+  table: "notifications",
+  migrateOne: async (ctx, document) =>
+    assertIdeaChildReadyForNarrowing(ctx, "notifications", document),
+});
+export const verifyDismissedAnnouncementsForNarrowingV1 = migrations.define({
+  table: "dismissedAnnouncements",
+  migrateOne: async (ctx, dismissed) =>
+    assertDismissedAnnouncementReadyForNarrowing(ctx, dismissed),
+});
+
 /**
  * Destructive helpers below are intentionally excluded from all repair runners.
  * They are used only by the explicitly irreversible cleanup runner.
@@ -1108,7 +1438,7 @@ async function verifyIdeaChildBatch(
  * Bounded diagnostic report for the narrow-schema deploy. `hasMore` and
  * `scanTruncatedByTable` are count indicators, not exact totals. This query
  * never declares the deployment ready: successful completion of every job in
- * runHackathonScope remains the mandatory exhaustive gate.
+ * runNarrowingVerificationV1 remains the mandatory exhaustive gate.
  */
 export const verifyHackathonScope = internalQuery({
   args: { sampleLimit: v.optional(v.number()) },
@@ -1162,83 +1492,123 @@ export const verifyHackathonScope = internalQuery({
     ] = await Promise.all([
       ctx.db
         .query("ideas")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("categories")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("resources")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("roles")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("rooms")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("ideaMembers")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("ideaInterest")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("comments")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("reactions")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("resourceRequests")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("ownershipTransferRequests")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("relatedIdeas")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("dismissedIdeas")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("ideaBookmarks")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("votingSettings")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("ideaVotes")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("notifications")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("announcements")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("ideaSubmissionSettings")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db
         .query("dismissedAnnouncements")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", undefined as never),
+        )
         .take(take),
       ctx.db.query("ideas").take(take),
       ctx.db.query("categories").take(take),
@@ -1433,7 +1803,7 @@ export const verifyHackathonScope = internalQuery({
       runnerCompletionRequired: true,
       readyForNarrowSchema: false,
       readinessReason:
-        "This query is diagnostic only. Complete migrations:runHackathonScope and verify every migrations-component job succeeded before narrowing the schema.",
+        "This query is diagnostic only. Complete migrations:runNarrowingVerificationV1 and verify every migrations-component job succeeded before narrowing the schema.",
       unscoped,
       integrityIssueSamples: issues,
       integrityIssueSampleCount: issues.length,
@@ -1496,6 +1866,31 @@ export const runHackathonScope = migrations.runner([
   internal.migrations.backfillIdeaVoteHackathonIds,
   internal.migrations.backfillNotificationHackathonIds,
   internal.migrations.backfillDismissedAnnouncementHackathonIds,
+]);
+
+export const runNarrowingVerificationV1 = migrations.runner([
+  internal.migrations.verifyPlatformSettingsForNarrowingV1,
+  internal.migrations.verifyParticipantsForNarrowingV1,
+  internal.migrations.verifyIdeasForNarrowingV1,
+  internal.migrations.verifyCategoriesForNarrowingV1,
+  internal.migrations.verifyResourcesForNarrowingV1,
+  internal.migrations.verifyRolesForNarrowingV1,
+  internal.migrations.verifyRoomsForNarrowingV1,
+  internal.migrations.verifyAnnouncementsForNarrowingV1,
+  internal.migrations.verifySubmissionSettingsForNarrowingV1,
+  internal.migrations.verifyVotingSettingsForNarrowingV1,
+  internal.migrations.verifyMembersForNarrowingV1,
+  internal.migrations.verifyInterestForNarrowingV1,
+  internal.migrations.verifyCommentsForNarrowingV1,
+  internal.migrations.verifyReactionsForNarrowingV1,
+  internal.migrations.verifyResourceRequestsForNarrowingV1,
+  internal.migrations.verifyOwnershipTransfersForNarrowingV1,
+  internal.migrations.verifyRelatedIdeasForNarrowingV1,
+  internal.migrations.verifyDismissedIdeasForNarrowingV1,
+  internal.migrations.verifyBookmarksForNarrowingV1,
+  internal.migrations.verifyVotesForNarrowingV1,
+  internal.migrations.verifyNotificationsForNarrowingV1,
+  internal.migrations.verifyDismissedAnnouncementsForNarrowingV1,
 ]);
 
 // Explicitly irreversible cleanup for corrupt foreign keys and cross-event

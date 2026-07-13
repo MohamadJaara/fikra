@@ -143,41 +143,10 @@ export async function requireParticipant(
   userId: Id<"users">,
 ) {
   const participant = await getParticipant(ctx, hackathonId, userId);
-  if (participant) {
-    if (!participant.onboardingComplete) {
-      throw new Error("Complete your hackathon profile before continuing");
-    }
-    return participant;
-  }
-
-  // TEMPORARY MIGRATION COMPATIBILITY: legacy single-event users did not have
-  // participant rows. Only the resolved current, non-archived hackathon may
-  // inherit global onboarding during the widen/backfill deployment. A stored
-  // participant row above is always authoritative, including an incomplete one.
-  const [current, user] = await Promise.all([
-    getCurrentHackathon(ctx),
-    ctx.db.get(userId),
-  ]);
-  if (
-    current?._id !== hackathonId ||
-    current.status === "archived" ||
-    !user?.onboardingComplete
-  ) {
+  if (!participant?.onboardingComplete) {
     throw new Error("Complete your hackathon profile before continuing");
   }
-
-  return {
-    hackathonId,
-    userId,
-    roles: user.roles,
-    participationMode:
-      user.participationMode === "onsite" || user.participationMode === "remote"
-        ? user.participationMode
-        : undefined,
-    onboardingComplete: true,
-    registeredAt: user._creationTime,
-    updatedAt: user._creationTime,
-  };
+  return participant;
 }
 
 export async function requireStoredParticipant(
@@ -192,42 +161,21 @@ export async function requireStoredParticipant(
   return participant;
 }
 
-export async function isCurrentHackathonId(
-  ctx: QueryCtx | MutationCtx,
-  hackathonId: Id<"hackathons">,
-) {
-  return (await getCurrentHackathon(ctx))?._id === hackathonId;
-}
-
-/** TEMPORARY MIGRATION COMPATIBILITY: remove after scope backfill verification. */
 export async function resolveLegacyScopeForMutation(
-  ctx: QueryCtx | MutationCtx,
-  existingHackathonId: Id<"hackathons"> | undefined,
+  _ctx: QueryCtx | MutationCtx,
+  existingHackathonId: Id<"hackathons">,
   requestedHackathonId?: Id<"hackathons">,
   entityName = "Record",
 ) {
-  if (existingHackathonId !== undefined) {
-    if (
-      requestedHackathonId !== undefined &&
-      existingHackathonId !== requestedHackathonId
-    ) {
-      throw new Error(`${entityName} does not belong to this hackathon`);
-    }
-    return { hackathonId: existingHackathonId, shouldPatch: false };
-  }
-
-  const current = await getCurrentHackathon(ctx);
-  if (!current) throw new Error("No hackathon is configured");
   if (
     requestedHackathonId !== undefined &&
-    requestedHackathonId !== current._id
+    requestedHackathonId !== existingHackathonId
   ) {
     throw new Error(`${entityName} does not belong to this hackathon`);
   }
-  return { hackathonId: current._id, shouldPatch: true };
+  return { hackathonId: existingHackathonId, shouldPatch: false };
 }
 
-/** TEMPORARY MIGRATION COMPATIBILITY: remove after scope backfill verification. */
 export async function claimLegacyIdeaScopeForMutation(
   ctx: MutationCtx,
   idea: Pick<Doc<"ideas">, "_id" | "hackathonId">,
@@ -239,18 +187,7 @@ export async function claimLegacyIdeaScopeForMutation(
     requestedHackathonId,
     "Idea",
   );
-  if (resolved.shouldPatch) {
-    await ctx.db.patch(idea._id, { hackathonId: resolved.hackathonId });
-  }
   return resolved.hackathonId;
-}
-
-/** TEMPORARY MIGRATION COMPATIBILITY: current-event reads may include unscoped rows. */
-export async function canReadLegacyScope(
-  ctx: QueryCtx | MutationCtx,
-  hackathonId: Id<"hackathons">,
-) {
-  return await isCurrentHackathonId(ctx, hackathonId);
 }
 
 export async function assertHackathonWritable(
@@ -276,22 +213,9 @@ export async function assertIdeaInHackathon(
   hackathonId: Id<"hackathons"> | undefined,
 ) {
   if (!hackathonId) return;
-  if (idea.hackathonId === hackathonId) return;
-  if (
-    idea.hackathonId === undefined &&
-    (await canReadLegacyScope(ctx, hackathonId))
-  ) {
-    return;
-  }
   if (idea.hackathonId !== hackathonId) {
     throw new Error("Idea does not belong to this hackathon");
   }
-}
-
-export function resolveScopedHackathonId<
-  T extends { hackathonId?: Id<"hackathons"> },
->(doc: T, fallback?: Id<"hackathons">) {
-  return doc.hackathonId ?? fallback;
 }
 
 export async function isVotingActive(
@@ -411,18 +335,12 @@ export async function validateRoleSlugs(
   const effectiveHackathonId =
     hackathonId ?? (await getCurrentHackathon(ctx))?._id;
   const allRoles = effectiveHackathonId
-    ? [
-        ...(await ctx.db
-          .query("roles")
-          .withIndex("by_hackathon", (q) =>
-            q.eq("hackathonId", effectiveHackathonId),
-          )
-          .collect()),
-        ...(await ctx.db
-          .query("roles")
-          .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-          .collect()),
-      ]
+    ? await ctx.db
+        .query("roles")
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", effectiveHackathonId),
+        )
+        .collect()
     : await ctx.db.query("roles").collect();
   const validSlugs = new Set<string>();
   for (const role of allRoles) {
@@ -459,18 +377,12 @@ export async function validateRoleSlug(
         .first();
   if (existing) return;
   const allRoles = effectiveHackathonId
-    ? [
-        ...(await ctx.db
-          .query("roles")
-          .withIndex("by_hackathon", (q) =>
-            q.eq("hackathonId", effectiveHackathonId),
-          )
-          .collect()),
-        ...(await ctx.db
-          .query("roles")
-          .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-          .collect()),
-      ]
+    ? await ctx.db
+        .query("roles")
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", effectiveHackathonId),
+        )
+        .collect()
     : await ctx.db.query("roles").collect();
   const found = allRoles.some((r) => r.aliasSlugs?.includes(slug));
   if (!found) {
@@ -488,18 +400,12 @@ export async function validateResourceSlugs(
   const effectiveHackathonId =
     hackathonId ?? (await getCurrentHackathon(ctx))?._id;
   const resources = effectiveHackathonId
-    ? [
-        ...(await ctx.db
-          .query("resources")
-          .withIndex("by_hackathon", (q) =>
-            q.eq("hackathonId", effectiveHackathonId),
-          )
-          .collect()),
-        ...(await ctx.db
-          .query("resources")
-          .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-          .collect()),
-      ]
+    ? await ctx.db
+        .query("resources")
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", effectiveHackathonId),
+        )
+        .collect()
     : await ctx.db.query("resources").collect();
   const validSlugs = new Set(resources.map((resource) => resource.slug));
   const invalid = slugs.filter((slug) => !validSlugs.has(slug));
@@ -516,18 +422,12 @@ export async function getResourceNameMap(
   const effectiveHackathonId =
     hackathonId ?? (await getCurrentHackathon(ctx))?._id;
   const resources = effectiveHackathonId
-    ? [
-        ...(await ctx.db
-          .query("resources")
-          .withIndex("by_hackathon", (q) =>
-            q.eq("hackathonId", effectiveHackathonId),
-          )
-          .collect()),
-        ...(await ctx.db
-          .query("resources")
-          .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-          .collect()),
-      ]
+    ? await ctx.db
+        .query("resources")
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", effectiveHackathonId),
+        )
+        .collect()
     : await ctx.db.query("resources").collect();
   const map: Record<string, string> = {
     ...LEGACY_RESOURCE_LABELS,

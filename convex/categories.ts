@@ -81,18 +81,12 @@ export const getBySlug = query({
     await getAuthenticatedUser(ctx);
     const hackathon = await getHackathonByIdOrCurrent(ctx, hackathonId);
     const category = hackathon
-      ? ((await ctx.db
+      ? await ctx.db
           .query("categories")
           .withIndex("by_hackathon_and_slug", (q) =>
             q.eq("hackathonId", hackathon._id).eq("slug", slug),
           )
-          .first()) ??
-        (await ctx.db
-          .query("categories")
-          .withIndex("by_hackathon_and_slug", (q) =>
-            q.eq("hackathonId", undefined).eq("slug", slug),
-          )
-          .first()))
+          .first()
       : await ctx.db
           .query("categories")
           .withIndex("by_slug", (q) => q.eq("slug", slug))
@@ -308,15 +302,8 @@ async function getScopedCategories(
 ) {
   if (!hackathonId)
     return await ctx.db.query("categories").order("asc").collect();
-  const [scoped, legacy] = await Promise.all([
-    ctx.db
-      .query("categories")
-      .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathonId))
-      .collect(),
-    ctx.db
-      .query("categories")
-      .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-      .collect(),
-  ]);
-  return [...scoped, ...legacy];
+  return await ctx.db
+    .query("categories")
+    .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathonId))
+    .collect();
 }

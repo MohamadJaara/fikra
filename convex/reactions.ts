@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import {
   assertHackathonWritable,
   assertIdeasUnlocked,
-  canReadLegacyScope,
   claimLegacyIdeaScopeForMutation,
   getAuthenticatedUser,
   getHackathonByIdOrCurrent,
@@ -85,16 +84,11 @@ export const getByIdea = query({
     if (!hackathon) return [];
     await requireParticipant(ctx, hackathon._id, userId);
     await assertIdeasUnlocked(ctx, hackathon._id);
-    const includeLegacy = await canReadLegacyScope(ctx, hackathon._id);
     return (
       await ctx.db
         .query("reactions")
         .withIndex("by_idea", (q) => q.eq("ideaId", ideaId))
         .collect()
-    ).filter(
-      (reaction) =>
-        reaction.hackathonId === hackathon._id ||
-        (includeLegacy && reaction.hackathonId === undefined),
-    );
+    ).filter((reaction) => reaction.hackathonId === hackathon._id);
   },
 });

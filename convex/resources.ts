@@ -97,15 +97,8 @@ async function getScopedResources(
 ) {
   if (!hackathonId)
     return await ctx.db.query("resources").order("asc").collect();
-  const [scoped, legacy] = await Promise.all([
-    ctx.db
-      .query("resources")
-      .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathonId))
-      .collect(),
-    ctx.db
-      .query("resources")
-      .withIndex("by_hackathon", (q) => q.eq("hackathonId", undefined))
-      .collect(),
-  ]);
-  return [...scoped, ...legacy];
+  return await ctx.db
+    .query("resources")
+    .withIndex("by_hackathon", (q) => q.eq("hackathonId", hackathonId))
+    .collect();
 }
