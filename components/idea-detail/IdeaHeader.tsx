@@ -25,7 +25,9 @@ export function IdeaHeader({ idea }: { idea: IdeaDetail }) {
             {idea.categoryName}
           </span>
         )}
-        {idea.categoryName && <span className="text-muted-foreground/40">·</span>}
+        {idea.categoryName && (
+          <span className="text-muted-foreground/40">·</span>
+        )}
         <Badge
           variant="secondary"
           className={`text-[11px] font-medium ${STATUS_COLORS[idea.status as Status] || "bg-muted"}`}
@@ -64,7 +66,9 @@ export function IdeaHeader({ idea }: { idea: IdeaDetail }) {
           className="font-medium text-foreground"
         />
         <span className="text-muted-foreground/50">·</span>
-        <span className="text-muted-foreground">{timeAgo(idea._creationTime)}</span>
+        <span className="text-muted-foreground">
+          {timeAgo(idea._creationTime)}
+        </span>
       </div>
     </header>
   );

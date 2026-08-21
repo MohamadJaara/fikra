@@ -112,7 +112,8 @@ function roomOccupancy(room: RoomItem) {
 
 function roomCapacityLabel(room: RoomItem) {
   if (room.type === "team") return "1 idea";
-  if (room.assignmentLimit !== undefined) return `${room.assignmentLimit} ideas`;
+  if (room.assignmentLimit !== undefined)
+    return `${room.assignmentLimit} ideas`;
   return "No limit";
 }
 
@@ -148,7 +149,9 @@ function formatReportDate(timestamp: number) {
 }
 
 function tableCell(value: string | number | boolean | undefined) {
-  return String(value ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ");
+  return String(value ?? "")
+    .replace(/\|/g, "\\|")
+    .replace(/\n/g, " ");
 }
 
 function reportIdeaLine(idea: IdeasReport["ideas"][number]) {
@@ -827,7 +830,9 @@ export default function AdminIdeasPage() {
                       colSpan={8}
                       className="py-8 text-center text-muted-foreground"
                     >
-                      {search ? "No ideas match your filters" : "No ideas found"}
+                      {search
+                        ? "No ideas match your filters"
+                        : "No ideas found"}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -851,8 +856,8 @@ export default function AdminIdeasPage() {
                             {idea.title}
                           </Link>
                           <p className="text-xs text-muted-foreground">
-                            {new Date(idea._creationTime).toLocaleDateString()} ·{" "}
-                            {idea.commentCount} comments ·{" "}
+                            {new Date(idea._creationTime).toLocaleDateString()}{" "}
+                            · {idea.commentCount} comments ·{" "}
                             {idea.reactionCount} reactions
                           </p>
                         </TableCell>
@@ -1174,9 +1179,7 @@ export default function AdminIdeasPage() {
                             </span>
                             <Badge
                               variant={
-                                room.type === "shared"
-                                  ? "default"
-                                  : "secondary"
+                                room.type === "shared" ? "default" : "secondary"
                               }
                               className="shrink-0 text-[10px]"
                             >

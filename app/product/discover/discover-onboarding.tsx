@@ -237,7 +237,9 @@ function CompassVisual() {
         { bottom: "-12px", left: "50%", delay: 0.5 },
         { top: "50%", left: "-12px", delay: 1 },
         { top: "50%", right: "-12px", delay: 1.5 },
-      {/* eslint-disable @eslint-react/no-array-index-key */}
+        {
+          /* eslint-disable @eslint-react/no-array-index-key */
+        },
       ].map((pos, i) => (
         <motion.div
           key={i}

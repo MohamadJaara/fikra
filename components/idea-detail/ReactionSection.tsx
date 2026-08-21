@@ -39,7 +39,9 @@ export function ReactionSection({
                 : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60"
             }`}
           >
-            <span className="text-base leading-none">{REACTION_EMOJI[type]}</span>
+            <span className="text-base leading-none">
+              {REACTION_EMOJI[type]}
+            </span>
             {count > 0 && <span className="text-xs tabular-nums">{count}</span>}
           </button>
         );

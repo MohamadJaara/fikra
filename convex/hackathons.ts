@@ -224,9 +224,13 @@ export const update = mutation({
       note: optionalText(args.note, 240, "Note"),
       status: args.status,
       completedAt:
-        args.status === "completed" ? (existing.completedAt ?? Date.now()) : undefined,
+        args.status === "completed"
+          ? (existing.completedAt ?? Date.now())
+          : undefined,
       completedBy:
-        args.status === "completed" ? (existing.completedBy ?? userId) : undefined,
+        args.status === "completed"
+          ? (existing.completedBy ?? userId)
+          : undefined,
       updatedBy: userId,
       updatedAt: Date.now(),
     });
@@ -333,23 +337,33 @@ async function cloneConfig(
     await Promise.all([
       ctx.db
         .query("categories")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", sourceHackathonId))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", sourceHackathonId),
+        )
         .collect(),
       ctx.db
         .query("resources")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", sourceHackathonId))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", sourceHackathonId),
+        )
         .collect(),
       ctx.db
         .query("roles")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", sourceHackathonId))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", sourceHackathonId),
+        )
         .collect(),
       ctx.db
         .query("rooms")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", sourceHackathonId))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", sourceHackathonId),
+        )
         .collect(),
       ctx.db
         .query("announcements")
-        .withIndex("by_hackathon", (q) => q.eq("hackathonId", sourceHackathonId))
+        .withIndex("by_hackathon", (q) =>
+          q.eq("hackathonId", sourceHackathonId),
+        )
         .collect(),
     ]);
 

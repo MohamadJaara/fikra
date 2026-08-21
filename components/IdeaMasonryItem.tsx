@@ -104,7 +104,9 @@ export function IdeaMasonryItem({
           </span>
 
           {idea.categoryName && (
-            <span className="text-muted-foreground/60">{idea.categoryName}</span>
+            <span className="text-muted-foreground/60">
+              {idea.categoryName}
+            </span>
           )}
 
           {idea.isMember && (

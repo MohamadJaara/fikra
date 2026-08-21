@@ -341,13 +341,7 @@ function SidebarContent({
   );
 }
 
-function NavGroup({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function NavGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="mb-1">
       <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
@@ -373,10 +367,9 @@ function NavLink({
 }) {
   const pathname = usePathname();
   const isIdeasIndex = href === "/product/ideas" || href.endsWith("/ideas");
-  const isActive =
-    exact
-      ? pathname === href
-      : href === "/product"
+  const isActive = exact
+    ? pathname === href
+    : href === "/product"
       ? pathname === "/product"
       : isIdeasIndex
         ? pathname === href

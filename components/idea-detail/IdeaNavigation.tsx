@@ -40,7 +40,10 @@ function IdeaNavigationLink({
           <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             {label}
           </span>
-          <Badge variant="secondary" className="hidden text-[10px] sm:inline-flex">
+          <Badge
+            variant="secondary"
+            className="hidden text-[10px] sm:inline-flex"
+          >
             {STATUS_LABELS[item.status as Status] || item.status}
           </Badge>
         </span>

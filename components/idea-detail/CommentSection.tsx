@@ -4,15 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import {
-  Edit,
-  Trash2,
-  Reply,
-  Send,
-  Check,
-  X,
-  Loader2,
-} from "lucide-react";
+import { Edit, Trash2, Reply, Send, Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   MentionTextarea,

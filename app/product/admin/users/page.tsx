@@ -29,7 +29,10 @@ export default function AdminUsersPage() {
   const hackathon = useSelectedHackathon();
   const hackathonId = hackathon?._id;
   const productBase = useProductBase();
-  const users = useQuery(api.admin.listUsers, hackathonId ? { hackathonId } : {});
+  const users = useQuery(
+    api.admin.listUsers,
+    hackathonId ? { hackathonId } : {},
+  );
   const setUserAdmin = useMutation(api.admin.setUserAdmin);
   const roleLabels = useRolesMap();
   const [search, setSearch] = useState("");

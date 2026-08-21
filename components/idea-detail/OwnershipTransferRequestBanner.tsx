@@ -8,11 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { IdeaDetail } from "@/lib/types";
 
-export function OwnershipTransferRequestBanner({
-  idea,
-}: {
-  idea: IdeaDetail;
-}) {
+export function OwnershipTransferRequestBanner({ idea }: { idea: IdeaDetail }) {
   const acceptMutation = useMutation(api.ideas.acceptOwnershipTransfer);
   const declineMutation = useMutation(api.ideas.declineOwnershipTransfer);
   const cancelMutation = useMutation(api.ideas.cancelOwnershipTransfer);
