@@ -178,11 +178,10 @@ describe("Denormalized idea stats", () => {
         name: `Member ${index}`,
         email: `capacity-member-${index}@${DOMAIN}`,
       });
-      await asUser(
-        t,
-        memberId,
-        `capacity-member-${index}@${DOMAIN}`,
-      ).mutation(api.memberships.join, { ideaId });
+      await asUser(t, memberId, `capacity-member-${index}@${DOMAIN}`).mutation(
+        api.memberships.join,
+        { ideaId },
+      );
     }
 
     await t.run(async (ctx: any) => {

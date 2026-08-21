@@ -45,7 +45,9 @@ export function AnnouncementBanner() {
     hackathonId: hackathon?._id,
   });
   const dismiss = useMutation(api.announcements.dismiss);
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [open, setOpen] = useState(false);
 
   if (announcements === undefined || announcements.length === 0) return null;

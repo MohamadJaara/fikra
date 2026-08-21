@@ -55,7 +55,9 @@ export default function VotingPage() {
     status.endedAt !== undefined;
   const results = useQuery(
     api.voting.results,
-    viewer.isAdmin || showFinalResults ? { hackathonId: hackathon?._id } : "skip",
+    viewer.isAdmin || showFinalResults
+      ? { hackathonId: hackathon?._id }
+      : "skip",
   );
   const toggleVote = useMutation(api.voting.toggleVote);
   const stopVoting = useMutation(api.voting.stop);

@@ -179,6 +179,5 @@ describe("Owner-only idea mutations", () => {
       filters: { shelf: "shelved" },
     });
     expect(shelvedList.page.map((idea) => idea._id)).toEqual([shelvedIdeaId]);
-
   });
 });

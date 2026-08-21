@@ -124,9 +124,7 @@ export function IdeaExpandedRow({
               image={idea.ownerImage}
               name={idea.ownerName}
             />
-            <span
-              className={idea.ownerHandle ? "pointer-events-auto" : ""}
-            >
+            <span className={idea.ownerHandle ? "pointer-events-auto" : ""}>
               <UserLink
                 handle={idea.ownerHandle}
                 name={idea.ownerName}
@@ -191,7 +189,8 @@ export function IdeaExpandedRow({
                 ))}
                 {idea.missingRoles.length > 4 && (
                   <span className="text-muted-foreground">
-                    {" "}+{idea.missingRoles.length - 4}
+                    {" "}
+                    +{idea.missingRoles.length - 4}
                   </span>
                 )}
               </span>
@@ -202,7 +201,11 @@ export function IdeaExpandedRow({
               <span className="text-muted-foreground/30">·</span>
               <span className="flex items-center gap-0.5">
                 <Package className="h-3 w-3" />
-                {idea.resourceRequests.filter((r) => !r.resolved).length} resource{idea.resourceRequests.filter((r) => !r.resolved).length !== 1 ? "s" : ""}
+                {idea.resourceRequests.filter((r) => !r.resolved).length}{" "}
+                resource
+                {idea.resourceRequests.filter((r) => !r.resolved).length !== 1
+                  ? "s"
+                  : ""}
               </span>
             </>
           )}

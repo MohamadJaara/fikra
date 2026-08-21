@@ -9,11 +9,7 @@ import {
   IdeaMasonryItemSkeleton,
 } from "@/components/Skeleton";
 import { Button } from "@/components/ui/button";
-import {
-  SORT_OPTIONS,
-  SORT_LABELS,
-  type SortOption,
-} from "@/lib/constants";
+import { SORT_OPTIONS, SORT_LABELS, type SortOption } from "@/lib/constants";
 import type { IdeaListItem } from "@/lib/types";
 import {
   Bookmark,
@@ -41,9 +37,7 @@ export default function SavedIdeasPage() {
   const productBase = useProductBase();
   const bookmarkedIdeas = useQuery(api.ideas.getBookmarked, {
     hackathonId: hackathon?._id,
-  }) as
-    | IdeaListItem[]
-    | undefined;
+  }) as IdeaListItem[] | undefined;
   const [viewMode, setViewMode] = useState<"list" | "masonry">("masonry");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
 

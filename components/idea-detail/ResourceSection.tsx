@@ -112,9 +112,7 @@ export function ResourceSection({ idea }: { idea: IdeaDetail }) {
               )}
               <span
                 className={
-                  req.resolved
-                    ? "line-through text-muted-foreground"
-                    : ""
+                  req.resolved ? "line-through text-muted-foreground" : ""
                 }
               >
                 {req.resourceName}
