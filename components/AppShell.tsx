@@ -24,7 +24,6 @@ import {
   Menu,
   X,
   User,
-  Bell,
   Settings,
   Shield,
   Users,
@@ -64,6 +63,17 @@ export type AppShellHackathon = {
   completedAt?: number;
 } | null;
 
+function useProductHref(hackathon: AppShellHackathon) {
+  const pathname = usePathname();
+  const scopedBase =
+    hackathon && pathname.startsWith(`/product/h/${hackathon.slug}`)
+      ? `/product/h/${hackathon.slug}`
+      : "/product";
+  const productHref = (path = "") =>
+    scopedBase === "/product" ? `/product${path}` : `${scopedBase}${path}`;
+  return productHref;
+}
+
 export function AppShell({
   children,
   viewer,
@@ -74,6 +84,7 @@ export function AppShell({
   hackathon: AppShellHackathon;
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const productHref = useProductHref(hackathon);
 
   return (
     <div className="flex min-h-screen w-full">
@@ -113,11 +124,18 @@ export function AppShell({
             )}
           </Button>
           <span className="font-semibold">Fikra</span>
-          <div className="ml-auto">{viewer && <NotificationBell />}</div>
+          <div className="ml-auto flex items-center gap-1">
+            <Button asChild variant="ghost" size="icon">
+              <Link href={productHref("/ideas/new")} aria-label="New idea">
+                <PlusCircle className="h-5 w-5" />
+              </Link>
+            </Button>
+            {viewer && <NotificationBell />}
+          </div>
         </header>
         <AnnouncementBanner />
         <EventDateBanner hackathon={hackathon} />
-        <div className="border-b px-4 py-3 md:px-6">
+        <div className="px-4 md:px-6">
           <ContentDisclaimer />
         </div>
         <main className="flex-1 overflow-auto">{children}</main>
@@ -136,14 +154,8 @@ function SidebarContent({
   onClose?: () => void;
 }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const productHref = useProductHref(hackathon);
   const hackathons = useQuery(api.hackathons.list, viewer ? {} : "skip");
-  const scopedBase =
-    hackathon && pathname.startsWith(`/product/h/${hackathon.slug}`)
-      ? `/product/h/${hackathon.slug}`
-      : "/product";
-  const productHref = (path = "") =>
-    scopedBase === "/product" ? `/product${path}` : `${scopedBase}${path}`;
 
   return (
     <>
@@ -196,87 +208,90 @@ function SidebarContent({
         )}
       </div>
 
-      <nav className="flex-1 p-2 space-y-1">
-        <NavLink
-          href={productHref()}
-          icon={<Sparkles className="h-4 w-4" />}
-          exact
-          onClick={onClose}
-        >
-          Themes
-        </NavLink>
-        <NavLink
-          href={productHref("/discover")}
-          icon={<Compass className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          Discover
-        </NavLink>
-        <NavLink
-          href={productHref("/ideas")}
-          icon={<List className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          All Ideas
-        </NavLink>
-        <NavLink
-          href={productHref("/ideas/new")}
-          icon={<PlusCircle className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          Create Idea
-        </NavLink>
-        <NavLink
-          href={productHref("/saved")}
-          icon={<Bookmark className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          Saved
-        </NavLink>
-        <NavLink
-          href={productHref("/voting")}
-          icon={<Vote className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          Voting
-        </NavLink>
-        <NavLink
-          href={productHref("/activity")}
-          icon={<Activity className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          My Activity
-        </NavLink>
-        <NavLink
-          href={productHref("/people")}
-          icon={<Users className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          People
-        </NavLink>
-        <NavLink
-          href={productHref("/notifications")}
-          icon={<Bell className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          Notifications
-        </NavLink>
-        <NavLink
-          href={productHref("/settings")}
-          icon={<Settings className="h-4 w-4" />}
-          onClick={onClose}
-        >
-          Settings
-        </NavLink>
-        {viewer?.isAdmin && (
+      <div className="px-4 pt-3 pb-1">
+        <Button asChild className="w-full">
+          <Link href={productHref("/ideas/new")} onClick={onClose}>
+            <PlusCircle className="h-4 w-4" />
+            New Idea
+          </Link>
+        </Button>
+      </div>
+
+      <nav className="flex-1 overflow-y-auto p-2 pt-0">
+        <NavGroup label="Participate">
           <NavLink
-            href={productHref("/admin")}
-            icon={<Shield className="h-4 w-4" />}
+            href={productHref()}
+            icon={<Sparkles className="h-4 w-4" />}
+            exact
             onClick={onClose}
           >
-            Admin
+            Themes
           </NavLink>
-        )}
+          <NavLink
+            href={productHref("/discover")}
+            icon={<Compass className="h-4 w-4" />}
+            onClick={onClose}
+          >
+            Discover
+          </NavLink>
+          <NavLink
+            href={productHref("/ideas")}
+            icon={<List className="h-4 w-4" />}
+            onClick={onClose}
+          >
+            All Ideas
+          </NavLink>
+          <NavLink
+            href={productHref("/voting")}
+            icon={<Vote className="h-4 w-4" />}
+            onClick={onClose}
+          >
+            Voting
+          </NavLink>
+        </NavGroup>
+
+        <NavGroup label="You">
+          <NavLink
+            href={productHref("/activity")}
+            icon={<Activity className="h-4 w-4" />}
+            onClick={onClose}
+          >
+            My Activity
+          </NavLink>
+          <NavLink
+            href={productHref("/saved")}
+            icon={<Bookmark className="h-4 w-4" />}
+            onClick={onClose}
+          >
+            Saved
+          </NavLink>
+          <NavLink
+            href={productHref("/people")}
+            icon={<Users className="h-4 w-4" />}
+            onClick={onClose}
+          >
+            People
+          </NavLink>
+        </NavGroup>
+
+        <NavGroup label="Manage">
+          <NavLink
+            href={productHref("/settings")}
+            icon={<Settings className="h-4 w-4" />}
+            onClick={onClose}
+          >
+            Settings
+          </NavLink>
+          {viewer?.isAdmin && (
+            <NavLink
+              href={productHref("/admin")}
+              icon={<Shield className="h-4 w-4" />}
+              onClick={onClose}
+            >
+              Admin
+            </NavLink>
+          )}
+        </NavGroup>
       </nav>
 
       <div className="p-2 border-t space-y-2">
@@ -323,6 +338,23 @@ function SidebarContent({
         </div>
       </div>
     </>
+  );
+}
+
+function NavGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mb-1">
+      <p className="px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+        {label}
+      </p>
+      <div className="space-y-1">{children}</div>
+    </div>
   );
 }
 

@@ -43,7 +43,7 @@ export default function IdeaDetailPage({
   return (
     <Suspense
       fallback={
-        <div className="p-4 md:p-6 max-w-4xl mx-auto">
+        <div className="p-4 md:p-6 max-w-6xl mx-auto">
           <IdeaDetailSkeleton />
         </div>
       }
@@ -111,7 +111,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
   if (idea === undefined || comments === undefined) {
     return (
-      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+      <div className="p-4 md:p-6 max-w-6xl mx-auto">
         <IdeaDetailSkeleton />
       </div>
     );
@@ -119,7 +119,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
 
   if (idea === null) {
     return (
-      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+      <div className="p-4 md:p-6 max-w-6xl mx-auto">
         <div className="text-center py-20">
           <p className="text-lg font-medium mb-2">Idea not found</p>
           <Link
@@ -136,7 +136,7 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
   const statusColor = STATUS_DOT_COLORS[idea.status as Status] || "bg-muted";
 
   return (
-    <div className="px-4 md:px-8 max-w-4xl mx-auto pb-16">
+    <div className="px-4 md:px-8 max-w-6xl mx-auto pb-16">
       <div
         className={`h-1 rounded-full ${statusColor} mb-8 animate-line-grow`}
       />
@@ -185,57 +185,67 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
         <ShelvedIdeaBanner idea={idea} />
       </div>
 
-      <div className="animate-reveal-up stagger-4">
-        <IdeaContent idea={idea} />
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-x-10 lg:items-start">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">
+          <div className="animate-reveal-up stagger-4">
+            <IdeaContent idea={idea} />
+          </div>
+
+          <div className="animate-reveal-up stagger-5">
+            <RoomSection idea={idea} />
+          </div>
+        </div>
+
+        <div className="mt-8 space-y-8 lg:mt-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-6 lg:self-start lg:border-l lg:border-border/60 lg:pl-8">
+          <section
+            id="reactions"
+            className="scroll-mt-24 animate-reveal-up stagger-6"
+          >
+            <ReactionSection idea={idea} ideaId={ideaId} />
+          </section>
+
+          <section
+            id="team"
+            className="scroll-mt-24 animate-reveal-up stagger-7"
+          >
+            <TeamSection idea={idea} ideaId={ideaId} />
+          </section>
+
+          <section
+            id="resources"
+            className="scroll-mt-24 animate-reveal-up stagger-7"
+          >
+            <ResourceSection idea={idea} />
+          </section>
+
+          <section
+            id="interest"
+            className="scroll-mt-24 animate-reveal-up stagger-7"
+          >
+            <InterestSection idea={idea} ideaId={ideaId} />
+          </section>
+        </div>
+
+        <div className="min-w-0 mt-8 lg:col-start-1 lg:row-start-2">
+          <section
+            id="comments"
+            className="scroll-mt-24 animate-reveal-up stagger-8"
+          >
+            <CommentSection
+              comments={comments}
+              ideaId={ideaId}
+              isOwner={idea.isOwner}
+            />
+          </section>
+        </div>
       </div>
 
-      <div className="animate-reveal-up stagger-5">
-        <RoomSection idea={idea} />
-      </div>
-
-      <div className="py-6 my-2 border-t animate-reveal-up stagger-6">
-        <section id="reactions" className="scroll-mt-24">
-          <ReactionSection idea={idea} ideaId={ideaId} />
-        </section>
-      </div>
-
-      <div className="space-y-10">
-        <section id="team" className="scroll-mt-24 animate-reveal-up stagger-6">
-          <TeamSection idea={idea} ideaId={ideaId} />
-        </section>
-
-        <section
-          id="resources"
-          className="scroll-mt-24 animate-reveal-up stagger-7"
-        >
-          <ResourceSection idea={idea} />
-        </section>
-
-        <section
-          id="interest"
-          className="scroll-mt-24 animate-reveal-up stagger-7"
-        >
-          <InterestSection idea={idea} ideaId={ideaId} />
-        </section>
-
-        <section
-          id="related"
-          className="scroll-mt-24 animate-reveal-up stagger-8"
-        >
-          <RelatedIdeasSection ideaId={ideaId} isOwner={idea.isOwner} />
-        </section>
-
-        <section
-          id="comments"
-          className="scroll-mt-24 animate-reveal-up stagger-9"
-        >
-          <CommentSection
-            comments={comments}
-            ideaId={ideaId}
-            isOwner={idea.isOwner}
-          />
-        </section>
-      </div>
+      <section
+        id="related"
+        className="mt-8 scroll-mt-24 animate-reveal-up stagger-9"
+      >
+        <RelatedIdeasSection ideaId={ideaId} isOwner={idea.isOwner} />
+      </section>
 
       <Toaster />
     </div>

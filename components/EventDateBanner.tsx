@@ -2,7 +2,7 @@
 
 import type { AppShellHackathon } from "@/components/AppShell";
 import { motion } from "framer-motion";
-import { CalendarClock, CheckCircle2, MapPin, Timer } from "lucide-react";
+import { CalendarClock } from "lucide-react";
 
 function getTimeZoneLabel(value: number, timezone: string) {
   const parts = new Intl.DateTimeFormat(undefined, {
@@ -106,7 +106,9 @@ export function EventDateBanner({
     hackathon.endsAt,
     hackathon.completedAt,
   );
-  const StatusIcon = isComplete ? CheckCircle2 : Timer;
+  const locationNote = [hackathon.location, hackathon.note]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <motion.div
@@ -115,55 +117,35 @@ export function EventDateBanner({
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
       className="border-b bg-[linear-gradient(135deg,hsl(var(--background))_0%,hsl(var(--muted))_45%,hsl(var(--background))_100%)]"
     >
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 md:flex-row md:items-center md:justify-between md:px-6">
-        <div className="flex min-w-0 items-start gap-3">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-foreground text-background shadow-sm">
-            <CalendarClock className="h-5 w-5" />
-            <span
-              className={`absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-background ${
-                isComplete ? "bg-sky-500" : "bg-emerald-500"
-              }`}
-            />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              {isComplete ? "Hackathon Complete" : "Event Dates"}
-            </p>
-            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-              <h2 className="truncate text-base font-semibold leading-tight">
-                {hackathon.title}
-              </h2>
-              <span className="hidden h-1 w-1 rounded-full bg-muted-foreground/40 sm:block" />
-              <p className="text-sm font-medium text-foreground/80">
-                {formattedDate}
-              </p>
-            </div>
-            {(hackathon.location || hackathon.note) && (
-              <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                {hackathon.location && (
-                  <span className="inline-flex min-w-0 items-center gap-1">
-                    <MapPin className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{hackathon.location}</span>
-                  </span>
-                )}
-                {hackathon.note && (
-                  <span className="break-words">{hackathon.note}</span>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-2 rounded-lg border bg-background/70 px-3 py-2 text-sm shadow-sm">
-          <StatusIcon
-            className={`h-4 w-4 ${
-              isComplete
-                ? "text-sky-600 dark:text-sky-400"
-                : "text-emerald-600 dark:text-emerald-400"
+      <div className="mx-auto flex w-full max-w-7xl items-center gap-3 px-4 py-2 md:px-6">
+        <CalendarClock className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="max-w-[10rem] truncate text-sm font-medium sm:max-w-[14rem]">
+          {hackathon.title}
+        </span>
+        <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+          {formattedDate}
+        </span>
+        {locationNote ? (
+          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+            {locationNote}
+          </span>
+        ) : (
+          <span className="min-w-0 flex-1" />
+        )}
+        <span
+          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+            isComplete
+              ? "bg-sky-500/10 text-sky-700 dark:text-sky-300"
+              : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              isComplete ? "bg-sky-500" : "bg-emerald-500"
             }`}
           />
-          <span className="font-semibold">{relativeLabel}</span>
-        </div>
+          {relativeLabel}
+        </span>
       </div>
     </motion.div>
   );
