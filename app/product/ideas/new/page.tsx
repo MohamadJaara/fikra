@@ -142,7 +142,7 @@ export default function CreateIdeaPage() {
               {selectedCategory.name}
             </span>
             {selectedCategory.description &&
-              ` — ${selectedCategory.description}`}
+              ` - ${selectedCategory.description}`}
           </p>
         ) : (
           <p className="text-base text-muted-foreground">

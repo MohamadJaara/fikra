@@ -144,7 +144,7 @@ export default function OnboardingPage() {
               <Label>Your Role(s)</Label>
               <p className="text-xs text-muted-foreground mt-1 mb-3">
                 You can pick more than one! This doesn&apos;t have to match your
-                day-to-day role at work — feel free to explore. Want to try PM,
+                day-to-day role at work - feel free to explore. Want to try PM,
                 or build backend as an iOS dev? Go for it.
               </p>
               <RolePicker

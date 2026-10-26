@@ -1,55 +1,56 @@
-# Fikra — Hackathon Idea Board
+# Fikra - Hackathon Idea Board
 
 Built with Next.js 16 (App Router) + Convex backend + Convex Auth + shadcn/ui (new-york style).
 
 ## Commands
 
-- `npm run dev` — starts both frontend (Next.js with Turbopack) and backend (`convex dev`) in parallel
-- `npm run predev` — one-time setup: pushes Convex schema, runs `setup.mjs` for auth env vars, opens Convex dashboard
-- `npm run build` — `next build`
-- `npm run lint` — `eslint .` using the flat config in `eslint.config.mjs`
-- `npm run typecheck` — regenerate Next route types and run the isolated TypeScript check
-- `npm run check` — lint, typecheck, and all tests sequentially
-- `npm test` — `vitest run` (runs all tests)
-- `npm run test:watch` — `vitest` (watch mode)
+- `npm run dev` - starts both frontend (Next.js with Turbopack) and backend (`convex dev`) in parallel
+- `npm run predev` - one-time setup: pushes Convex schema, runs `setup.mjs` for auth env vars, opens Convex dashboard
+- `npm run build` - `next build`
+- `npm run lint` - `eslint .` using the flat config in `eslint.config.mjs`
+- `npm run typecheck` - regenerate Next route types and run the isolated TypeScript check
+- `npm run check` - lint, typecheck, and all tests sequentially
+- `npm test` - `vitest run` (runs all tests)
+- `npm run test:watch` - `vitest` (watch mode)
 - Formatter: Prettier with empty config (all defaults)
 
 Testing uses vitest + convex-test + @edge-runtime/vm. Test files live in `convex/` as `*.test.ts`.
+Custom ESLint integration tests live in `eslint-rules/` and run as part of `npm test`.
 
 ## Architecture
 
 ### Two-process dev environment
 
-Frontend (Next.js) and backend (Convex) run as separate processes via `npm-run-all --parallel`. The `convex dev` process watches `convex/` and auto-pushes functions/schema to the Convex deployment. The `convex/_generated/` directory is auto-generated — never edit it.
+Frontend (Next.js) and backend (Convex) run as separate processes via `npm-run-all --parallel`. The `convex dev` process watches `convex/` and auto-pushes functions/schema to the Convex deployment. The `convex/_generated/` directory is auto-generated - never edit it.
 
 ### Convex backend (`convex/`)
 
-- `schema.ts` — database tables: `ideas`, `ideaMembers`, `ideaInterest`, `comments`, `reactions`, `resourceRequests`, `notifications`, plus Convex Auth tables
-- `auth.ts` — Resend (magic link) auth provider
-- `auth.config.ts` — auth provider config referencing `CONVEX_SITE_URL`
-- `http.ts` — HTTP routes for auth callbacks only
-- `lib.ts` — shared helpers: `getAuthenticatedUser` (enforces email domain gate via env vars), `sanitizeText`, `validateStringLength`; re-exports domain constants from `lib/constants.ts`
+- `schema.ts` - database tables: `ideas`, `ideaMembers`, `ideaInterest`, `comments`, `reactions`, `resourceRequests`, `notifications`, plus Convex Auth tables
+- `auth.ts` - Resend (magic link) auth provider
+- `auth.config.ts` - auth provider config referencing `CONVEX_SITE_URL`
+- `http.ts` - HTTP routes for auth callbacks only
+- `lib.ts` - shared helpers: `getAuthenticatedUser` (enforces email domain gate via env vars), `sanitizeText`, `validateStringLength`; re-exports domain constants from `lib/constants.ts`
 - Business logic files: `ideas.ts`, `comments.ts`, `interest.ts`, `memberships.ts`, `reactions.ts`, `resourceRequests.ts`, `notifications.ts`, `users.ts`
 
 ### Next.js frontend (`app/`)
 
-- `(splash)/` — public landing page (no auth required)
-- `signin/` — sign-in page (redirects to `/product` if already authenticated)
-- `product/` — all protected routes (requires auth via `proxy.ts`)
-  - `layout.tsx` — wraps children in `ConvexClientProvider` + `AppShell`
-  - `ideas/` — idea CRUD pages
-  - `activity/` — activity feed
-  - `notifications/` — user notifications
-  - `onboarding/` — post-signup onboarding flow
-  - `settings/` — user settings
+- `(splash)/` - public landing page (no auth required)
+- `signin/` - sign-in page (redirects to `/product` if already authenticated)
+- `product/` - all protected routes (requires auth via `proxy.ts`)
+  - `layout.tsx` - wraps children in `ConvexClientProvider` + `AppShell`
+  - `ideas/` - idea CRUD pages
+  - `activity/` - activity feed
+  - `notifications/` - user notifications
+  - `onboarding/` - post-signup onboarding flow
+  - `settings/` - user settings
 - `proxy.ts` enforces auth and recognizes both global and event-scoped admin routes
 
 ### Shared code
 
-- `lib/constants.ts` — domain enums: statuses, roles, resource tags, reaction types, sort options, and their display labels/colors
-- `lib/types.ts` — TypeScript types for idea lists, details, members, comments, resource requests
-- `lib/utils.ts` — `cn()` utility (clsx + tailwind-merge)
-- `components/ui/` — shadcn/ui components (configured via `components.json`, new-york style, Lucide icons)
+- `lib/constants.ts` - domain enums: statuses, roles, resource tags, reaction types, sort options, and their display labels/colors
+- `lib/types.ts` - TypeScript types for idea lists, details, members, comments, resource requests
+- `lib/utils.ts` - `cn()` utility (clsx + tailwind-merge)
+- `components/ui/` - shadcn/ui components (configured via `components.json`, new-york style, Lucide icons)
 
 ### Path alias
 
@@ -57,6 +58,7 @@ Frontend (Next.js) and backend (Convex) run as separate processes via `npm-run-a
 
 ## Key constraints
 
+- **Em dashes**: Do not use literal em dashes (U+2014) in source code, comments, strings, or Markdown. The `fikra/no-em-dashes` ESLint rule enforces this. Use a hyphen or rewrite the sentence.
 - **Email domain gate**: `getAuthenticatedUser` in `convex/lib.ts` restricts access using the `ALLOWED_DOMAIN` env var and an optional `ALLOWED_EMAILS` comma-separated whitelist. Both are Convex environment variables, not `.env.local`. Do not hardcode allowed domains in code.
 - **Auth env vars**: Requires `.env.local` with `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_DEPLOYMENT`. The `predev` script walks through Resend credential setup.
 - **Convex-generated imports**: Frontend imports Convex API as `@/convex/_generated/api`; backend functions import from `./_generated/server`. Both are auto-generated.

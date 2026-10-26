@@ -284,7 +284,7 @@ export function TeamSection({
 
       {!idea.isOwner && idea.isMember && !idea.pendingOwnershipTransfer && (
         <FeatureTip tipKey="member-request-ownership">
-          Want to lead this idea? You can <strong>request ownership</strong> —
+          Want to lead this idea? You can <strong>request ownership</strong> -
           the current owner will be notified and can accept or decline.
         </FeatureTip>
       )}

@@ -42,6 +42,7 @@ See [AGENTS.md](./AGENTS.md) for a detailed architecture breakdown.
 
 - **Formatter**: Prettier with default settings. Run `npx prettier --write .` before committing.
 - **Linting**: `npm run lint` (ESLint flat config).
+- **Punctuation**: Literal em dashes (U+2014) are banned in source code, comments, strings, and Markdown. Use a hyphen or rewrite the sentence. `npm test` includes integration tests for this custom ESLint rule.
 - **Comments**: Keep code self-documenting. Only add comments where the "why" is non-obvious.
 
 ### Conventions
@@ -54,7 +55,7 @@ See [AGENTS.md](./AGENTS.md) for a detailed architecture breakdown.
 
 ### Commits
 
-Use clear, descriptive commit messages. There's no strict convention — just make sure the message explains the intent of the change.
+Use clear, descriptive commit messages. There's no strict convention - just make sure the message explains the intent of the change.
 
 ## Submitting Changes
 
@@ -68,7 +69,7 @@ Use clear, descriptive commit messages. There's no strict convention — just ma
 
 If your contribution was generated with an AI tool (e.g. Copilot, Cursor, ChatGPT, Claude, etc.), please include the prompt you used in your PR description. This helps reviewers understand the intent and verify the output.
 
-Even easier — you can [open an issue](https://github.com/MohamadJaara/fikra/issues/new/choose) with the prompt describing what you'd like to see built, and I'll gladly run it myself.
+Even easier - you can [open an issue](https://github.com/MohamadJaara/fikra/issues/new/choose) with the prompt describing what you'd like to see built, and I'll gladly run it myself.
 
 ### Pull Request Checklist
 

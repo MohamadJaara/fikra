@@ -37,7 +37,7 @@ export default function SplashPageLayout({
       </main>
       <footer className="border-t">
         <div className="container py-4 text-sm leading-loose text-muted-foreground">
-          Fikra — Hackathon Idea Board.
+          Fikra - Hackathon Idea Board.
         </div>
       </footer>
     </div>

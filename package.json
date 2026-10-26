@@ -52,6 +52,7 @@
   "devDependencies": {
     "@edge-runtime/vm": "^5.0.0",
     "@eslint-react/eslint-plugin": "^5.8.1",
+    "@eslint/markdown": "^8.0.3",
     "@next/eslint-plugin-next": "^16.2.6",
     "@tailwindcss/postcss": "^4.2.4",
     "@types/node": "^25.9.0",

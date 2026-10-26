@@ -20,7 +20,7 @@ We'll acknowledge your report within **48 hours** and aim to provide an initial 
 
 - Issues already reported by someone else
 - Theoretical risks without a demonstrable attack vector
-- Denial-of-service via resource exhaustion (Fikra is self-hosted — this is your infrastructure)
+- Denial-of-service via resource exhaustion (Fikra is self-hosted - this is your infrastructure)
 - Findings from automated scanners without manual verification
 
 ## Scope

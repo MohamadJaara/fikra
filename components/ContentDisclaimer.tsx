@@ -47,7 +47,7 @@ export function ContentDisclaimer({ className }: ContentDisclaimerProps) {
     >
       <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-700 dark:text-amber-300" />
       <p className="min-w-0 flex-1 truncate text-xs font-medium">
-        Hackathon ideas only — no company secrets, internal info, or customer
+        Hackathon ideas only - no company secrets, internal info, or customer
         data.
       </p>
       <Popover>

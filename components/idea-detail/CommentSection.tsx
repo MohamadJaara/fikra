@@ -77,7 +77,7 @@ export function CommentSection({
 
       <form onSubmit={handleSubmit} className="mb-6 space-y-2">
         <FeatureTip tipKey="comment-mention">
-          Type <strong>@</strong> in the comment box to mention a teammate —
+          Type <strong>@</strong> in the comment box to mention a teammate -
           they&apos;ll get notified. Use the quick prompts above to kickstart
           the discussion.
         </FeatureTip>
