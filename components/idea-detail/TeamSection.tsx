@@ -488,7 +488,10 @@ export function TeamSection({
                     <DialogFooter>
                       <Button
                         variant="outline"
-                        onClick={() => setIsJoinDialogOpen(false)}
+                        onClick={() => {
+                          setIsJoinDialogOpen(false);
+                          setSelectedRoles([]);
+                        }}
                         disabled={isJoining}
                       >
                         Cancel
