@@ -4,10 +4,11 @@ import { useState, useMemo } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { Heart, Loader2, MapPin, Wifi } from "lucide-react";
+import { Heart, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { UserAvatar, UserLink } from "@/components/UserLink";
+import { ParticipationIndicator } from "@/components/ParticipationDisplay";
 import { useRolesMap } from "@/lib/hooks";
 import { toast } from "sonner";
 import type { IdeaDetail } from "@/lib/types";
@@ -109,11 +110,7 @@ export function InterestSection({
                     {roleLabels[r] || r}
                   </Badge>
                 ))}
-              {user.participationMode === "onsite" ? (
-                <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
-              ) : user.participationMode === "remote" ? (
-                <Wifi className="h-3 w-3 text-purple-500 shrink-0" />
-              ) : null}
+              <ParticipationIndicator mode={user.participationMode} />
             </div>
           ))}
         </div>

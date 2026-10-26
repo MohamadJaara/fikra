@@ -3,18 +3,17 @@
 import {
   REACTION_EMOJI,
   REACTION_TYPES,
-  STATUS_DOT_COLORS,
-  STATUS_LABELS,
   TEAM_SIZE_LABELS,
-  type Status,
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 import type { IdeaListItem } from "@/lib/types";
-import { Users, Package, MapPin } from "lucide-react";
+import { Users, Package } from "lucide-react";
 import Link from "next/link";
 import { UserLink, UserAvatar } from "@/components/UserLink";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { InterestButton } from "@/components/InterestButton";
+import { IdeaStatusDot, IdeaStatusLabel } from "@/components/IdeaStatus";
+import { ParticipationIndicator } from "@/components/ParticipationDisplay";
 
 export function IdeaExpandedRow({
   idea,
@@ -41,8 +40,10 @@ export function IdeaExpandedRow({
       <div className="relative z-10 pointer-events-none">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 min-w-0">
-            <span
-              className={`mt-2 h-2 w-2 rounded-full shrink-0 ${STATUS_DOT_COLORS[idea.status as Status] || "bg-zinc-400"}`}
+            <IdeaStatusDot
+              status={idea.status}
+              decorative
+              className="mt-2 h-2 w-2"
             />
             <div className="min-w-0">
               <h3 className="font-semibold text-base leading-snug group-hover:text-foreground/80 transition-colors">
@@ -94,7 +95,9 @@ export function IdeaExpandedRow({
             </span>
           </span>
           <span className="text-muted-foreground/30">·</span>
-          <span>{STATUS_LABELS[idea.status as Status]}</span>
+          <span>
+            <IdeaStatusLabel status={idea.status} />
+          </span>
           <span className="text-muted-foreground/30">·</span>
           <span className="flex items-center gap-1">
             <Users className="h-3 w-3" />
@@ -109,10 +112,11 @@ export function IdeaExpandedRow({
           {idea.onsiteOnly && (
             <>
               <span className="text-muted-foreground/30">·</span>
-              <span className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400">
-                <MapPin className="h-3 w-3" />
-                On-site
-              </span>
+              <ParticipationIndicator
+                mode="onsite"
+                showLabel
+                className="text-blue-600 dark:text-blue-400"
+              />
             </>
           )}
           {idea.isMember && (

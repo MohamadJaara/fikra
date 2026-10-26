@@ -6,7 +6,7 @@ import {
   useProductViewer,
   useSelectedHackathon,
 } from "@/components/ProductLayoutClient";
-import { STATUS_COLORS, STATUS_LABELS, type Status } from "@/lib/constants";
+import { IdeaStatusBadge } from "@/components/IdeaStatus";
 import { useRolesMap } from "@/lib/hooks";
 import { use } from "react";
 import { useQuery } from "convex/react";
@@ -135,14 +135,7 @@ export default function ProfilePage({
                       {idea.pitch}
                     </p>
                   </div>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      STATUS_COLORS[idea.status as Status] || "bg-muted"
-                    }
-                  >
-                    {STATUS_LABELS[idea.status as Status] || idea.status}
-                  </Badge>
+                  <IdeaStatusBadge status={idea.status} />
                 </div>
               </Link>
             ))}
@@ -181,14 +174,7 @@ export default function ProfilePage({
                           {roleLabels[r] || r}
                         </Badge>
                       ))}
-                    <Badge
-                      variant="secondary"
-                      className={
-                        STATUS_COLORS[idea.status as Status] || "bg-muted"
-                      }
-                    >
-                      {STATUS_LABELS[idea.status as Status] || idea.status}
-                    </Badge>
+                    <IdeaStatusBadge status={idea.status} />
                   </div>
                 </div>
               </Link>
