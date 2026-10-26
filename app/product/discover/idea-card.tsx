@@ -1,14 +1,12 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { IdeaStatusBadge } from "@/components/IdeaStatus";
+import { ParticipationIndicator } from "@/components/ParticipationDisplay";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
-import { Flame, Users, MapPin, ArrowRight, ArrowLeft } from "lucide-react";
-import {
-  STATUS_LABELS,
-  STATUS_COLORS,
-  TEAM_SIZE_LABELS,
-} from "@/lib/constants";
+import { Flame, Users, ArrowRight, ArrowLeft } from "lucide-react";
+import { TEAM_SIZE_LABELS } from "@/lib/constants";
 import type { TeamSize } from "@/lib/constants";
 import { useCallback, useState } from "react";
 
@@ -154,14 +152,7 @@ export function DiscoverIdeaCard({
                   Trending
                 </Badge>
               )}
-              <Badge
-                className={
-                  STATUS_COLORS[idea.status as keyof typeof STATUS_COLORS] ?? ""
-                }
-              >
-                {STATUS_LABELS[idea.status as keyof typeof STATUS_LABELS] ??
-                  idea.status}
-              </Badge>
+              <IdeaStatusBadge status={idea.status} variant="default" />
             </div>
           </div>
 
@@ -196,10 +187,12 @@ export function DiscoverIdeaCard({
               </span>
               <span>Team: {TEAM_SIZE_LABELS[idea.teamSize]}</span>
               {idea.onsiteOnly && (
-                <span className="flex items-center gap-1">
-                  <MapPin className="h-4 w-4" />
-                  On-site
-                </span>
+                <ParticipationIndicator
+                  mode="onsite"
+                  showLabel
+                  className="gap-1"
+                  iconClassName="h-4 w-4"
+                />
               )}
             </div>
 

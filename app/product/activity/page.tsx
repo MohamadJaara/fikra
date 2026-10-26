@@ -5,12 +5,8 @@ import { useQuery } from "convex/react";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { IdeaListSkeleton } from "@/components/Skeleton";
-import {
-  STATUS_DOT_COLORS,
-  STATUS_LABELS,
-  STATUS_BORDER_COLORS,
-  type Status,
-} from "@/lib/constants";
+import { IdeaStatusDot, IdeaStatusLabel } from "@/components/IdeaStatus";
+import { STATUS_BORDER_COLORS, type Status } from "@/lib/constants";
 import type { UnresolvedResource } from "@/lib/types";
 import { Lightbulb, Users, Heart, Package, ArrowRight } from "lucide-react";
 import Link from "next/link";
@@ -278,7 +274,6 @@ function IdeaList({
       {filtered.map((idea, i) => {
         if (!idea) return null;
         const status = idea.status as Status;
-        const dotColor = STATUS_DOT_COLORS[status] || "bg-zinc-400";
         const borderColor = STATUS_BORDER_COLORS[status] || "border-l-zinc-300";
         const accentColor = statusAccentColors[status] || "text-zinc-400";
         return (
@@ -298,13 +293,11 @@ function IdeaList({
             >
               <div className="flex-1 min-w-0 pt-0.5">
                 <div className="flex items-center gap-2.5 mb-1">
-                  <span
-                    className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`}
-                  />
+                  <IdeaStatusDot status={idea.status} decorative />
                   <span
                     className={`text-[11px] font-semibold uppercase tracking-widest ${accentColor}`}
                   >
-                    {STATUS_LABELS[status] || idea.status}
+                    <IdeaStatusLabel status={idea.status} />
                   </span>
                 </div>
                 <h3 className="text-sm font-semibold text-foreground group-hover:text-foreground/80 transition-colors truncate">

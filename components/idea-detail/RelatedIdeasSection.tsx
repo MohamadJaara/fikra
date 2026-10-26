@@ -33,7 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { STATUS_LABELS, type Status } from "@/lib/constants";
+import { IdeaStatusBadge } from "@/components/IdeaStatus";
 import { toast } from "sonner";
 import { useProductBase } from "@/components/ProductLayoutClient";
 
@@ -464,10 +464,11 @@ function RelatedIdeaCard({
             </Badge>
           )}
           {relation.otherIdeaStatus && (
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-              {STATUS_LABELS[relation.otherIdeaStatus as Status] ||
-                relation.otherIdeaStatus}
-            </Badge>
+            <IdeaStatusBadge
+              status={relation.otherIdeaStatus}
+              colored={false}
+              className="text-[10px] px-1.5 py-0"
+            />
           )}
           {isMergePending && (
             <Badge

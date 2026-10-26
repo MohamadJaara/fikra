@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { STATUS_LABELS, type Status } from "@/lib/constants";
+import { IdeaStatusBadge } from "@/components/IdeaStatus";
 import type { IdeaNavigation as IdeaNavigationType } from "@/lib/types";
 
 type Direction = "previous" | "next";
@@ -40,12 +39,11 @@ function IdeaNavigationLink({
           <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             {label}
           </span>
-          <Badge
-            variant="secondary"
+          <IdeaStatusBadge
+            status={item.status}
+            colored={false}
             className="hidden text-[10px] sm:inline-flex"
-          >
-            {STATUS_LABELS[item.status as Status] || item.status}
-          </Badge>
+          />
         </span>
         <span className="block truncate font-medium">{item.title}</span>
       </span>

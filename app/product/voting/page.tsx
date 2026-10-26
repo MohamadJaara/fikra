@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
+import { IdeaStatusBadge } from "@/components/IdeaStatus";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -9,7 +10,7 @@ import {
 } from "@/components/ProductLayoutClient";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { STATUS_LABELS, TEAM_SIZE_LABELS, type Status } from "@/lib/constants";
+import { TEAM_SIZE_LABELS } from "@/lib/constants";
 import { useMutation, useQuery } from "convex/react";
 import {
   BarChart3,
@@ -336,9 +337,7 @@ export default function VotingPage() {
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h2 className="text-base font-semibold">{idea.title}</h2>
-                  <Badge variant="secondary">
-                    {STATUS_LABELS[idea.status as Status] ?? idea.status}
-                  </Badge>
+                  <IdeaStatusBadge status={idea.status} colored={false} />
                   {idea.categoryName && (
                     <Badge variant="outline">{idea.categoryName}</Badge>
                   )}

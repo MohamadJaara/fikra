@@ -1,14 +1,9 @@
 "use client";
 
-import { MapPin } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { IdeaStatusBadge } from "@/components/IdeaStatus";
+import { ParticipationBadge } from "@/components/ParticipationDisplay";
 import { UserAvatar, UserLink } from "@/components/UserLink";
-import {
-  STATUS_COLORS,
-  STATUS_LABELS,
-  TEAM_SIZE_LABELS,
-  type Status,
-} from "@/lib/constants";
+import { TEAM_SIZE_LABELS } from "@/lib/constants";
 import type { IdeaDetail } from "@/lib/types";
 import { timeAgo } from "./shared";
 
@@ -28,20 +23,15 @@ export function IdeaHeader({ idea }: { idea: IdeaDetail }) {
         {idea.categoryName && (
           <span className="text-muted-foreground/40">·</span>
         )}
-        <Badge
-          variant="secondary"
-          className={`text-[11px] font-medium ${STATUS_COLORS[idea.status as Status] || "bg-muted"}`}
-        >
-          {STATUS_LABELS[idea.status as Status] || idea.status}
-        </Badge>
+        <IdeaStatusBadge
+          status={idea.status}
+          className="text-[11px] font-medium"
+        />
         {idea.onsiteOnly && (
-          <Badge
-            variant="outline"
+          <ParticipationBadge
+            mode="onsite"
             className="text-[11px] text-blue-700 border-blue-300 bg-blue-50/80 dark:text-blue-300 dark:border-blue-700 dark:bg-blue-950/50"
-          >
-            <MapPin className="h-3 w-3 mr-1" />
-            On-site
-          </Badge>
+          />
         )}
         <span className="text-muted-foreground/40">·</span>
         <span className="text-[11px] text-muted-foreground">

@@ -4,8 +4,6 @@ import {
   REACTION_EMOJI,
   REACTION_TYPES,
   STATUS_BORDER_COLORS,
-  STATUS_DOT_COLORS,
-  STATUS_LABELS,
   type Status,
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
@@ -15,6 +13,7 @@ import Link from "next/link";
 import { UserAvatar } from "@/components/UserLink";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { InterestButton } from "@/components/InterestButton";
+import { IdeaStatusDot, IdeaStatusLabel } from "@/components/IdeaStatus";
 
 export function IdeaMasonryItem({
   idea,
@@ -52,9 +51,7 @@ export function IdeaMasonryItem({
       <div className="relative z-10 pointer-events-none space-y-2">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-sm leading-snug">{idea.title}</h3>
-          <span
-            className={`shrink-0 w-1.5 h-1.5 rounded-full mt-1.5 ${STATUS_DOT_COLORS[idea.status as Status] || "bg-zinc-400"}`}
-          />
+          <IdeaStatusDot status={idea.status} decorative className="mt-1.5" />
         </div>
 
         <p
@@ -79,7 +76,7 @@ export function IdeaMasonryItem({
           </span>
 
           <span className="text-muted-foreground/50">
-            {STATUS_LABELS[idea.status as Status]}
+            <IdeaStatusLabel status={idea.status} />
           </span>
 
           {idea.categoryName && (
