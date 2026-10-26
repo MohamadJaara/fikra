@@ -5,30 +5,32 @@ import { api } from "@/convex/_generated/api";
 import { useMemo } from "react";
 import { useSelectedHackathon } from "@/components/ProductLayoutClient";
 
-export function useRolesMap() {
+export type RoleOption = { slug: string; name: string };
+
+export function useRoles() {
   const hackathon = useSelectedHackathon();
-  const roles = useQuery(api.roles.list, {
+  const result = useQuery(api.roles.list, {
     hackathonId: hackathon?._id,
   });
   return useMemo(() => {
-    if (!roles) return {} as Record<string, string>;
-    const map: Record<string, string> = {};
-    for (const r of roles) {
-      map[r.slug] = r.name;
+    const roles: RoleOption[] = [];
+    const roleLabels: Record<string, string> = {};
+    for (const role of result ?? []) {
+      roles.push({ slug: role.slug, name: role.name });
+      roleLabels[role.slug] = role.name;
     }
-    return map;
-  }, [roles]);
+    return { roles, roleLabels, isLoading: result === undefined };
+  }, [result]);
+}
+
+// Compatibility helpers for display-only consumers. Pickers should use useRoles
+// so they can distinguish loading from an event with no configured roles.
+export function useRolesMap() {
+  return useRoles().roleLabels;
 }
 
 export function useRolesList() {
-  const hackathon = useSelectedHackathon();
-  const roles = useQuery(api.roles.list, {
-    hackathonId: hackathon?._id,
-  });
-  return useMemo(() => {
-    if (!roles) return [] as { slug: string; name: string }[];
-    return roles.map((r) => ({ slug: r.slug, name: r.name }));
-  }, [roles]);
+  return useRoles().roles;
 }
 
 export function useResourcesList() {

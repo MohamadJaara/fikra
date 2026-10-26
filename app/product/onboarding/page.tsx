@@ -9,7 +9,8 @@ import {
 } from "@/components/ProductLayoutClient";
 import { useRouter } from "next/navigation";
 import { useState, useMemo } from "react";
-import { useRolesList } from "@/lib/hooks";
+import { useRoles } from "@/lib/hooks";
+import { RolePicker } from "@/components/RolePicker";
 import { ParticipationModePicker } from "@/components/ParticipationModePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,6 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { type ParticipationMode } from "@/lib/constants";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Lightbulb, ArrowRight } from "lucide-react";
 
@@ -49,7 +49,7 @@ export default function OnboardingPage() {
   const hackathon = useSelectedHackathon();
   const productBase = useProductBase();
   const completeOnboarding = useMutation(api.users.completeOnboarding);
-  const roles = useRolesList();
+  const { roles, isLoading: areRolesLoading } = useRoles();
   const router = useRouter();
 
   const parsed = useMemo(() => {
@@ -74,12 +74,6 @@ export default function OnboardingPage() {
     }
     setInitialized(true);
   }
-
-  const toggleRole = (role: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
-    );
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,20 +147,14 @@ export default function OnboardingPage() {
                 day-to-day role at work — feel free to explore. Want to try PM,
                 or build backend as an iOS dev? Go for it.
               </p>
-              <div className="flex flex-wrap gap-2">
-                {roles.map((role) => (
-                  <Badge
-                    key={role.slug}
-                    variant={
-                      selectedRoles.includes(role.slug) ? "default" : "outline"
-                    }
-                    className="cursor-pointer select-none text-sm px-3 py-1.5"
-                    onClick={() => toggleRole(role.slug)}
-                  >
-                    {role.name}
-                  </Badge>
-                ))}
-              </div>
+              <RolePicker
+                roles={roles}
+                value={selectedRoles}
+                onChange={setSelectedRoles}
+                isLoading={areRolesLoading}
+                ariaLabel="Your roles"
+                itemClassName="text-sm px-3 py-1.5"
+              />
             </div>
 
             <div>

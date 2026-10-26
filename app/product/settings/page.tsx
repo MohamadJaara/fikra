@@ -8,10 +8,10 @@ import {
 } from "@/components/ProductLayoutClient";
 import { ParticipationModePicker } from "@/components/ParticipationModePicker";
 import { useState } from "react";
-import { useRolesList } from "@/lib/hooks";
+import { useRoles } from "@/lib/hooks";
+import { RolePicker } from "@/components/RolePicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
 import { type ParticipationMode } from "@/lib/constants";
 import { toast } from "sonner";
 import { Shield, Radio } from "lucide-react";
@@ -26,7 +26,7 @@ export default function SettingsPage() {
   const viewer = useProductViewer();
   const hackathon = useSelectedHackathon();
   const updateProfile = useMutation(api.users.updateProfile);
-  const roles = useRolesList();
+  const { roles, isLoading: areRolesLoading } = useRoles();
 
   const [form, setForm] = useState({
     firstName: viewer.firstName ?? "",
@@ -53,16 +53,6 @@ export default function SettingsPage() {
   const [dirty, setDirty] = useState(false);
 
   const markDirty = () => setDirty(true);
-
-  const toggleRole = (role: string) => {
-    markDirty();
-    setForm((prev) => ({
-      ...prev,
-      selectedRoles: prev.selectedRoles.includes(role)
-        ? prev.selectedRoles.filter((r) => r !== role)
-        : [...prev.selectedRoles, role],
-    }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,27 +217,17 @@ export default function SettingsPage() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {roles.map((role) => {
-                    const active = form.selectedRoles.includes(role.slug);
-                    return (
-                      <button
-                        type="button"
-                        key={role.slug}
-                        onClick={() => toggleRole(role.slug)}
-                        className={cn(
-                          "inline-flex items-center rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-200",
-                          "border",
-                          active
-                            ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                            : "border-border bg-transparent text-foreground hover:border-primary/40 hover:bg-muted/50",
-                        )}
-                      >
-                        {role.name}
-                      </button>
-                    );
-                  })}
-                </div>
+                <RolePicker
+                  roles={roles}
+                  value={form.selectedRoles}
+                  onChange={(selectedRoles) => {
+                    markDirty();
+                    setForm((prev) => ({ ...prev, selectedRoles }));
+                  }}
+                  isLoading={areRolesLoading}
+                  ariaLabel="Your roles"
+                  variant="pill"
+                />
               </div>
             </motion.section>
 
