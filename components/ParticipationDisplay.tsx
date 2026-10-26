@@ -68,7 +68,8 @@ export function ParticipationIndicator({
       aria-label={showLabel ? undefined : label}
       title={showLabel ? undefined : label}
       className={cn(
-        "inline-flex shrink-0 items-center gap-0.5",
+        "inline-flex items-center gap-0.5",
+        !showLabel && "shrink-0",
         !showLabel && PARTICIPATION_INDICATOR_COLORS[mode],
         className,
       )}
