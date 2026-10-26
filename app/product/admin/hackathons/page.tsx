@@ -36,7 +36,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { useProductBase } from "@/components/ProductLayoutClient";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -528,7 +528,6 @@ export default function AdminHackathonsPage() {
           </form>
         </DialogContent>
       </Dialog>
-      <Toaster />
     </div>
   );
 }

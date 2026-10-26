@@ -63,7 +63,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   useProductBase,
@@ -1409,8 +1409,6 @@ export default function AdminIdeasPage() {
           </div>
         </aside>
       </div>
-
-      <Toaster />
     </div>
   );
 }

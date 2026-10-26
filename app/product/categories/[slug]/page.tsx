@@ -1,11 +1,11 @@
 "use client";
 
-import { IdeaMasonryItem } from "@/components/IdeaMasonryItem";
-import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
 import {
-  IdeaMasonryItemSkeleton,
-  IdeaExpandedRowSkeleton,
-} from "@/components/Skeleton";
+  IdeaCollection,
+  IdeaCollectionSkeleton,
+  type IdeaViewMode,
+} from "@/components/ideas/IdeaCollection";
+import { IdeaViewToggle } from "@/components/ideas/IdeaViewToggle";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/convex/_generated/api";
@@ -21,8 +21,6 @@ import {
   Sparkles,
   Eye,
   Users,
-  LayoutGrid,
-  List,
   Loader2,
 } from "lucide-react";
 import type { IdeaListItem } from "@/lib/types";
@@ -61,19 +59,13 @@ export default function CategoryDetailPage() {
       : "skip",
     { initialNumItems: PAGE_SIZE },
   );
-  const [viewMode, setViewMode] = useState<"list" | "masonry">("masonry");
+  const [viewMode, setViewMode] = useState<IdeaViewMode>("masonry");
 
   if (category === undefined) {
     return (
       <div className="p-4 md:p-6 max-w-7xl mx-auto">
         <div className="h-8 w-48 bg-muted/40 rounded animate-pulse mb-6" />
-        <div className="columns-1 md:columns-2 lg:columns-3">
-          {/* eslint-disable @eslint-react/no-array-index-key */}
-          {Array.from({ length: 6 }).map((_, i) => (
-            <IdeaMasonryItemSkeleton key={i} />
-          ))}
-          {/* eslint-enable @eslint-react/no-array-index-key */}
-        </div>
+        <IdeaCollectionSkeleton viewMode="masonry" />
       </div>
     );
   }
@@ -169,48 +161,15 @@ export default function CategoryDetailPage() {
               Join a team or start your own
             </span>
           </div>
-          <div className="flex border rounded-md">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`h-8 w-8 flex items-center justify-center rounded-r-none transition-colors ${viewMode === "list" ? "bg-secondary" : "hover:bg-muted"}`}
-              aria-label="List view"
-            >
-              <List className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => setViewMode("masonry")}
-              className={`h-8 w-8 flex items-center justify-center rounded-l-none border-l transition-colors ${viewMode === "masonry" ? "bg-secondary" : "hover:bg-muted"}`}
-              aria-label="Masonry view"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <IdeaViewToggle value={viewMode} onChange={setViewMode} compact />
         </div>
       )}
 
       {ideasStatus === "LoadingFirstPage" ? (
-        viewMode === "masonry" ? (
-          <div className="columns-1 md:columns-2 lg:columns-3">
-            {/* eslint-disable @eslint-react/no-array-index-key */}
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-              >
-                <IdeaMasonryItemSkeleton />
-              </div>
-            ))}
-            {/* eslint-enable @eslint-react/no-array-index-key */}
-          </div>
-        ) : (
-          <div className="divide-y">
-            {/* eslint-disable @eslint-react/no-array-index-key */}
-            {Array.from({ length: 3 }).map((_, i) => (
-              <IdeaExpandedRowSkeleton key={i} />
-            ))}
-            {/* eslint-enable @eslint-react/no-array-index-key */}
-          </div>
-        )
+        <IdeaCollectionSkeleton
+          viewMode={viewMode}
+          count={viewMode === "masonry" ? 6 : 3}
+        />
       ) : ideas.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4">💡</div>
@@ -230,35 +189,11 @@ export default function CategoryDetailPage() {
         </div>
       ) : (
         <>
-          {viewMode === "masonry" ? (
-            <div className="columns-1 md:columns-2 lg:columns-3">
-              {(ideas as IdeaListItem[]).map((idea, i) => (
-                <div
-                  key={idea._id}
-                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-                >
-                  <IdeaMasonryItem
-                    idea={idea}
-                    href={`${productBase}/ideas/${idea._id}`}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {(ideas as IdeaListItem[]).map((idea, i) => (
-                <div
-                  key={idea._id}
-                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-                >
-                  <IdeaExpandedRow
-                    idea={idea}
-                    href={`${productBase}/ideas/${idea._id}`}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
+          <IdeaCollection
+            ideas={ideas as IdeaListItem[]}
+            viewMode={viewMode}
+            getIdeaHref={(ideaId) => `${productBase}/ideas/${ideaId}`}
+          />
           {ideasStatus === "CanLoadMore" && (
             <div className="flex justify-center mt-6">
               <Button variant="outline" onClick={() => loadMore(PAGE_SIZE)}>

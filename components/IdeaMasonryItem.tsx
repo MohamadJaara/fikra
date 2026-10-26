@@ -10,13 +10,11 @@ import {
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 import type { IdeaListItem } from "@/lib/types";
-import { Users, Package, Heart, Loader2 } from "lucide-react";
+import { Users, Package } from "lucide-react";
 import Link from "next/link";
 import { UserAvatar } from "@/components/UserLink";
 import { BookmarkButton } from "@/components/BookmarkButton";
-import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
-import { useState } from "react";
+import { InterestButton } from "@/components/InterestButton";
 
 export function IdeaMasonryItem({
   idea,
@@ -27,36 +25,17 @@ export function IdeaMasonryItem({
 }) {
   const roleLabels = useRolesMap();
   const ideaHref = href ?? `/product/ideas/${idea._id}`;
-  const expressInterest = useMutation(api.interest.express);
-  const removeInterest = useMutation(api.interest.remove);
-  const [isToggling, setIsToggling] = useState(false);
 
   const hasReactions = Object.values(idea.reactionCounts).some((c) => c > 0);
   const hasRoles = idea.missingRoles.length > 0;
-  const hasResources =
-    idea.resourceRequests.filter((r) => !r.resolved).length > 0;
+  const unresolvedResources = idea.resourceRequests.filter((r) => !r.resolved);
+  const hasResources = unresolvedResources.length > 0;
   const density =
     idea.memberCount +
     idea.interestCount +
     Object.values(idea.reactionCounts).reduce((a, b) => a + b, 0);
   const showFullMeta = density >= 4;
   const pitchLines = showFullMeta ? "line-clamp-3" : "line-clamp-2";
-
-  const handleToggleInterest = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsToggling(true);
-    try {
-      if (idea.isInterested) {
-        await removeInterest({ ideaId: idea._id });
-      } else {
-        await expressInterest({ ideaId: idea._id });
-      }
-    } catch {
-    } finally {
-      setIsToggling(false);
-    }
-  };
 
   return (
     <div
@@ -134,18 +113,15 @@ export function IdeaMasonryItem({
               </span>
             )}
             {hasResources &&
-              idea.resourceRequests
-                .filter((r) => !r.resolved)
-                .slice(0, 2)
-                .map((r) => (
-                  <span
-                    key={r.tag}
-                    className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 font-medium"
-                  >
-                    <Package className="h-2.5 w-2.5" />
-                    {r.resourceName}
-                  </span>
-                ))}
+              unresolvedResources.slice(0, 2).map((r) => (
+                <span
+                  key={r.tag}
+                  className="flex items-center gap-0.5 text-blue-600 dark:text-blue-400 font-medium"
+                >
+                  <Package className="h-2.5 w-2.5" />
+                  {r.resourceName}
+                </span>
+              ))}
           </div>
         )}
 
@@ -171,31 +147,7 @@ export function IdeaMasonryItem({
               ideaId={idea._id}
               isBookmarked={idea.isBookmarked}
             />
-            <button
-              onClick={handleToggleInterest}
-              disabled={isToggling || idea.isMember}
-              className={`pointer-events-auto inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 transition-colors text-xs ${
-                idea.isInterested
-                  ? "text-rose-500 font-medium"
-                  : "text-muted-foreground hover:text-rose-400"
-              } ${
-                idea.isMember
-                  ? "opacity-40 cursor-not-allowed"
-                  : "cursor-pointer hover:bg-muted/60"
-              }`}
-              aria-label={
-                idea.isInterested ? "Remove interest" : "Express interest"
-              }
-            >
-              {isToggling ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Heart
-                  className={`h-3.5 w-3.5 ${idea.isInterested ? "fill-current" : ""}`}
-                />
-              )}
-              {idea.interestCount > 0 && <span>{idea.interestCount}</span>}
-            </button>
+            <InterestButton idea={idea} />
           </span>
         </div>
       </div>

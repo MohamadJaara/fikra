@@ -10,13 +10,11 @@ import {
 } from "@/lib/constants";
 import { useRolesMap } from "@/lib/hooks";
 import type { IdeaListItem } from "@/lib/types";
-import { Users, Package, Heart, MapPin, Loader2 } from "lucide-react";
+import { Users, Package, MapPin } from "lucide-react";
 import Link from "next/link";
 import { UserLink, UserAvatar } from "@/components/UserLink";
 import { BookmarkButton } from "@/components/BookmarkButton";
-import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
-import { useState } from "react";
+import { InterestButton } from "@/components/InterestButton";
 
 export function IdeaExpandedRow({
   idea,
@@ -27,27 +25,10 @@ export function IdeaExpandedRow({
 }) {
   const roleLabels = useRolesMap();
   const ideaHref = href ?? `/product/ideas/${idea._id}`;
-  const expressInterest = useMutation(api.interest.express);
-  const removeInterest = useMutation(api.interest.remove);
-  const [isToggling, setIsToggling] = useState(false);
-
-  const handleToggleInterest = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsToggling(true);
-    try {
-      if (idea.isInterested) {
-        await removeInterest({ ideaId: idea._id });
-      } else {
-        await expressInterest({ ideaId: idea._id });
-      }
-    } catch {
-    } finally {
-      setIsToggling(false);
-    }
-  };
-
   const hasReactions = Object.values(idea.reactionCounts).some((c) => c > 0);
+  const unresolvedResourceCount = idea.resourceRequests.filter(
+    (r) => !r.resolved,
+  ).length;
 
   return (
     <div className="relative group py-5 first:pt-0">
@@ -89,27 +70,7 @@ export function IdeaExpandedRow({
               ideaId={idea._id}
               isBookmarked={idea.isBookmarked}
             />
-            <button
-              onClick={handleToggleInterest}
-              disabled={isToggling || idea.isMember}
-              className={`pointer-events-auto inline-flex items-center gap-0.5 rounded-md px-1.5 py-1 transition-colors text-xs ${
-                idea.isInterested
-                  ? "text-rose-500 font-medium"
-                  : "text-muted-foreground hover:text-rose-400"
-              } ${idea.isMember ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-muted/60"}`}
-              aria-label={
-                idea.isInterested ? "Remove interest" : "Express interest"
-              }
-            >
-              {isToggling ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Heart
-                  className={`h-3.5 w-3.5 ${idea.isInterested ? "fill-current" : ""}`}
-                />
-              )}
-              {idea.interestCount > 0 && <span>{idea.interestCount}</span>}
-            </button>
+            <InterestButton idea={idea} className="rounded-md py-1" />
           </div>
         </div>
 
@@ -196,16 +157,13 @@ export function IdeaExpandedRow({
               </span>
             </>
           )}
-          {idea.resourceRequests.filter((r) => !r.resolved).length > 0 && (
+          {unresolvedResourceCount > 0 && (
             <>
               <span className="text-muted-foreground/30">·</span>
               <span className="flex items-center gap-0.5">
                 <Package className="h-3 w-3" />
-                {idea.resourceRequests.filter((r) => !r.resolved).length}{" "}
-                resource
-                {idea.resourceRequests.filter((r) => !r.resolved).length !== 1
-                  ? "s"
-                  : ""}
+                {unresolvedResourceCount} resource
+                {unresolvedResourceCount !== 1 ? "s" : ""}
               </span>
             </>
           )}

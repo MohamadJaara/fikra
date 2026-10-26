@@ -10,7 +10,6 @@ import { ArrowLeft } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { OwnerWelcomeBanner } from "@/components/OwnerWelcomeBanner";
 import { IdeaDetailSkeleton } from "@/components/Skeleton";
-import { Toaster } from "sonner";
 import { IdeaHeader } from "@/components/idea-detail/IdeaHeader";
 import { OwnershipTransferRequestBanner } from "@/components/idea-detail/OwnershipTransferRequestBanner";
 import { ShelvedIdeaBanner } from "@/components/idea-detail/ShelvedIdeaBanner";
@@ -246,8 +245,6 @@ function IdeaDetailContent({ params }: { params: Promise<{ id: string }> }) {
       >
         <RelatedIdeasSection ideaId={ideaId} isOwner={idea.isOwner} />
       </section>
-
-      <Toaster />
     </div>
   );
 }

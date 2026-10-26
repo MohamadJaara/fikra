@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation } from "convex/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useQuery } from "convex/react";
@@ -128,8 +128,6 @@ export default function EditIdeaPage({
           isSubmitting={isSubmitting}
         />
       </div>
-
-      <Toaster />
     </div>
   );
 }

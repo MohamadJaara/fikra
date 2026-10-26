@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import {
   useProductBase,
   useSelectedHackathon,
@@ -246,8 +246,6 @@ export default function AdminVotingPage() {
           </section>
         </>
       )}
-
-      <Toaster />
     </div>
   );
 }

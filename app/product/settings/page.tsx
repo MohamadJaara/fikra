@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { type ParticipationMode } from "@/lib/constants";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { Shield, Radio } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -316,8 +316,6 @@ export default function SettingsPage() {
           </motion.div>
         </form>
       </div>
-
-      <Toaster position="bottom-right" />
     </div>
   );
 }

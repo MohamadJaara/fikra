@@ -6,7 +6,7 @@ import { useConvexAuth, useQuery } from "convex/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 
 export default function SignInPage() {
   const [step, setStep] = useState<"signIn" | "linkSent">("signIn");
@@ -68,7 +68,6 @@ export default function SignInPage() {
           </>
         )}
       </div>
-      <Toaster />
     </div>
   );
 }

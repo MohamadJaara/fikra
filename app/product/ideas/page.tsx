@@ -1,13 +1,13 @@
 "use client";
 
-import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
-import { IdeaMasonryItem } from "@/components/IdeaMasonryItem";
+import {
+  IdeaCollection,
+  IdeaCollectionSkeleton,
+  type IdeaViewMode,
+} from "@/components/ideas/IdeaCollection";
+import { IdeaViewToggle } from "@/components/ideas/IdeaViewToggle";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  IdeaExpandedRowSkeleton,
-  IdeaMasonryItemSkeleton,
-} from "@/components/Skeleton";
 import {
   STATUSES,
   STATUS_LABELS,
@@ -33,8 +33,6 @@ import {
   Package,
   X,
   ArrowUpDown,
-  LayoutGrid,
-  List,
   Loader2,
   SlidersHorizontal,
 } from "lucide-react";
@@ -49,17 +47,6 @@ import type { IdeaListItem } from "@/lib/types";
 
 const PAGE_SIZE = 60;
 const STATUS_FILTERS = STATUSES.filter((status) => status !== "shelved");
-const SKELETON_KEYS = [
-  "skeleton-1",
-  "skeleton-2",
-  "skeleton-3",
-  "skeleton-4",
-  "skeleton-5",
-  "skeleton-6",
-  "skeleton-7",
-  "skeleton-8",
-  "skeleton-9",
-] as const;
 
 type ShelfView = "active" | "shelved";
 
@@ -86,13 +73,10 @@ export default function BrowseIdeasPage() {
               <div className="h-4 w-20 animate-shimmer rounded mt-2" />
             </div>
           </div>
-          <div className="divide-y divide-border/40">
-            {SKELETON_KEYS.slice(0, 6).map((key, i) => (
-              <div key={key} className={`animate-fade-in stagger-${i + 1}`}>
-                <IdeaExpandedRowSkeleton />
-              </div>
-            ))}
-          </div>
+          <IdeaCollectionSkeleton
+            viewMode="list"
+            className="divide-border/40"
+          />
         </div>
       }
     >
@@ -145,8 +129,8 @@ function BrowseIdeasContent() {
   const [sortBy, setSortBy] = useState<SortOption>(
     (searchParams.get("sort") as SortOption) || "most_interest",
   );
-  const [viewMode, setViewMode] = useState<"list" | "masonry">(
-    (searchParams.get("view") as "list" | "masonry") || "list",
+  const [viewMode, setViewMode] = useState<IdeaViewMode>(
+    searchParams.get("view") === "masonry" ? "masonry" : "list",
   );
 
   useEffect(() => {
@@ -354,26 +338,12 @@ function BrowseIdeasContent() {
             </span>
           )}
         </Button>
-        <div className="flex rounded-md border border-border/60 ml-1">
-          <Button
-            variant={viewMode === "list" ? "secondary" : "ghost"}
-            size="icon"
-            className="h-8 w-8 rounded-r-none"
-            onClick={() => setViewMode("list")}
-            aria-label="List view"
-          >
-            <List className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant={viewMode === "masonry" ? "secondary" : "ghost"}
-            size="icon"
-            className="h-8 w-8 rounded-l-none"
-            onClick={() => setViewMode("masonry")}
-            aria-label="Grid view"
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+        <IdeaViewToggle
+          value={viewMode}
+          onChange={setViewMode}
+          compact
+          className="border-border/60 ml-1"
+        />
       </div>
 
       {activeFilterCount > 0 && !showFilters && (
@@ -562,26 +532,11 @@ function BrowseIdeasContent() {
 
       <div className="mt-4">
         {status === "LoadingFirstPage" ? (
-          viewMode === "masonry" ? (
-            <div className="columns-1 md:columns-2 lg:columns-3 gap-4">
-              {SKELETON_KEYS.map((key, i) => (
-                <div
-                  key={key}
-                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-                >
-                  <IdeaMasonryItemSkeleton />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="divide-y divide-border/40">
-              {SKELETON_KEYS.slice(0, 6).map((key, i) => (
-                <div key={key} className={`animate-fade-in stagger-${i + 1}`}>
-                  <IdeaExpandedRowSkeleton />
-                </div>
-              ))}
-            </div>
-          )
+          <IdeaCollectionSkeleton
+            viewMode={viewMode}
+            count={viewMode === "masonry" ? 9 : 6}
+            className={viewMode === "masonry" ? "gap-4" : "divide-border/40"}
+          />
         ) : ideaResults.length === 0 &&
           (status === "CanLoadMore" || status === "LoadingMore") ? (
           <div className="flex flex-col items-center py-24 text-center animate-fade-in">
@@ -634,35 +589,12 @@ function BrowseIdeasContent() {
           </div>
         ) : (
           <>
-            {viewMode === "masonry" ? (
-              <div className="columns-1 md:columns-2 lg:columns-3 gap-4">
-                {ideaResults.map((idea, i) => (
-                  <div
-                    key={idea._id}
-                    className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-                  >
-                    <IdeaMasonryItem
-                      idea={idea}
-                      href={ideaDetailHref(idea._id)}
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="divide-y divide-border/40">
-                {ideaResults.map((idea, i) => (
-                  <div
-                    key={idea._id}
-                    className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-                  >
-                    <IdeaExpandedRow
-                      idea={idea}
-                      href={ideaDetailHref(idea._id)}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            <IdeaCollection
+              ideas={ideaResults}
+              viewMode={viewMode}
+              getIdeaHref={ideaDetailHref}
+              className={viewMode === "masonry" ? "gap-4" : "divide-border/40"}
+            />
             {status === "CanLoadMore" && (
               <div className="flex flex-col items-center gap-2 mt-10">
                 <Button

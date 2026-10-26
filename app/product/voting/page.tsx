@@ -22,7 +22,7 @@ import {
   Vote,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 
 type BallotIdea = {
   _id: Id<"ideas">;
@@ -173,8 +173,6 @@ export default function VotingPage() {
               ))
             )}
           </div>
-
-          <Toaster />
         </div>
       );
     }
@@ -188,7 +186,6 @@ export default function VotingPage() {
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
           Once an admin opens voting, the active idea board will appear here.
         </p>
-        <Toaster />
       </div>
     );
   }
@@ -384,8 +381,6 @@ export default function VotingPage() {
           ))}
         </div>
       )}
-
-      <Toaster />
     </div>
   );
 }

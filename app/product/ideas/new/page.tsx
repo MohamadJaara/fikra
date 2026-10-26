@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   CalendarClock,
@@ -209,8 +209,6 @@ export default function CreateIdeaPage() {
           </div>
         </div>
       )}
-
-      <Toaster />
     </div>
   );
 }

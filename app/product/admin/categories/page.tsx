@@ -21,7 +21,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   useProductBase,
@@ -412,8 +412,6 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
       )}
-
-      <Toaster />
     </div>
   );
 }

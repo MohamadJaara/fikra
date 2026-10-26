@@ -2,22 +2,16 @@
 
 import { api } from "@/convex/_generated/api";
 import { useQuery } from "convex/react";
-import { IdeaMasonryItem } from "@/components/IdeaMasonryItem";
-import { IdeaExpandedRow } from "@/components/IdeaExpandedRow";
 import {
-  IdeaExpandedRowSkeleton,
-  IdeaMasonryItemSkeleton,
-} from "@/components/Skeleton";
+  IdeaCollection,
+  IdeaCollectionSkeleton,
+  type IdeaViewMode,
+} from "@/components/ideas/IdeaCollection";
+import { IdeaViewToggle } from "@/components/ideas/IdeaViewToggle";
 import { Button } from "@/components/ui/button";
 import { SORT_OPTIONS, SORT_LABELS, type SortOption } from "@/lib/constants";
 import type { IdeaListItem } from "@/lib/types";
-import {
-  Bookmark,
-  LayoutGrid,
-  List,
-  ArrowUpDown,
-  Sparkles,
-} from "lucide-react";
+import { Bookmark, ArrowUpDown, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import {
@@ -38,7 +32,7 @@ export default function SavedIdeasPage() {
   const bookmarkedIdeas = useQuery(api.ideas.getBookmarked, {
     hackathonId: hackathon?._id,
   }) as IdeaListItem[] | undefined;
-  const [viewMode, setViewMode] = useState<"list" | "masonry">("masonry");
+  const [viewMode, setViewMode] = useState<IdeaViewMode>("masonry");
   const [sortBy, setSortBy] = useState<SortOption>("newest");
 
   const sortedIdeas = useMemo(() => {
@@ -98,55 +92,13 @@ export default function SavedIdeasPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex border rounded-md">
-              <Button
-                variant={viewMode === "list" ? "secondary" : "ghost"}
-                size="icon"
-                className="h-9 w-9 rounded-r-none"
-                onClick={() => setViewMode("list")}
-                aria-label="List view"
-              >
-                <List className="h-4 w-4" />
-              </Button>
-              <Button
-                variant={viewMode === "masonry" ? "secondary" : "ghost"}
-                size="icon"
-                className="h-9 w-9 rounded-l-none"
-                onClick={() => setViewMode("masonry")}
-                aria-label="Masonry view"
-              >
-                <LayoutGrid className="h-4 w-4" />
-              </Button>
-            </div>
+            <IdeaViewToggle value={viewMode} onChange={setViewMode} />
           </div>
         )}
       </div>
 
       {bookmarkedIdeas === undefined ? (
-        viewMode === "masonry" ? (
-          <div className="columns-1 md:columns-2 lg:columns-3">
-            {/* eslint-disable @eslint-react/no-array-index-key */}
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-              >
-                <IdeaMasonryItemSkeleton />
-              </div>
-            ))}
-            {/* eslint-enable @eslint-react/no-array-index-key */}
-          </div>
-        ) : (
-          <div className="divide-y">
-            {/* eslint-disable @eslint-react/no-array-index-key */}
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className={`animate-fade-in stagger-${i + 1}`}>
-                <IdeaExpandedRowSkeleton />
-              </div>
-            ))}
-            {/* eslint-enable @eslint-react/no-array-index-key */}
-          </div>
-        )
+        <IdeaCollectionSkeleton viewMode={viewMode} />
       ) : sortedIdeas.length === 0 ? (
         <div className="text-center py-16">
           <div className="text-4xl mb-4 animate-float">
@@ -164,37 +116,11 @@ export default function SavedIdeasPage() {
           </Link>
         </div>
       ) : (
-        <>
-          {viewMode === "masonry" ? (
-            <div className="columns-1 md:columns-2 lg:columns-3">
-              {sortedIdeas.map((idea, i) => (
-                <div
-                  key={idea._id}
-                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-                >
-                  <IdeaMasonryItem
-                    idea={idea}
-                    href={`${productBase}/ideas/${idea._id}`}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="divide-y">
-              {sortedIdeas.map((idea, i) => (
-                <div
-                  key={idea._id}
-                  className={`animate-fade-in stagger-${Math.min(i + 1, 9)}`}
-                >
-                  <IdeaExpandedRow
-                    idea={idea}
-                    href={`${productBase}/ideas/${idea._id}`}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </>
+        <IdeaCollection
+          ideas={sortedIdeas}
+          viewMode={viewMode}
+          getIdeaHref={(ideaId) => `${productBase}/ideas/${ideaId}`}
+        />
       )}
     </div>
   );

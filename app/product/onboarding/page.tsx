@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/card";
 import { type ParticipationMode } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { Lightbulb, ArrowRight } from "lucide-react";
 
 function parseNameFromEmail(email: string): {
@@ -194,7 +194,6 @@ export default function OnboardingPage() {
           </form>
         </CardContent>
       </Card>
-      <Toaster />
     </div>
   );
 }

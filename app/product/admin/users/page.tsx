@@ -17,7 +17,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Shield, ArrowLeft, Search, User as UserIcon } from "lucide-react";
 import Link from "next/link";
 import { useState, useMemo } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useRolesMap } from "@/lib/hooks";
 import {
@@ -220,8 +220,6 @@ export default function AdminUsersPage() {
           </TableBody>
         </Table>
       </div>
-
-      <Toaster />
     </div>
   );
 }

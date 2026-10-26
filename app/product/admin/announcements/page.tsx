@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
   useProductBase,
@@ -356,8 +356,6 @@ export default function AdminAnnouncementsPage() {
           </AnimatePresence>
         </div>
       )}
-
-      <Toaster />
     </div>
   );
 }
