@@ -96,7 +96,7 @@ describe("slugifyName", () => {
   });
 });
 
-describe("isEmailAllowed - domain checks", () => {
+describe("isEmailAllowed: domain checks", () => {
   let isEmailAllowed: (email: string) => boolean;
   let originalDomain: string | undefined;
   let originalEmails: string | undefined;
@@ -148,7 +148,7 @@ describe("isEmailAllowed - domain checks", () => {
   });
 });
 
-describe("isEmailAllowed - ALLOWED_EMAILS whitelist", () => {
+describe("isEmailAllowed: ALLOWED_EMAILS whitelist", () => {
   let isEmailAllowed: (email: string) => boolean;
   let originalDomain: string | undefined;
   let originalEmails: string | undefined;

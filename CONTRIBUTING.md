@@ -55,7 +55,7 @@ See [AGENTS.md](./AGENTS.md) for a detailed architecture breakdown.
 
 ### Commits
 
-Use clear, descriptive commit messages. There's no strict convention - just make sure the message explains the intent of the change.
+Use clear, descriptive commit messages that explain the intent of the change. No strict convention is required.
 
 ## Submitting Changes
 
@@ -69,7 +69,7 @@ Use clear, descriptive commit messages. There's no strict convention - just make
 
 If your contribution was generated with an AI tool (e.g. Copilot, Cursor, ChatGPT, Claude, etc.), please include the prompt you used in your PR description. This helps reviewers understand the intent and verify the output.
 
-Even easier - you can [open an issue](https://github.com/MohamadJaara/fikra/issues/new/choose) with the prompt describing what you'd like to see built, and I'll gladly run it myself.
+Even easier, you can [open an issue](https://github.com/MohamadJaara/fikra/issues/new/choose) with the prompt describing what you'd like to see built, and I'll gladly run it myself.
 
 ### Pull Request Checklist
 
