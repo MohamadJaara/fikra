@@ -17,7 +17,8 @@ import {
   TEAM_SIZE_LABELS,
   type TeamSize,
 } from "@/lib/constants";
-import { useResourcesList, useRolesList } from "@/lib/hooks";
+import { useResourcesList, useRoles } from "@/lib/hooks";
+import { RolePicker } from "@/components/RolePicker";
 import { Badge } from "@/components/ui/badge";
 import { Check, Loader2, MapPin } from "lucide-react";
 import { Fragment, useState } from "react";
@@ -94,7 +95,7 @@ export function IdeaForm({
   const categories = useQuery(api.categories.list, {
     hackathonId: hackathon?._id,
   });
-  const roles = useRolesList();
+  const { roles, isLoading: areRolesLoading } = useRoles();
   const resources = useResourcesList();
   const statusOptions = isEditing
     ? STATUSES
@@ -123,12 +124,6 @@ export function IdeaForm({
     problem.trim().length > 0 &&
     targetAudience.trim().length > 0 &&
     (!isEditing ? Boolean(categoryId) : true);
-
-  const toggleRole = (role: string) => {
-    setSelectedRoles((prev) =>
-      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
-    );
-  };
 
   const toggleResourceTag = (tag: string) => {
     setSelectedResourceTags((prev) =>
@@ -405,25 +400,13 @@ export function IdeaForm({
               <label className="text-sm font-medium mb-1.5 block">
                 Looking For
               </label>
-              <div className="flex flex-wrap gap-2">
-                {roles.map((role) => (
-                  <Badge
-                    key={role.slug}
-                    variant={
-                      selectedRoles.includes(role.slug) ? "default" : "outline"
-                    }
-                    className="cursor-pointer select-none"
-                    onClick={() => toggleRole(role.slug)}
-                  >
-                    {role.name}
-                  </Badge>
-                ))}
-                {roles.length === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    No roles configured yet.
-                  </p>
-                )}
-              </div>
+              <RolePicker
+                roles={roles}
+                value={selectedRoles}
+                onChange={setSelectedRoles}
+                isLoading={areRolesLoading}
+                ariaLabel="Looking for roles"
+              />
             </div>
 
             <label className="flex items-center gap-2.5 py-1 cursor-pointer">

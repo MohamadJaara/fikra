@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "@/convex/_generated/api";
-import { useRolesList, useRolesMap } from "@/lib/hooks";
+import { useRoles } from "@/lib/hooks";
 import type { PublicUser } from "@/lib/types";
 import { usePaginatedQuery } from "convex/react";
 import { useState, useMemo } from "react";
@@ -30,8 +30,7 @@ export default function PeoplePage() {
     { hackathonId: hackathon?._id },
     { initialNumItems: PAGE_SIZE },
   );
-  const roles = useRolesList();
-  const roleLabels = useRolesMap();
+  const { roles, roleLabels } = useRoles();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<string[]>([]);
   const hasActiveFilters = search.trim().length > 0 || roleFilter.length > 0;
