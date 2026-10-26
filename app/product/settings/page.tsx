@@ -213,7 +213,8 @@ export default function SettingsPage() {
                     Roles
                   </h2>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    Pick what fits — or explore. PM as an iOS dev? Go for it.
+                    Pick what fits or try something new. PM as an iOS dev? Go
+                    for it.
                   </p>
                 </div>
 
@@ -254,7 +255,8 @@ export default function SettingsPage() {
                     Participation Mode
                   </h2>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    On-site or remote — helps teams match with you.
+                    Your on-site or remote preference helps teams match with
+                    you.
                   </p>
                 </div>
 

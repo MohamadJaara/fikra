@@ -119,7 +119,7 @@ export function ResourceSection({ idea }: { idea: IdeaDetail }) {
               </span>
               {req.notes && (
                 <span className="text-xs text-muted-foreground/70 truncate">
-                  — {req.notes}
+                  - {req.notes}
                 </span>
               )}
             </div>

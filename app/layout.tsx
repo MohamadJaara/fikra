@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fikra — Hackathon Idea Board",
+  title: "Fikra - Hackathon Idea Board",
   description:
     "Internal hackathon idea management. Add ideas, browse, express interest, join teams, and collaborate.",
 };

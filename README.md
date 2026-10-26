@@ -1,8 +1,8 @@
-# Fikra — Hackathon Idea Board
+# Fikra - Hackathon Idea Board
 
-> **Fikra** (فكرة) means **"idea"** in Arabic. It captures the essence of the app — a space where ideas are born, shared, and brought to life. The name reflects the spark of inspiration that hackathons are all about: a single _fikra_ can grow into something impactful when the right people come together around it.
+> **Fikra** (فكرة) means **"idea"** in Arabic. It captures the essence of the app: a space where ideas are born, shared, and brought to life. The name reflects the spark of inspiration that hackathons are all about: a single _fikra_ can grow into something impactful when the right people come together around it.
 
-**Fikra** is a self-hosted, multi-event hackathon idea management app. It lets participants submit ideas, browse what others are working on, express interest, join teams, request resources, and discuss — all in a lightweight, fast interface.
+**Fikra** is a self-hosted, multi-event hackathon idea management app. It lets participants submit ideas, browse what others are working on, express interest, join teams, request resources, and discuss ideas in a lightweight, fast interface.
 
 Access is restricted by email domain. All authorization is enforced server-side.
 
@@ -29,8 +29,8 @@ Admins can create, activate, complete, archive, and clone configuration between 
 
 ### Interest & Joining (Two Separate Actions)
 
-- **"I'm Interested"** — lightweight signal that you like an idea
-- **"Join Team"** — commitment to participate, with an optional role selection
+- **"I'm Interested"**: lightweight signal that you like an idea
+- **"Join Team"**: commitment to participate, with an optional role selection
 
 These are tracked separately so teams can distinguish curious followers from actual members.
 
@@ -58,10 +58,10 @@ Real-time notifications for activity on your ideas: when someone joins, expresse
 
 Personal dashboard with four tabs:
 
-- **Created** — ideas you submitted
-- **Joined** — teams you're on
-- **Interested** — ideas you've expressed interest in
-- **Resources** — all unresolved resource requests across the app
+- **Created**: ideas you submitted
+- **Joined**: teams you're on
+- **Interested**: ideas you've expressed interest in
+- **Resources**: all unresolved resource requests across the app
 
 ### Onboarding
 
@@ -175,7 +175,7 @@ lib/
 
 ## Disclaimer
 
-**Fikra is not a SaaS product.** It's a self-hosted, single-tenant app designed to be deployed by teams inside their own organization. There is no multi-tenancy, no billing, and no hosted version — and that's intentional.
+**Fikra is not a SaaS product.** It's a self-hosted, single-tenant app designed to be deployed by teams inside their own organization. The app has no multi-tenancy, billing, or hosted version by design.
 
 The app is designed for a single organization and is easy to fork, customize, and deploy for an internal event program.
 
@@ -184,10 +184,10 @@ The app is designed for a single organization and is easy to fork, customize, an
 1. Set up a Convex deployment
 2. Configure the `ALLOWED_DOMAIN` environment variable in your Convex deployment to your company's email domain (e.g. `yourcompany.com`)
 3. Optionally set `ALLOWED_EMAILS` for a comma-separated whitelist of specific addresses
-4. Anyone outside your domain or whitelist will be denied access — enforced server-side on every request
+4. Anyone outside your domain or whitelist will be denied access. This is enforced server-side on every request.
 
-That's it. No user management, no invite flows — if you have a `@yourcompany.com` email, you're in.
+That's it. If you have a `@yourcompany.com` email, you're in. No user management or invite flows are needed.
 
 ## License
 
-[MIT](LICENSE) — do whatever you want with it.
+Licensed under [MIT](LICENSE).

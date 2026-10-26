@@ -1,7 +1,10 @@
 import reactPlugin from "@eslint-react/eslint-plugin";
+import markdown from "@eslint/markdown";
 import nextPlugin from "@next/eslint-plugin-next";
+import { defineConfig } from "eslint/config";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
+import noEmDashes from "./eslint-rules/no-em-dashes.mjs";
 
 const reactHooksConfig = {
   name: "react-hooks/recommended",
@@ -11,15 +14,7 @@ const reactHooksConfig = {
   rules: reactHooksPlugin.configs.recommended.rules,
 };
 
-export default tseslint.config(
-  {
-    ignores: [
-      "convex/_generated/**",
-      ".next/**",
-      "node_modules/**",
-      ".convex/**",
-    ],
-  },
+const sourceConfig = tseslint.config(
   reactPlugin.configs["recommended-typescript"],
   nextPlugin.configs["core-web-vitals"],
   reactHooksConfig,
@@ -74,5 +69,30 @@ export default tseslint.config(
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
     },
+  },
+);
+
+export default defineConfig(
+  {
+    ignores: [
+      "convex/_generated/**",
+      ".next/**",
+      "node_modules/**",
+      ".convex/**",
+    ],
+  },
+  {
+    files: ["**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts}"],
+    extends: sourceConfig,
+  },
+  {
+    files: ["**/*.{md,mdx}"],
+    plugins: { markdown },
+    language: "markdown/gfm",
+  },
+  {
+    files: ["**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,md,mdx}"],
+    plugins: { fikra: { rules: { "no-em-dashes": noEmDashes } } },
+    rules: { "fikra/no-em-dashes": "error" },
   },
 );
