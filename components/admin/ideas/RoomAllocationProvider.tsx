@@ -118,9 +118,7 @@ export function RoomAllocationProvider({
 }) {
   const allocation = useRoomAllocationState(hackathonId);
   return (
-    <RoomAllocationContext value={allocation}>
-      {children}
-    </RoomAllocationContext>
+    <RoomAllocationContext value={allocation}>{children}</RoomAllocationContext>
   );
 }
 
